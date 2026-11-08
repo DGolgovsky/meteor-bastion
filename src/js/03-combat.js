@@ -5,11 +5,12 @@
 function inRange(t,e){
  if(e.hp<=0||e.dead)return false;
  if(e.y<VIS_TOP)return false;
+ if(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0)&&!["laser","disruption","firewheel","gravity"].includes(t.cfg.id))return false;
  return (t.y-e.y)<=t.cfg.range && e.y<=BASEY+12;
 }
 /* Hive launches within turret range, but deployed wasps hunt across the WHOLE field. */
 function pickDroneTarget(dr){
- var alive=B.enemies.filter(function(e){return !e.dead&&e.hp>0&&e.y<=BASEY+12;});
+ var alive=B.enemies.filter(function(e){return !e.dead&&e.hp>0&&e.y<=BASEY+12&&!(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0));});
  if(!alive.length)return null;
  var best=null,bestScore=Infinity;
  alive.forEach(function(e){
@@ -35,7 +36,7 @@ function pickTarget(t){
 function enemyVel(e){
  var vx=0;
  if(e.kind==="flyer")vx=Math.sin(e.phase)*22;
- return {x:vx,y:e.speed*e.slowFactor};
+ return {x:vx,y:e.speed*e.slowFactor*(e.chargeMul||1)};
 }
 /* точка перехвата: решаем |P + V·t − S| = projSpeed·t и целимся туда, а не в текущую позицию */
 function aimPoint(t,e){
@@ -57,16 +58,19 @@ function aimPoint(t,e){
 }
 function dealDamage(src,e,baseDmg,opts){
  opts=opts||{}; if(e.hp<=0||e.dead)return 0;
+ if(src&&["laser","disruption","firewheel"].includes(src.cfg.id)){e.revealedT=4;e.cloakT=0;}
+ if(opts.reveal){e.revealedT=Math.max(e.revealedT||0,4);e.cloakT=0;}
  var crit=Math.random()<Math.min(0.95,Math.max(0,src?src.cfg.crit+src.critBonus:0.05));
  var cm=crit?(src?src.cfg.critMul:1.8)*(1+totalCritBonus()/100):1;
  /* сопротивление/уязвимость врага к типу урона атакующего (механика Galaxy Defense) */
  var rm=1;
  if(src&&src.cfg.dtype&&e.cfg.res&&e.cfg.res[src.cfg.dtype])rm=e.cfg.res[src.cfg.dtype];
  if(e.champion)rm=Math.min(1,rm);
- var dmg=baseDmg*(src?src.dmgMul:1)*(src&&B?B.allDmgMul:1)*cm*rm*(1-(e.armor||0));
+ var dmg=baseDmg*(src?src.dmgMul:1)*(src&&B?B.allDmgMul:1)*cm*rm*(1-(e.armor||0))*(1+(e.vulnerableStacks||0)*0.10);
  e.hp-=dmg; e.flash=0.08;
  if(src)src.totalDmg+=Math.max(0,Math.min(dmg,e.hp+dmg));
  if(dmg>=3||Math.random()<0.25)addNum(e.x+(Math.random()*16-8),e.y-e.r-4,Math.round(dmg),crit,rm);
+ if(opts.vulnerable){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=3.8;}
  if(opts.slow&&e.kind!=="boss"){
    var slow=(opts.slowPow||0.35)*(e.champion?0.55:1);
    e.slowFactor=Math.min(e.slowFactor||1,1-slow);e.slowT=2.5;
@@ -152,7 +156,7 @@ function fireLaser(t,dt){
  var tickCount=0;
  while(t.laserTickT<=0&&tickCount<4){t.laserTickT+=0.12;tickCount++;}
  if(!tickCount)return;
- var opts=t.beamSlow?{slow:true,slowPow:0.3}:{};
+ var opts=t.beamSlow?{slow:true,slowPow:0.3,vulnerable:!!t.laserVulnerable}:{vulnerable:!!t.laserVulnerable};
  hits.forEach(function(e){dealDamage(t,e,t.cfg.damage*tickCount*(t.laserPower||1),opts);});
  if(t.refract&&hits.length){
   [-0.34,0.34].forEach(function(a){
@@ -216,7 +220,7 @@ function fireFocusedBeam(t,dt){
   t.angle=Math.atan2(target.y-t.y,target.x-t.x);
   var cap=t.beamFocusCap||0;
   var ramp=cap?1+Math.min(cap,t.beamRamp):1;
-  var opts=t.beamSlow?{slow:true,slowPow:0.3}:{};
+  var opts=t.beamSlow?{slow:true,slowPow:0.3,vulnerable:!!t.laserVulnerable}:{vulnerable:!!t.laserVulnerable};
   dealDamage(t,target,t.cfg.damage*1.45*(t.beamPower||1)*ramp,opts);
   beamFx(t.x,t.y-14,target.x,target.y,"#38bdf8",4);
   if(cap)t.beamRamp+=0.09;
@@ -242,12 +246,21 @@ function unitFire(t,dt){
  var ap=aimPoint(t,target); /* упреждение: снаряд летит в точку перехвата движущейся цели */
  t.angle=Math.atan2(ap.y-(t.y-10),ap.x-t.x);
  t.cd=1/cfg.attackSpeed*t.metaCd/t.haste;
+ if(cfg.effect==="gravity"){
+   var centerX=target.x,centerY=Math.max(VIS_TOP+30,Math.min(BASEY-35,target.y));
+   if(B.fields.filter(function(field){return field.kind==="gravity"&&field.src===t;}).length<4){
+     B.fields.push({kind:"gravity",x:centerX,y:centerY,r:t.gravityRadius,life:t.gravityDuration*t.durationMul,
+       src:t,tick:0.15,pull:t.gravityPull,power:t.gravityPower||1});
+     ringFx(centerX,centerY,"#8cb5ff",135);
+   }
+   SFX.zap();return;
+ }
  if(cfg.effect==="chain"){
-   var hit=[target],cur=target;arcFx(t.x,t.y-8,target.x,target.y,t.cfg.color);dealDamage(t,target,cfg.damage,{});
+   var hit=[target],cur=target;arcFx(t.x,t.y-8,target.x,target.y,t.cfg.color);dealDamage(t,target,cfg.damage,t.thunderParalyze?{slow:true,slowPow:0.30}:{});
    for(var c=0;c<t.chain;c++){
      var nx=null,bd=95;
      B.enemies.forEach(function(e){if(e.hp>0&&!e.dead&&hit.indexOf(e)<0){var d=Math.hypot(e.x-cur.x,e.y-cur.y);if(d<bd){bd=d;nx=e;}}});
-     if(!nx)break;arcFx(cur.x,cur.y,nx.x,nx.y,t.cfg.color);dealDamage(t,nx,cfg.damage*0.7,{});hit.push(nx);cur=nx;
+     if(!nx)break;arcFx(cur.x,cur.y,nx.x,nx.y,t.cfg.color);dealDamage(t,nx,cfg.damage*0.7,t.thunderParalyze?{slow:true,slowPow:0.25}:{});hit.push(nx);cur=nx;
    }
    SFX.zap();return;
  }
@@ -332,6 +345,10 @@ function applyHit(p,e){
  if(cfg.effect==="knockback")opts={knock:p.src.knock};
  if(cfg.effect==="burn")opts={burn:true};
  dealDamage(p.src,e,p.dmg,opts);
+ if(cfg.id==="railgun"&&p.src.railExplosive){
+   B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=45)dealDamage(p.src,o,p.dmg*0.25,{});});
+   ringFx(e.x,e.y,"#f472b6",75);
+ }
  /* комбо Sky Guard + Thunderbolt: попадание ракеты бьёт током соседа */
  if(p.src.zapOnHit){
    var nx2=null,bd2=85;
