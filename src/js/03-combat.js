@@ -78,7 +78,8 @@ function dealDamage(src,e,baseDmg,opts){
  var dmg=baseDmg*(src?src.dmgMul:1)*(src&&B?B.allDmgMul:1)*cm*rm*(1-(e.armor||0))*(1+(e.vulnerableStacks||0)*0.10);
  e.hp-=dmg; e.flash=0.08;
  if(src)src.totalDmg+=Math.max(0,Math.min(dmg,e.hp+dmg));
- if(dmg>=3||Math.random()<0.25)addNum(e.x+(Math.random()*16-8),e.y-e.r-4,Math.round(dmg),crit,rm);
+ if(dmg>=3||Math.random()<0.25)addNum(e.x+(Math.random()*16-8),e.y-e.r-4,Math.round(dmg),crit,rm,e);
+ if(crit&&B.t-(e.lastCritRing===undefined?-99:e.lastCritRing)>.2){e.lastCritRing=B.t;B.rings.push({x:e.x,y:e.y,r:5,vr:90,t:0,life:.15,color:"#ff9f2e"});if(B.rings.length>40)B.rings.shift();}
  if(opts.vulnerable){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=3.8;}
  if(opts.slow&&e.kind!=="boss"){
    var slow=(opts.slowPow||0.35)*(e.champion?0.55:1);
@@ -110,7 +111,10 @@ function killEnemy(e){
  if(B.baseHp<B.baseMax){
    var healed=Math.min(2,B.baseMax-B.baseHp);
    B.baseHp+=healed;B.totalHealed+=healed;
-   if(Math.random()<0.3)addNum(W/2+(Math.random()*70-35),BASEY-64,"+2",false,1);
+   if(B.t-(B.healWindowAt||0)>1){B.healWindowAt=B.t;B.healWindowAmount=0;}
+    B.healWindowAmount=(B.healWindowAmount||0)+healed;
+    if(B.healWindowAmount>=6){addNum(W/2+(Math.random()*70-35),BASEY-52,"+6",false,1);B.healWindowAmount=0;B.healWindowAt=B.t;}
+    else if(Math.random()<.3)addNum(W/2+(Math.random()*70-35),BASEY-52,"+"+Math.round(healed),false,1);
  }
  burst(e.x,e.y,e.kind==="boss"?26:12,e.color);
  if(e.kind==="boss"){B.shake=10;SFX.boom();}
@@ -119,7 +123,8 @@ function killEnemy(e){
    var mini=ENEMIES.filter(function(x){return x.id==="mini";})[0];
    var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*0.78*0.8;
    [-16,16].forEach(function(off){
-     B.enemies.push({cfg:mini,kind:mini.kind,x:Math.max(16,Math.min(W-16,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
+     if(B.enemies.length>=MAX_ENEMIES)return;
+      B.enemies.push({cfg:mini,kind:mini.kind,x:Math.max(16,Math.min(W-16,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
       speed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,baseSpeed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,dmg:mini.dmg*.8,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
        moveKind:"mini",visualScale:.85+Math.random()*.3,vx:0,vy:0,hoverCd:5,hoverT:0,hoverCount:0,driftDir:off<0?-1:1,driftT:2,speedPhase:Math.random()*6.28,
       phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:0});
@@ -127,7 +132,23 @@ function killEnemy(e){
  }
 }
 function burst(x,y,n,color){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=40+Math.random()*130;B.parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.35+Math.random()*0.3,t:0,color:color,r:1.5+Math.random()*2.5});}}
-function addNum(x,y,txt,crit,rm){B.nums.push({x:x,y:y,txt:""+txt,crit:!!crit,rm:rm||1,t:0});if(B.nums.length>60)B.nums.shift();}
+/* Merge three or more damage numbers on a target within 0.25s. */
+function addNum(x,y,txt,crit,rm,enemy){
+ x=Math.max(20,Math.min(W-20,x));y=Math.max(VIS_TOP+12,Math.min(BASEY-20,y));
+ var heal=String(txt).charAt(0)==="+",value=heal?Number(String(txt).slice(1)):Number(txt);
+ var matches=enemy?B.nums.filter(function(n){return n.target===enemy&&n.t<.25&&!n.heal;}):[];
+ if(matches.length){
+  var hits=1,sum=value,isCrit=!!crit,importance=rm||1;
+  matches.forEach(function(n){hits+=n.hits||1;sum+=n.total===undefined?Number(n.txt):n.total;isCrit=isCrit||n.crit;importance=Math.max(importance,n.rm);});
+  if(hits>=3){
+   B.nums=B.nums.filter(function(n){return matches.indexOf(n)<0;});
+   B.nums.push({x:x,y:y,txt:""+Math.round(sum),total:sum,hits:hits,crit:isCrit,rm:importance,t:0,target:enemy,heal:false});
+   if(B.nums.length>60)B.nums.shift();return;
+  }
+ }
+ B.nums.push({x:x,y:y,txt:""+txt,total:value,hits:1,crit:!!crit,rm:rm||1,t:0,target:enemy||null,heal:heal});
+ if(B.nums.length>60)B.nums.shift();
+}
 function beamFx(x1,y1,x2,y2,color,w){B.beams.push({x1:x1,y1:y1,x2:x2,y2:y2,color:color,w:w||2,t:0,life:0.09});}
 function arcFx(x1,y1,x2,y2,color){B.beams.push({x1:x1,y1:y1,x2:x2,y2:y2,mx:(x1+x2)/2+(Math.random()*24-12),my:(y1+y2)/2+(Math.random()*24-12),color:color||"#c084fc",w:2,t:0,life:0.12,arc:true});}
 function ringFx(x,y,color,vr){B.rings.push({x:x,y:y,r:5,vr:vr||110,t:0,life:0.35,color:color});if(B.rings.length>40)B.rings.shift();}
@@ -325,7 +346,8 @@ function unitFire(t,dt){
      var a=t.angle+(k-(pellets-1)/2)*spreadStep;
      B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:0,hitSet:[],life:2.6,tgt:target});
    }
-   t.recoil=5;
+   t.recoil=6;
+   B.parts.push({kind:"muzzle",angle:t.angle,x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,life:.08,t:0,color:cfg.color,r:14,vx:0,vy:0});
    if(cfg.id==="skyguard")for(var sm=0;sm<4;sm++)B.parts.push({x:t.x+(sm-1.5)*5.5,y:t.y-25,vx:(sm-1.5)*8,vy:-22,life:0.35,t:0,color:"#8fa1b4",r:2});
   B.parts.push({x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:0.12,t:0,color:cfg.color,r:2.2});
    SFX.shoot();return;

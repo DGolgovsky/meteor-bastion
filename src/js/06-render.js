@@ -346,8 +346,8 @@ function draw(){
      ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.3,0,6.29);ctx.fill();
      ctx.strokeStyle="rgba(216,180,254,.9)";ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(p.x-3,p.y-6);ctx.lineTo(p.x+1,p.y-10-Math.random()*3);ctx.moveTo(p.x+4,p.y+3);ctx.lineTo(p.x+8+Math.random()*3,p.y+6);ctx.stroke();
    }else if(id==="railgun"){ /* длинный розовый след-штрих и белое ядро */
-     ctx.lineWidth=3;ctx.shadowBlur=10;ctx.strokeStyle=col;
-     ctx.beginPath();ctx.moveTo(p.x-p.vx*0.09,p.y-p.vy*0.09);ctx.lineTo(p.x,p.y);ctx.stroke();
+     ctx.lineWidth=3.5;ctx.shadowBlur=10;ctx.strokeStyle=col;
+     ctx.beginPath();ctx.moveTo(p.x-p.vx*0.12,p.y-p.vy*0.12);ctx.lineTo(p.x,p.y);ctx.stroke();
      ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,6.29);ctx.fill();
    }else if(id==="disruption"){ /* пульсирующее кольцо-импульс */
      ctx.lineWidth=2;ctx.shadowBlur=8;ctx.strokeStyle=col;
@@ -363,8 +363,8 @@ function draw(){
      ctx.shadowColor="#ff8a3c";ctx.shadowBlur=13;ctx.fillStyle="#ffb03c";ctx.beginPath();ctx.arc(p.x,p.y,4.6,0,6.29);ctx.fill();
      ctx.shadowBlur=0;ctx.fillStyle="#ff8a3c";ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,6.29);ctx.fill();
    }else{ /* трассеры: Sky Guard — жёлтые, солдат — золотые, покороче/подлиннее */
-     ctx.lineWidth=id==="soldier"?2.6:2;ctx.shadowBlur=6;ctx.strokeStyle=col;
-     var tl=id==="soldier"?0.045:0.03;
+     ctx.lineWidth=id==="soldier"?3.2:2;ctx.shadowBlur=id==="soldier"?10:6;ctx.strokeStyle=id==="soldier"?"#ffd34d":col;
+     var tl=id==="soldier"?0.07:0.03;
      ctx.beginPath();ctx.moveTo(p.x-p.vx*tl,p.y-p.vy*tl);ctx.lineTo(p.x,p.y);ctx.stroke();
    }
    ctx.restore();
@@ -384,7 +384,7 @@ function draw(){
   ctx.restore();
  });
  /* числа урона: крит — золото, уязвимость врага — оранжевым крупнее, сопротивление — приглушённо */
- B.nums.forEach(function(n){ctx.save();ctx.globalAlpha=1-n.t/0.85;ctx.font=(n.crit?"800 17px":(n.rm>1.15?"800 14.5px":"700 12px"))+" 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle=n.crit?"#ff9f2e":(n.rm>1.15?"#ff7a4d":(n.rm<0.85?"#8fa8b5":"#ffffff"));ctx.fillText(n.txt,n.x,n.y);ctx.restore();});
+ B.nums.forEach(function(n){ctx.save();ctx.globalAlpha=1-n.t/0.85;ctx.font=(n.crit?"800 17px":(n.rm>1.15?"800 14.5px":"700 12px"))+" 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle=n.heal?"#4ade80":n.crit?"#ff9f2e":(n.rm>1.15?"#ff7a4d":(n.rm<0.85?"#8fa8b5":"#ffffff"));ctx.fillText(n.txt,n.x,n.y);ctx.restore();});
  ctx.restore();
  drawCombatHud();
 }
