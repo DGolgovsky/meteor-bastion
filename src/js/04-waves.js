@@ -45,7 +45,9 @@ function spawnEnemy(kind,opts){
  var champMul=champion?BALANCE.eliteChampionHp:1;
  var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*champMul*0.78;
  var speed=cfg.speed*B.stage.spdMul*B.enemySpdMul*(0.93+Math.random()*0.18)*0.85*(opts.speedScale||1);
- var x=opts.x===undefined?26+Math.random()*(W-52):Math.max(cfg.r,Math.min(W-cfg.r,opts.x));
+ var spawnR=cfg.r+(champion?2:0);
+ var x=opts.x===undefined?26+Math.random()*(W-52):Math.max(spawnR,Math.min(W-spawnR,opts.x));
+ x=Math.max(spawnR,Math.min(W-spawnR,x));
  B.enemies.push({cfg:cfg,kind:cfg.kind,x:x,y:opts.y===undefined?-30:opts.y,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
   speed:speed*(champion?BALANCE.eliteChampionSpeed:1),baseSpeed:speed*(champion?BALANCE.eliteChampionSpeed:1),dmg:cfg.dmg*(["meteor","fast","mini","flyer"].indexOf(cfg.id)>=0?0.8:1)*(B.stage.contactMul||1)*(champion?BALANCE.eliteChampionContact:1),
   armor:Math.min(0.65,cfg.armor+(champion?BALANCE.eliteChampionArmor:0)),xp:cfg.xp,

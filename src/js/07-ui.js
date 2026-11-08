@@ -237,7 +237,7 @@ function applyCard(c){
    if(c.modId==="boost")B.allDmgMul*=1.12;
    if(c.modId==="healm")B.baseHp=Math.min(B.baseMax,B.baseHp+250);
    if(c.modId==="regenm")B.baseHp=Math.min(B.baseMax,B.baseHp+200);
-   if(c.modId==="jam"){B.enemySpdMul*=0.85;B.enemies.forEach(function(e){e.speed*=0.85;});}
+   if(c.modId==="jam"){B.enemySpdMul*=0.85;B.enemies.forEach(function(e){e.speed*=0.85;if(e.baseSpeed!==undefined)e.baseSpeed*=0.85;});}
    burst(W/2,BASEY-46,18,"#2ee6c8");
  }else{
    var t=c.u;

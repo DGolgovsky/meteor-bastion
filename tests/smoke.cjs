@@ -720,4 +720,97 @@ test("extra projectiles fly parallel to the main shot, not in a fan", () => {
   assert.ok(Math.abs(Math.abs(shots[0].x - shots[1].x) - 7) < 1e-9, "parallel offset must be 7px");
 });
 
+
+test("intrinsic trajectories never ascend and remain within lateral bounds", () => {
+  const {game:m} = harness();
+  m.B=m.newBattle(m.STAGES[0]);m.B.soldier=m.mkUnit(m.SOLDIER_CFG,210,-1,true);
+  m.B.soldier.cd=99999;m.startWave(10);m.B.spawnT=99999;
+  for(const c of m.ENEMIES.filter(c=>c.id!=="boss")){
+    assert.ok(m.spawnEnemy(c.id),"spawn "+c.id);
+  }
+  const tracked=m.B.enemies.slice();
+  tracked.forEach(e=>e.y=200);
+  for(let tick=0;tick<55;tick++){
+    const old=new Map(tracked.map(e=>[e,e.y]));
+    m.update(0.05);
+    for(const e of tracked){
+      assert.ok(e.vy>=0,"enemy intrinsic vertical speed must be nonnegative: "+e.cfg.id);
+      assert.ok(e.y+1e-9>=old.get(e),"enemy must never ascend without Gravity: "+e.cfg.id);
+      assert.ok(e.x>=e.r-1e-9&&e.x<=m.W-e.r+1e-9,"enemy must remain inside the field: "+e.cfg.id);
+    }
+  }
+  assert.equal(m.B.maxUpwardOwn,0);
+});
+
+test("whole formations wait at the enemy cap, without losing units", () => {
+  const {game:m}=harness();
+  m.B=m.newBattle(m.STAGES[0]);m.startWave(1);
+  m.B.enemies=Array.from({length:m.MAX_ENEMIES-2},()=>({dead:false,hp:100}));
+  const queued=m.B.waveQueue;
+  assert.equal(m.spawnWaveGroup(),0,"group should wait for enough free slots");
+  assert.equal(m.B.enemies.length,m.MAX_ENEMIES-2);
+  assert.equal(m.B.waveQueue,queued,"group helper must not consume the wave queue");
+  m.B.enemies=[];
+  const created=m.spawnWaveGroup();
+  assert.ok(created>=3&&created<=7,"spawned flock size "+created);
+  assert.equal(m.B.enemies.length,created);
+});
+
+test("Disruption strip is visual only: slowing stays circular", () => {
+  const {game:m}=harness();
+  m.B=m.newBattle(m.STAGES[0]);m.B.soldier=m.mkUnit(m.SOLDIER_CFG,210,-1,true);
+  m.B.soldier.cd=99999;m.B.wave=1;m.B.waveState="fighting";m.B.waveQueue=1;m.B.spawnT=99999;
+  const dis=m.mkUnit(m.TURRETS.find(t=>t.id==="disruption"),52,0,false);
+  dis.cd=99999;
+  const inside=sampleEnemy(m,350),outside=sampleEnemy(m,350);
+  inside.x=210;outside.x=305;
+  m.B.enemies=[inside,outside];
+  m.B.fields=[{kind:"slow",x:210,y:350,r:40,life:2.2,age:0,seed:7,src:dis,tick:0}];
+  m.update(.05);m.draw();
+  assert.ok(inside.slowFactor<1,"target inside the collision circle must slow");
+  assert.equal(outside.slowFactor,1,"target in the visual stripe but outside the circle must not slow");
+  assert.ok(m.B.fields[0].age>0,"field fade timer must advance");
+});
+
+test("fortress HP arc/dome flash after damage without shield absorption", () => {
+  const {game:m}=harness();
+  m.B=m.newBattle(m.STAGES[0]);m.B.soldier=m.mkUnit(m.SOLDIER_CFG,210,-1,true);
+  m.B.soldier.cd=99999;m.B.wave=1;m.B.waveState="fighting";m.B.waveQueue=1;m.B.spawnT=99999;
+  const e=sampleEnemy(m,m.BASEY-17);e.speed=110;e.hp=10000;
+  m.B.enemies=[e];const hp=m.B.baseHp;
+  m.update(.05);m.draw();
+  assert.equal(m.B.baseHp,hp-e.dmg);
+  assert.equal(m.B.shield,undefined);
+  assert.equal(m.B.baseFlashT,.12);
+  assert.equal(m.B.baseHitTextT,.2);
+});
+
+test("three hits aggregate; numbers stay within the screen; healing is green-channel", () => {
+  const {game:m}=harness();
+  m.B=m.newBattle(m.STAGES[0]);
+  const e=sampleEnemy(m,400);
+  m.addNum(-100,900,10,false,1,e);
+  m.addNum(-100,900,11,false,1,e);
+  m.addNum(-100,900,12,true,1,e);
+  assert.equal(m.B.nums.length,1);
+  assert.equal(m.B.nums[0].txt,"33");
+  assert.equal(m.B.nums[0].crit,true);
+  assert.equal(m.B.nums[0].x,20);
+  assert.equal(m.B.nums[0].y,m.BASEY-20);
+  m.addNum(210,m.BASEY-52,"+2",false,1);
+  assert.equal(m.B.nums[1].heal,true);
+});
+
+test("jam module slows both existing and newly spawned nonlinear enemies", () => {
+  const {game:m}=harness();
+  m.B=m.newBattle(m.STAGES[0]);m.B.soldier=m.mkUnit(m.SOLDIER_CFG,210,-1,true);
+  m.startWave(3);assert.ok(m.spawnEnemy("fast"));
+  const old=m.B.enemies[0].baseSpeed;
+  m.applyCard({kind:"module",modId:"jam"});
+  assert.ok(m.B.enemies[0].baseSpeed<old);
+  assert.ok(m.B.enemySpdMul<1);
+  assert.ok(m.spawnEnemy("fast"));
+  assert.ok(m.B.enemies[1].baseSpeed<old);
+});
+
 console.log("\n" + tests.length + " smoke tests passed.");

@@ -1,0 +1,20 @@
+name: Verify Meteor Bastion
+
+on:
+  push:
+    branches: [master, visual-density-screenshots-20261108]
+  pull_request:
+
+jobs:
+  smoke-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests (no npm dependencies)
+        run: node tests/smoke.cjs
+      - name: Build single-file game
+        run: python3 build.py
+      - name: Verify assembled game exists
+        run: test -s index.html

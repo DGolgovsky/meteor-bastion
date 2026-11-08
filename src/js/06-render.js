@@ -81,14 +81,15 @@ function drawUnit(t){
    ctx.restore();
    ctx.save();ctx.shadowColor="#ffb03c";ctx.shadowBlur=14;ctx.fillStyle="#ffb03c";ctx.beginPath();ctx.arc(0,-13,3.6,0,6.29);ctx.fill();ctx.restore();
  }else if(id==="hive"){
-   ctx.fillStyle="#241f0d";ctx.strokeStyle=col;ctx.lineWidth=1.6;
+   ctx.save();var hiveBreath=1+.02*Math.sin(B.t*2+t.x);ctx.scale(hiveBreath,hiveBreath);
+    ctx.fillStyle="#241f0d";ctx.strokeStyle=col;ctx.lineWidth=1.6;
    ctx.beginPath();for(var hx=0;hx<6;hx++){var ha=hx/6*6.29-1.57;var px=Math.cos(ha)*12,py=-8+Math.sin(ha)*12;if(hx===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}ctx.closePath();ctx.fill();ctx.stroke();
    ctx.fillStyle="#0a0803";
    [[-5,-11],[4,-14],[0,-5]].forEach(function(hp){ctx.beginPath();ctx.arc(hp[0],hp[1],2.6,0,6.29);ctx.fill();});
    ctx.strokeStyle="#3a3410";ctx.beginPath();ctx.moveTo(-7,4);ctx.lineTo(0,-2);ctx.lineTo(7,4);ctx.stroke();
    for(var ob=0;ob<2;ob++){var oa=B.t*2.2+ob*3.14,bx=Math.cos(oa)*17,by=-10+Math.sin(oa)*6;
      ctx.fillStyle="#facc15";ctx.beginPath();ctx.ellipse(bx,by,3.4,2.4,0,0,6.29);ctx.fill();
-     ctx.fillStyle="rgba(220,240,255,.8)";ctx.beginPath();ctx.ellipse(bx,by-2.8,2.6,1.2,0,0,6.29);ctx.fill();}
+     ctx.fillStyle="rgba(220,240,255,.8)";ctx.beginPath();ctx.ellipse(bx,by-2.8,2.6,1.2,0,0,6.29);ctx.fill();}ctx.restore();
  }else if(id==="railgun"){
    ctx.fillStyle="#182a42";ctx.strokeStyle=col;ctx.lineWidth=1.3;ctx.fillRect(-13,4,26,8);ctx.strokeRect(-13,4,26,8);
    ctx.beginPath();ctx.moveTo(-8,4);ctx.lineTo(-3,-4);ctx.moveTo(8,4);ctx.lineTo(3,-4);ctx.stroke();
@@ -196,7 +197,8 @@ function drawBattleFields(){
   ctx.save();ctx.globalAlpha=Math.max(0,Math.min(.26,f.life/7));
   var col=f.kind==="matrix"?"#a06bff":f.kind==="gravity"?"#7a8cff":"#ff8538";
   ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=f.kind==="gravity"?2.7:2;
-  ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+  if(f.kind==="firetrail"){ctx.setLineDash([4,7]);ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
+  else{ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();ctx.stroke();}
   if(f.kind==="gravity"){
    ctx.globalAlpha=.72;ctx.strokeStyle="#d2d8ff";ctx.beginPath();ctx.arc(f.x,f.y,f.r*(.35+.08*Math.sin(B.t*5)),B.t,B.t+Math.PI*1.6);ctx.stroke();
    for(var j=0;j<4;j++){var a=B.t*5+j*Math.PI/2,r=f.r*(.17+.26*(j%3)/3);ctx.fillStyle="#d2d8ff";ctx.beginPath();ctx.arc(f.x+Math.cos(a)*r,f.y+Math.sin(a)*r,1.8,0,6.29);ctx.fill();}
@@ -344,6 +346,11 @@ function draw(){
    }else if(id==="tesla"){ /* летящий заряд энергии: фиолетовая сфера с белым ядром и искрами */
      ctx.shadowColor="#a06bff";ctx.shadowBlur=16;ctx.fillStyle="#a06bff";ctx.beginPath();ctx.arc(p.x,p.y,5.8,0,6.29);ctx.fill();
      ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.3,0,6.29);ctx.fill();
+     ctx.strokeStyle="rgba(216,180,254,.8)";ctx.lineWidth=1.5;ctx.beginPath();
+     ctx.moveTo(p.x-p.vx*.04,p.y-p.vy*.04);
+     ctx.lineTo(p.x-p.vx*.027+Math.sin(B.t*40)*3,p.y-p.vy*.027);
+     ctx.lineTo(p.x-p.vx*.014-Math.sin(B.t*45)*3,p.y-p.vy*.014);
+     ctx.lineTo(p.x,p.y);ctx.stroke();
      ctx.strokeStyle="rgba(216,180,254,.9)";ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(p.x-3,p.y-6);ctx.lineTo(p.x+1,p.y-10-Math.random()*3);ctx.moveTo(p.x+4,p.y+3);ctx.lineTo(p.x+8+Math.random()*3,p.y+6);ctx.stroke();
    }else if(id==="railgun"){ /* длинный розовый след-штрих и белое ядро */
      ctx.lineWidth=3.5;ctx.shadowBlur=10;ctx.strokeStyle=col;
