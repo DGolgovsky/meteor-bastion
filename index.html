@@ -290,19 +290,21 @@ var DTYPE_RU={fire:"Огонь",energy:"Энергия",force:"Силовое п
 /* ==================== STATE + SAVE ==================== */
 function allUnitsCfg(){return TURRETS.concat([SOLDIER_CFG]);}
 function freshMeta(){
-  var m={coins:600,gems:12,energy:30,playerXp:0,wins:0,unlocked:1,selStage:1,music:true,sfx:true,levels:{},mats:{},components:0,elite:false,lastPatrol:Date.now(),lastEnergyAt:Date.now()};
+  var m={coins:600,gems:12,energy:30,playerXp:0,wins:0,unlocked:1,selStage:1,music:true,sfx:true,levels:{},mats:{},components:0,elite:false,eliteCleared:{},normalCleared:{},lastPatrol:Date.now(),lastEnergyAt:Date.now()};
   allUnitsCfg().forEach(function(t){m.levels[t.id]=1;m.mats[t.id]=0;});
   return m;
 }
 var META=freshMeta();
 /* ===== Сохранение прогресса: localStorage, схема v1 (явный запрос игрока: прогресс должен переживать перезагрузку) ===== */
 var SAVE_KEY="meteor-bastion-save-v1";
-function persist(){try{var d={v:1};["coins","gems","energy","components","playerXp","wins","unlocked","selStage","music","sfx","elite","lastPatrol","lastEnergyAt"].forEach(function(k){d[k]=META[k];});d.levels=META.levels;d.mats=META.mats;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}}
+function persist(){try{var d={v:1};["coins","gems","energy","components","playerXp","wins","unlocked","selStage","music","sfx","elite","lastPatrol","lastEnergyAt"].forEach(function(k){d[k]=META[k];});d.eliteCleared=META.eliteCleared;d.normalCleared=META.normalCleared;d.levels=META.levels;d.mats=META.mats;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}}
 function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var d=JSON.parse(raw);if(!d||d.v!==1)return;
  ["coins","gems","energy","components","playerXp","wins","unlocked","selStage"].forEach(function(k){if(typeof d[k]==="number"&&isFinite(d[k]))META[k]=d[k];});
  if(typeof d.music==="boolean")META.music=d.music; if(typeof d.sfx==="boolean")META.sfx=d.sfx;
  if(typeof d.elite==="boolean")META.elite=d.elite; if(typeof d.lastPatrol==="number"&&isFinite(d.lastPatrol)&&d.lastPatrol>0)META.lastPatrol=d.lastPatrol;
  if(typeof d.lastEnergyAt==="number"&&isFinite(d.lastEnergyAt)&&d.lastEnergyAt>0)META.lastEnergyAt=d.lastEnergyAt;
+ if(d.eliteCleared&&typeof d.eliteCleared==="object")for(var ck in d.eliteCleared){if(/^[123]$/.test(ck)&&d.eliteCleared[ck]===true)META.eliteCleared[ck]=true;}
+ if(d.normalCleared&&typeof d.normalCleared==="object")for(var nk in d.normalCleared){if(/^[123]$/.test(nk)&&d.normalCleared[nk]===true)META.normalCleared[nk]=true;}
  META.energy=Math.max(0,Math.min(30,META.energy));META.unlocked=Math.max(1,Math.min(3,META.unlocked));META.selStage=Math.max(1,Math.min(3,META.selStage));
  if(d.levels)allUnitsCfg().forEach(function(t){var v=d.levels[t.id];if(typeof v==="number"&&v>=1)META.levels[t.id]=Math.min(45,Math.floor(v));});
  if(d.mats)allUnitsCfg().forEach(function(t){var v=d.mats[t.id];if(typeof v==="number"&&v>=0)META.mats[t.id]=Math.floor(v);});
@@ -453,12 +455,12 @@ function mkUnit(cfg,x,slot,isSoldier){
   laserDeflect:0,laserSweep:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false};
 }
 function newBattle(stage){
- return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:false,guardianGoalX:SOLDIER_X,
+ return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:!!stage.elite,championsKilled:0,championsSpawned:0,guardianGoalX:SOLDIER_X,
   baseHp:1000,baseMax:1000,shield:150,shieldMax:150,
   wave:0,waveQueue:0,waveTotal:0,waveKilled:0,spawnT:0,bossSpawned:false,
   kills:0,reroll:true,turrets:[],soldier:null,usedTypes:{},
   /* Очки боя: убийства копят очки, карточка выдаётся при достижении порога.
-     Баланс порогов: 2, 10, 18, 26, 18… (+4 за каждую следующую карточку) —
+     Баланс порогов: 2, 10, 18, 26… (+8 к стоимости каждой следующей карточки) —
      как в оригинале, первая карточка приходит уже после второго монстра
      (первые враги волны 1 — метеориты по 1 очку), дальше темп ровный. */
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
@@ -470,7 +472,9 @@ function startBattle(){refillEnergy();
  if(META.energy<5){toast("Недостаточно энергии: +1 каждые 12 минут.");return;}
  META.energy-=5;if(META.energy===25)META.lastEnergyAt=Date.now();persist();
  var st=STAGES[META.selStage-1];
- var eff={n:st.n,name:(META.elite?"Elite · ":"")+st.name,hpMul:st.hpMul*(META.elite?1.6:1),spdMul:st.spdMul*(META.elite?1.05:1),desc:st.desc};
+ var eff={n:st.n,name:(META.elite?"Elite":"Normal")+" Stage "+st.n,
+   elite:!!META.elite,hpMul:st.hpMul*(META.elite?1.85:1),spdMul:st.spdMul*(META.elite?1.13:1),
+   contactMul:META.elite?1.30:1,desc:st.desc};
  B=newBattle(eff);B.elite=META.elite;
  B.soldier=mkUnit(SOLDIER_CFG,SOLDIER_X,-1,true);
  show("battle");fitCanvas();startMusic();
@@ -502,43 +506,55 @@ function allFighters(){return B.turrets.concat([B.soldier]);}
 /* ---------- waves ---------- */
 function startWave(n){
  B.wave=n;B.waveState="fighting";B.bossSpawned=false;
- B.waveTotal=B.waveQueue=BALANCE.waveStart+Math.round(n*BALANCE.waveGrowth)+(B.stage.n-1)*2;
+ B.waveTotal=B.waveQueue=BALANCE.waveStart+Math.round(n*BALANCE.waveGrowth)+(B.stage.n-1)*2+(B.elite?Math.ceil(3+n*0.38):0);
  B.waveKilled=0;B.spawnT=0.35;
- toast("Волна "+n+" / "+WAVES+(n===WAVES?" — БОСС":""));
+ toast((B.elite?"⚠ ELITE · ":"")+"Волна "+n+" / "+WAVES+(n===WAVES?" — БОСС":"")+(B.elite&&n%5===0?" · ЭЛИТНЫЙ ШТУРМ":""));
 }
 function wavePickKind(){
- var w=B.wave,pool=[["meteor",10]];
- if(w>=2)pool.push(["fast",5]);
- if(w>=3)pool.push(["flyer",4]);
- if(w>=4)pool.push(["armored",4]);
- if(w>=5)pool.push(["splitter",2.4]);
- if(w>=6)pool.push(["healer",1.7]);
- if(w>=6||(B.stage.n===3&&w>=5))pool.push(["elite",1.6]);
- /* вторая половина забега (волны 9–20): состав плотнее — больше брони, элиток и поддержки */
- if(w>=10)pool.push(["armored",2],["elite",1.4]);
+ var w=B.wave,elite=B.elite,pool=[["meteor",elite?7:10]];
+ if(w>=2||elite)pool.push(["fast",elite?7:5]);
+ if(w>=3||(elite&&w>=2))pool.push(["flyer",4]);
+ if(w>=4||(elite&&w>=2))pool.push(["armored",elite?5:4]);
+ if(w>=5||(elite&&w>=3))pool.push(["splitter",elite?3:2.4]);
+ if(w>=6||(elite&&w>=4))pool.push(["healer",elite?2.4:1.7]);
+ if(w>=6||(B.stage.n===3&&w>=5)||(elite&&w>=3))pool.push(["elite",elite?3.8:1.6]);
+ if(w>=10)pool.push(["armored",2],["elite",elite?2.4:1.4]);
  if(w>=14)pool.push(["healer",1.2],["splitter",1.4]);
- if(w>=18)pool.push(["elite",1.6],["armored",1.6]);
- var tot=0;pool.forEach(function(x){tot+=x[1];});
- var r=Math.random()*tot;
- for(var i=0;i<pool.length;i++){r-=pool[i][1];if(r<=0)return pool[i][0];}
+ if(w>=18)pool.push(["elite",elite?2.8:1.6],["armored",1.6]);
+ var tot=0;pool.forEach(function(item){tot+=item[1];});
+ var roll=Math.random()*tot;
+ for(var i=0;i<pool.length;i++){roll-=pool[i][1];if(roll<=0)return pool[i][0];}
  return "meteor";
 }
 function spawnEnemy(kind){
  if(B.enemies.length>=MAX_ENEMIES)return false;
  var cfg=ENEMIES.filter(function(e){return e.id===kind;})[0];
- /* рост HP врагов по волнам смягчён под забег из 20 волн: ×0,20 за волну
-    (волна 20 ≈ ×4,8 вместо ×6,7) — силу игрок набирает карточками по очкам */
- var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth);
- B.enemies.push({cfg:cfg,kind:cfg.kind,x:26+Math.random()*(W-52),y:-30,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
-  speed:cfg.speed*B.stage.spdMul*B.enemySpdMul*(0.9+Math.random()*0.25),dmg:cfg.dmg,armor:cfg.armor,xp:cfg.xp,r:cfg.r,color:cfg.color,
-  phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:Math.random()*2});
+ if(!cfg)return false;
+ /* Elite has higher pressure, occasional champions and a forced warning at the beginning
+    of the first and every fifth wave; once launched, the champion is an independent foe. */
+ var scripted=B.elite&&B.waveQueue===B.waveTotal&&(B.wave===1||B.wave%5===0);
+ var champion=B.elite&&(scripted||cfg.id==="elite"||Math.random()<Math.min(0.28,0.12+B.wave*0.006));
+ var champMul=champion?1.50:1;
+ var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*champMul;
+ var speed=cfg.speed*B.stage.spdMul*B.enemySpdMul*(0.90+Math.random()*0.25);
+ var x=26+Math.random()*(W-52);
+ B.enemies.push({cfg:cfg,kind:cfg.kind,x:x,y:-30,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
+  speed:speed*(champion?1.04:1),dmg:cfg.dmg*(B.stage.contactMul||1)*(champion?1.22:1),
+  armor:Math.min(0.65,cfg.armor+(champion?0.10:0)),xp:Math.ceil(cfg.xp*(champion?1.30:1)),
+  r:cfg.r+(champion?2:0),color:champion?"#cc65ef":cfg.color,champion:champion,eliteMode:B.elite,
+  phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:Math.random()*2,auraT:2+Math.random()*1.5,hasteT:0});
+ if(champion){B.championsSpawned++;if(scripted)toast("⚠ ELITE · Мутировавший противник!");}
  return true;
 }
 function spawnBoss(){
  if(B.enemies.length>=MAX_ENEMIES)return false;
- var cfg=ENEMIES.filter(function(e){return e.id==="boss";})[0];var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*BALANCE.bossHpGrowth);
- B.enemies.push({cfg:cfg,kind:"boss",x:W/2,y:-50,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,speed:cfg.speed*B.stage.spdMul,dmg:cfg.dmg,armor:cfg.armor,xp:cfg.xp,r:cfg.r,color:cfg.color,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false});
- toast("⚠ БОСС «Голиаф»!");SFX.boom();return true;
+ var cfg=ENEMIES.filter(function(e){return e.id==="boss";})[0];
+ var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*BALANCE.bossHpGrowth)*(B.elite?1.40:1);
+ B.enemies.push({cfg:cfg,kind:"boss",x:W/2,y:-50,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
+  speed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1),dmg:cfg.dmg*(B.stage.contactMul||1)*(B.elite?1.3:1),
+  armor:cfg.armor+(B.elite?0.10:0),xp:cfg.xp,r:cfg.r+(B.elite?6:0),color:B.elite?"#df4d9c":cfg.color,
+  champion:!!B.elite,eliteMode:B.elite,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,hasteT:0,auraT:2});
+ toast(B.elite?"⚠ ELITE BOSS «Голиаф»!":"⚠ БОСС «Голиаф»!");SFX.boom();return true;
 }
 
 /* ---------- targeting & damage ---------- */
@@ -547,6 +563,19 @@ function spawnBoss(){
 function inRange(t,e){
  if(e.hp<=0||e.dead)return false;
  return (t.y-e.y)<=t.cfg.range && e.y<=BASEY+12;
+}
+/* Hive launches within turret range, but deployed wasps hunt across the WHOLE field. */
+function pickDroneTarget(dr){
+ var alive=B.enemies.filter(function(e){return !e.dead&&e.hp>0&&e.y<=BASEY+12;});
+ if(!alive.length)return null;
+ var best=null,bestScore=Infinity;
+ alive.forEach(function(e){
+  var dist=Math.hypot(e.x-dr.x,e.y-dr.y);
+  var urgency=Math.max(0,e.y/BASEY)*32;
+  var score=dist-urgency;
+  if(score<bestScore){bestScore=score;best=e;}
+ });
+ return best;
 }
 function pickTarget(t){
  var inR=B.enemies.filter(function(e){return inRange(t,e);});
@@ -590,12 +619,16 @@ function dealDamage(src,e,baseDmg,opts){
  /* сопротивление/уязвимость врага к типу урона атакующего (механика Galaxy Defense) */
  var rm=1;
  if(src&&src.cfg.dtype&&e.cfg.res&&e.cfg.res[src.cfg.dtype])rm=e.cfg.res[src.cfg.dtype];
+ if(e.champion)rm=Math.min(1,rm);
  var dmg=baseDmg*(src?src.dmgMul:1)*(src&&B?B.allDmgMul:1)*cm*rm*(1-(e.armor||0));
  e.hp-=dmg; e.flash=0.08;
  if(src)src.totalDmg+=Math.max(0,Math.min(dmg,e.hp+dmg));
  if(dmg>=3||Math.random()<0.25)addNum(e.x+(Math.random()*16-8),e.y-e.r-4,Math.round(dmg),crit,rm);
- if(opts.slow){e.slowFactor=Math.min(e.slowFactor||1,1-(opts.slowPow||0.35));e.slowT=2.5;}
- if(opts.knock)e.y-=opts.knock;
+ if(opts.slow&&e.kind!=="boss"){
+   var slow=(opts.slowPow||0.35)*(e.champion?0.55:1);
+   e.slowFactor=Math.min(e.slowFactor||1,1-slow);e.slowT=2.5;
+ }
+ if(opts.knock&&e.kind!=="boss")e.y-=opts.knock*(e.champion?0.45:1);
  if(opts.burn){var dot=baseDmg*0.5*(src?src.dmgMul*src.burnMul:1);if(dot>e.burnDps){e.burnDps=dot;e.burnSource=src;}e.burnT=3;}
  if(e.hp<=0)killEnemy(e);
  return dmg;
@@ -612,7 +645,7 @@ function addDraftScore(pts){
 }
 function killEnemy(e){
  if(e.dead)return;e.dead=true;
- B.kills++;B.waveKilled++;
+ B.kills++;B.waveKilled++;if(e.champion)B.championsKilled++;
  addDraftScore(e.xp||1);
  /* каждый поражённый (уничтоженный) враг восстанавливает базе +2 HP, не выше максимума */
  if(B.baseHp<B.baseMax){
@@ -888,8 +921,19 @@ function update(dt){
      }
    }
    if(e.flash>0)e.flash-=dt;
+   if(e.hasteT>0)e.hasteT=Math.max(0,e.hasteT-dt);
+   if(B.elite&&e.champion&&e.kind!=="boss"&&e.y>0){
+     e.auraT-=dt;
+     if(e.auraT<=0){
+       e.auraT=3.6;
+       B.enemies.forEach(function(o){
+         if(o!==e&&!o.dead&&o.hp>0&&Math.hypot(o.x-e.x,o.y-e.y)<100)o.hasteT=Math.max(o.hasteT||0,1.6);
+       });
+       ringFx(e.x,e.y,"#d977fa",140);
+     }
+   }
    e.phase+=dt*3;
-   e.y+=e.speed*e.slowFactor*dt;
+   e.y+=e.speed*e.slowFactor*(e.hasteT>0?1.20:1)*dt;
    if(e.kind==="flyer")e.x+=Math.sin(e.phase)*22*dt;
    if(e.cfg.id==="meteor"||e.cfg.id==="fast"||e.cfg.id==="armored"||e.cfg.id==="mini"){if(Math.random()<dt*22)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
    if(e.y>=BASEY-16){
@@ -907,7 +951,7 @@ function update(dt){
  /* Persistent multi-hit wasps, retargeting instead of exploding at first contact. */
  for(var j=B.drones.length-1;j>=0;j--){
    var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);
-   if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead)dr.tgt=pickTarget(dr.src);
+   if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead)dr.tgt=pickDroneTarget(dr);
    if(dr.tgt){
     var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);
     dr.x+=Math.cos(a)*270*dt;dr.y+=Math.sin(a)*270*dt;
@@ -1509,9 +1553,12 @@ function endBattle(win){
  var gems=(win?2:(B.kills>60?1:0))+(B.elite&&win?1:0);
  var pxp=Math.floor((win?40+B.wave*6:10+B.wave*3)*rw);
  var mats={};
- allFighters().forEach(function(t){mats[t.cfg.id]=3+Math.floor(t.totalDmg/400);});
+ allFighters().forEach(function(t){mats[t.cfg.id]=Math.floor((3+Math.floor(t.totalDmg/400))*rw);});
  lastRewards={win:win,coins:coins,gems:gems,comp:comp,pxp:pxp,mats:mats,applied:false};
- if(win){META.wins++;if(B.stage.n===META.unlocked&&META.unlocked<3)META.unlocked++;}
+ if(win){META.wins++;
+   if(B.elite)META.eliteCleared[B.stage.n]=true;else META.normalCleared[B.stage.n]=true;
+   if(B.stage.n===META.unlocked&&META.unlocked<3)META.unlocked++;
+ }
  persist();
  $("res-title").textContent=win?"Victory":"Defeat";
  $("res-title").className=win?"win":"lose";
