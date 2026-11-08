@@ -90,6 +90,15 @@ function update(dt){
        меньше радиуса врага + 4), а не долёт до его центра */
     if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
       dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*0.65*dr.boost,dr.src.hiveBurn?{burn:true}:{});
+      /* Swarm Echo T1–T3: an ordinary wasp that kills an enemy releases one echo.
+         Echo wasps never multiply again, avoiding an exponential swarm. */
+      if(dr.tgt.dead&&dr.src.hiveEcho&&!dr.isEcho&&!dr.echoed&&B.drones.length<90){
+        dr.echoed=true;
+        var power=dr.src.hiveEcho===1?0.5:dr.src.hiveEcho===2?0.75:1;
+        B.drones.push({x:dr.x,y:dr.y,src:dr.src,life:4.3,tgt:null,
+          hitT:0,hits:Math.max(2,Math.ceil(dr.src.hiveAttacks*0.65)),boost:power,
+          isEcho:true,echoed:true,launchT:0});
+      }
       dr.hits--;dr.hitT=0.26;
       dr.x+=Math.cos(a+Math.PI)*14;dr.y+=Math.sin(a+Math.PI)*14;
       burst(dr.x,dr.y,3,"#facc15");
@@ -142,7 +151,7 @@ function update(dt){
     field.tick+=field.kind==="gravity"?0.5:field.kind==="matrix"?0.45:0.4;
     B.enemies.forEach(function(e){
       if(e.dead||e.hp<=0||Math.hypot(e.x-field.x,e.y-field.y)>field.r)return;
-      if(field.kind==="slow"){e.slowFactor=Math.min(e.slowFactor,1-(field.src.slowPow||0.35));e.slowT=0.65;}
+      if(field.kind==="slow"){e.slowFactor=Math.min(e.slowFactor,1-(field.src.slowPow||0.35));e.slowT=0.65;if(field.src.fieldExpose){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=3;}}
       else if(field.kind==="gravity")dealDamage(field.src,e,field.src.cfg.damage*0.65*(field.power||1),{vulnerable:!!field.src.gravityShred});
       else if(field.kind==="firetrail")dealDamage(field.src,e,field.src.cfg.damage*0.23,{burn:true});
       else{dealDamage(field.src,e,field.src.cfg.damage*(field.src.teslaMatrixPlus?0.95:0.65),{});
