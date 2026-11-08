@@ -82,7 +82,7 @@ function harness(legacySave) {
   };
   vm.createContext(sandbox);
   vm.runInContext(match[1], sandbox, { filename: "index.html", timeout: 10000 });
-  return { game: sandbox, store };
+  return { game: sandbox, store, element };
 }
 
 function sampleEnemy(g, y = 340) {
@@ -295,6 +295,41 @@ test("stage-focused lobby contains all live controls", () => {
     assert.ok(html.includes('id="'+id+'"'),"missing lobby element: "+id);
   }
   g.renderHome(); // DOM shim ensures the mode, stage and metrics can be updated.
+});
+
+test("Elite champion aura accelerates nearby enemies", () => {
+  const { game: elite } = harness();
+  elite.setGameMode(true);
+  elite.startBattle();
+  elite.startWave(1);
+  assert.ok(elite.spawnEnemy("meteor"));
+  const champion=elite.B.enemies[0];
+  assert.ok(champion.champion);
+  champion.y=220;champion.auraT=0;
+  const ally=sampleEnemy(elite,245);
+  ally.x=champion.x+5;
+  elite.B.enemies.push(ally);
+  elite.B.spawnT=999;elite.B.waveQueue=1;
+  elite.update(0.05);
+  assert.ok(ally.hasteT>0,"champion should accelerate a nearby ally");
+});
+
+test("mode switch and stage arrows update the actual lobby state", () => {
+  const {game: lobby,element}=harness();
+  assert.equal(element("home-stage-title").textContent,"NORMAL STAGE 1");
+  lobby.setGameMode(true);
+  assert.equal(lobby.META.elite,true);
+  assert.equal(element("home-stage-title").textContent,"ELITE STAGE 1");
+  assert.ok(element("btn-elite").classList.contains("selected"));
+  assert.ok(!element("btn-normal").classList.contains("selected"));
+  lobby.META.unlocked=2;
+  lobby.stepStage(1);
+  assert.equal(lobby.META.selStage,2);
+  assert.equal(element("home-stage-title").textContent,"ELITE STAGE 2");
+  lobby.stepStage(1);
+  assert.equal(lobby.META.selStage,2,"stage selector must not navigate beyond unlocked stages");
+  lobby.setGameMode(false);
+  assert.equal(element("home-stage-title").textContent,"NORMAL STAGE 2");
 });
 
 console.log("\n" + tests.length + " smoke tests passed.");
