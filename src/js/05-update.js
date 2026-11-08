@@ -27,6 +27,7 @@ function stepMove(e,dt){
  if(e.hoverT>0){e.hoverT=Math.max(0,e.hoverT-dt);mul=0;vx=0;}
  var vy=Math.max(0,speed*mul*e.slowFactor*(e.chargeMul||1)*(e.hasteT>0?BALANCE.eliteAuraSpeed:1));
  if(["fast","mini","elite","phase","boss"].indexOf(type)>=0)vy*=.91;
+ if(speed<=0)vx=0;
  var oldY=e.y;e.vx=vx;e.vy=vy;e.y+=vy*dt;e.x+=vx*dt;
  if(e.x<e.r||e.x>W-e.r){e.x=Math.max(e.r,Math.min(W-e.r,e.x));e.driftDir=-(e.driftDir||1);}
  B.maxUpwardOwn=Math.max(B.maxUpwardOwn||0,Math.max(0,oldY-e.y));
@@ -81,6 +82,7 @@ function update(dt){
      else e.chargeMul=1;
    }
    if(e.flash>0)e.flash-=dt;
+   if(e.cfg&&e.cfg.id==="healer"&&e.hoverT>0&&Math.random()<dt*3&&B.parts.length<250)B.parts.push({x:e.x,y:e.y-e.r,vx:0,vy:-12,life:.35,t:0,color:"#4ade80",r:1.5});
    if(e.hasteT>0)e.hasteT=Math.max(0,e.hasteT-dt);
    if(B.elite&&e.champion&&e.kind!=="boss"&&e.y>0){
      e.auraT-=dt;
