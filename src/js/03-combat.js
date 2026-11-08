@@ -314,12 +314,15 @@ function unitFire(t,dt){
    if(spawned)SFX.shoot();return;
  }
  if(cfg.id==="aeroblast"){
-   /* ДРОБОВИК: один выстрел — веер дробинок на близкой дистанции. Дробинки
-      расходятся веером от точки прицеливания; вблизи все попадают в цель,
-      вдали разлетаются. Дополнительные снаряды (карты) = ещё дробинки в веере. */
+   /* ДРОБОВИК: веер широк вблизи, но сужается к дальним целям. Без этого
+      увеличенная дальность давала лишь центральную дробинку: остальные
+      расходились мимо даже неподвижного врага. На дальней дистанции
+      угловой шаг удерживает соседние дробинки примерно в 14px от центра. */
    var pellets=(t.aeroPellets||5)+t.extraProj;
+   var targetDist=Math.hypot(ap.x-t.x,ap.y-(t.y-10));
+   var spreadStep=Math.min(0.14,14/Math.max(90,targetDist));
    for(var k=0;k<pellets;k++){
-     var a=t.angle+(k-(pellets-1)/2)*0.14;
+     var a=t.angle+(k-(pellets-1)/2)*spreadStep;
      B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:0,hitSet:[],life:2.6,tgt:target});
    }
    t.recoil=5;
