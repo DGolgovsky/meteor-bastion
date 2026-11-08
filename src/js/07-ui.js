@@ -112,13 +112,13 @@ function genCards(allowSuper){
    if(u.cfg.effect==="slow"&&u.slowPow<0.6)pool.push({kind:"mod",u:u,mod:"slowpow",w:2});
    if(u.cfg.id==="laser"&&!u.refract)pool.push({kind:"mod",u:u,mod:"refract",w:2});
    if(u.cfg.id==="laser"&&(u.reflect||0)<3)pool.push({kind:"mod",u:u,mod:"reflect",w:2});
-  if(u.cfg.id==="laser"&&u.runLv>=2&&!u.laserSweep)pool.push({kind:"mod",u:u,mod:"laserSweep",w:3});
-  if(u.cfg.id==="laser"&&u.runLv>=2&&!u.laserDeflect)pool.push({kind:"mod",u:u,mod:"laserDeflect",w:2});
+  if(u.cfg.id==="laser"&&META.levels.laser>=14&&u.runLv>=2&&!u.laserSweep)pool.push({kind:"mod",u:u,mod:"laserSweep",w:3});
+  if(u.cfg.id==="laser"&&META.levels.laser>=6&&u.runLv>=2&&!u.laserDeflect)pool.push({kind:"mod",u:u,mod:"laserDeflect",w:2});
   if(u.cfg.id==="laser"&&u.runLv>=2&&(u.laserDurationMul||1)<1.8)pool.push({kind:"mod",u:u,mod:"laserDuration",w:3});
   if(u.cfg.id==="beam"&&u.runLv>=2&&(u.beamDurationMul||1)<1.8)pool.push({kind:"mod",u:u,mod:"beamDuration",w:3});
-  if(u.cfg.id==="beam"&&u.runLv>=3&&!u.beamFocusCap)pool.push({kind:"mod",u:u,mod:"beamFocus",w:2});
-  if(u.cfg.id==="tesla"&&u.runLv>=2&&!u.teslaMatrix)pool.push({kind:"mod",u:u,mod:"teslaMatrix",w:3});
-  if(u.cfg.id==="tesla"&&u.teslaMatrix&&!u.teslaMatrixPlus)pool.push({kind:"mod",u:u,mod:"teslaMatrixPlus",w:2});
+  if(u.cfg.id==="beam"&&META.levels.beam>=2&&u.runLv>=3&&!u.beamFocusCap)pool.push({kind:"mod",u:u,mod:"beamFocus",w:2});
+  if(u.cfg.id==="tesla"&&META.levels.tesla>=2&&u.runLv>=2&&!u.teslaMatrix)pool.push({kind:"mod",u:u,mod:"teslaMatrix",w:3});
+  if(u.cfg.id==="tesla"&&META.levels.tesla>=6&&u.teslaMatrix&&!u.teslaMatrixPlus)pool.push({kind:"mod",u:u,mod:"teslaMatrixPlus",w:2});
   if(u.cfg.id==="tesla"&&u.multiCount<6)pool.push({kind:"mod",u:u,mod:"teslaChain",w:2});
   if(u.cfg.id==="hive"&&u.hiveCount<5)pool.push({kind:"mod",u:u,mod:"hiveCount",w:3});
   if(u.cfg.id==="hive"&&u.runLv>=2&&u.hiveAttacks<16)pool.push({kind:"mod",u:u,mod:"hiveAttacks",w:3});
