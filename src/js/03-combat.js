@@ -45,9 +45,7 @@ function pickTarget(t){
 }
 /* скорость врага для упреждения: vy — падение с учётом замедления, vx — рысканье летуна (как в update) */
 function enemyVel(e){
- var vx=0;
- if(e.kind==="flyer")vx=Math.sin(e.phase)*22;
- return {x:vx,y:e.speed*e.slowFactor*(e.chargeMul||1)};
+ return {x:e.vx===undefined?0:e.vx,y:e.vy===undefined?e.speed*e.slowFactor*(e.chargeMul||1):e.vy};
 }
 /* точка перехвата: решаем |P + V·t − S| = projSpeed·t и целимся туда, а не в текущую позицию */
 function aimPoint(t,e){
@@ -119,10 +117,11 @@ function killEnemy(e){
  /* голем-матка при гибели делится на двух осколков (как Alien Golem в Galaxy Defense) */
  if(e.cfg.id==="splitter"){
    var mini=ENEMIES.filter(function(x){return x.id==="mini";})[0];
-   var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth);
+   var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*0.78*0.8;
    [-16,16].forEach(function(off){
      B.enemies.push({cfg:mini,kind:mini.kind,x:Math.max(16,Math.min(W-16,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
-      speed:mini.speed*B.stage.spdMul*B.enemySpdMul,dmg:mini.dmg,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
+      speed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,baseSpeed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,dmg:mini.dmg*.8,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
+       moveKind:"mini",visualScale:.85+Math.random()*.3,vx:0,vy:0,hoverCd:5,hoverT:0,hoverCount:0,driftDir:off<0?-1:1,driftT:2,speedPhase:Math.random()*6.28,
       phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:0});
    });
  }

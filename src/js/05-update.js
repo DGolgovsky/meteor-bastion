@@ -1,13 +1,52 @@
 /* ---------- update ---------- */
+/* No intrinsic enemy flight ever moves upward. Knockback and Gravity are external forces. */
+function stepMove(e,dt){
+ var type=e.moveKind||(e.cfg&&e.cfg.id)||e.kind;
+ var speed=e.baseSpeed===undefined?e.speed:e.baseSpeed;
+ var mul=1+.15*Math.sin(B.t*.9+(e.speedPhase||0)),vx=0,dir=e.driftDir||1;
+ if(type==="armored")mul=1+.05*Math.sin(B.t+e.phase);
+ else if(type==="splitter")mul=1;
+ else if(type==="meteor")vx=Math.sin(B.t*.9+e.phase)*18;
+ else if(type==="fast"){
+  e.driftT=(e.driftT||1.6)-dt;if(e.driftT<=0){e.driftDir=-dir;dir=e.driftDir;e.driftT=1.2+Math.random()*.8;}
+  mul=Math.sin(B.t*4+e.speedPhase)>.5?1.3:.8;
+  vx=dir*speed*.38;
+ }else if(type==="mini"){mul=1.15;vx=dir*speed*.50;}
+ else if(type==="flyer")vx=Math.sin(B.t*1.4+e.phase)*35;
+ else if(type==="healer"){mul=.9;vx=Math.sin(B.t*.5+e.phase)*12;}
+ else if(type==="elite"){mul=1+.2*Math.sin(B.t*.9+e.speedPhase);vx=dir*speed*.27;}
+ else if(type==="phase"){mul=e.cloakT>0?1.25:1;vx=e.cloakT>0?dir*speed*.48:Math.sin(B.t*1.5+e.phase)*25;}
+ else if(type==="charger"){mul=e.chargeRemaining>0?1:.7;vx=e.chargeRemaining>0?(W/2>e.x?1:-1)*speed*.3:0;}
+ else if(type==="boss"){mul=1;vx=dir*speed*.16;e.driftT=(e.driftT||5)-dt;if(e.driftT<=0){e.driftDir=-dir;e.driftT=4+Math.random()*2;}}
+ e.hoverCd=(e.hoverCd===undefined?4:e.hoverCd)-dt;
+ var maxHover=type==="healer"?3:2,canHover=["flyer","healer","elite","boss"].indexOf(type)>=0;
+ if(canHover&&e.hoverT<=0&&e.hoverCd<=0&&e.hoverCount<maxHover&&e.y>150&&e.y<450){
+  e.hoverT=type==="healer"?1.5+Math.random():type==="boss"?1+Math.random()*.5:.6+Math.random()*.6;
+  e.hoverCount++;e.hoverCd=type==="boss"?8+Math.random()*2:type==="healer"?3+Math.random():4+Math.random()*2;
+ }
+ if(e.hoverT>0){e.hoverT=Math.max(0,e.hoverT-dt);mul=0;vx=0;}
+ var vy=Math.max(0,speed*mul*e.slowFactor*(e.chargeMul||1)*(e.hasteT>0?BALANCE.eliteAuraSpeed:1));
+ if(["fast","mini","elite","phase","boss"].indexOf(type)>=0)vy*=.91;
+ var oldY=e.y;e.vx=vx;e.vy=vy;e.y+=vy*dt;e.x+=vx*dt;
+ if(e.x<e.r||e.x>W-e.r){e.x=Math.max(e.r,Math.min(W-e.r,e.x));e.driftDir=-(e.driftDir||1);}
+ B.maxUpwardOwn=Math.max(B.maxUpwardOwn||0,Math.max(0,oldY-e.y));
+}
+
 function update(dt){
  B.t+=dt;B.elapsed+=dt;
  B.baseFlashT=Math.max(0,(B.baseFlashT||0)-dt);B.baseHitTextT=Math.max(0,(B.baseHitTextT||0)-dt);
  if(B.waveState==="intro"){B.introT-=dt;if(B.introT<=0)startWave(1);syncHud();return;}
- /* spawning */
+ /* Groups are atomic: at the enemy cap they wait rather than losing members. */
  if(B.waveQueue>0){
-   B.spawnT-=dt;
-   var interval=Math.max(BALANCE.spawnMin,BALANCE.spawnBase-B.wave*BALANCE.spawnReduction);
-   if(B.spawnT<=0){if(spawnEnemy(wavePickKind()))B.waveQueue--;B.spawnT=interval*(0.7+Math.random()*0.6);}
+  B.spawnT-=dt;B.formationCd=Math.max(0,(B.formationCd||0)-dt);
+  var interval=Math.max(BALANCE.spawnMin,BALANCE.spawnBase-B.wave*BALANCE.spawnReduction);
+  if(B.spawnT<=0){
+   var n=0;
+   if(B.formationCd<=0&&B.waveQueue>=3){n=spawnWaveGroup();if(n>0)B.formationCd=4;}
+   else if(spawnEnemy(wavePickKind()))n=1;
+   if(n>0)B.waveQueue-=n;
+   B.spawnT=n>0?interval*(.7+Math.random()*.6):.16;
+  }
  }
  /* Never lose the boss when the enemy cap is reached or the spawn queue empties. */
  if(B.wave===finalWave()&&!B.bossSpawned&&B.waveQueue<=Math.floor(B.waveTotal/2)){
@@ -37,8 +76,8 @@ function update(dt){
    }
    if(e.kind==="charger"){
      e.chargeT=(e.chargeT===undefined?2.4:e.chargeT)-dt;
-     if(e.chargeT<=0){e.chargeT=4.6;e.chargeRemaining=1.35;}
-     if(e.chargeRemaining>0){e.chargeRemaining=Math.max(0,e.chargeRemaining-dt);e.chargeMul=1.85;}
+     if(e.chargeT<=0){e.chargeT=4.6;e.chargeRemaining=0.8;}
+     if(e.chargeRemaining>0){e.chargeRemaining=Math.max(0,e.chargeRemaining-dt);e.chargeMul=1.6;}
      else e.chargeMul=1;
    }
    if(e.flash>0)e.flash-=dt;
@@ -54,14 +93,18 @@ function update(dt){
      }
    }
    e.phase+=dt*3;
-   e.y+=e.speed*e.slowFactor*(e.chargeMul||1)*(e.hasteT>0?BALANCE.eliteAuraSpeed:1)*dt;
-   if(e.kind==="flyer")e.x+=Math.sin(e.phase)*22*dt;
-   if(e.cfg.id==="meteor"||e.cfg.id==="fast"||e.cfg.id==="armored"||e.cfg.id==="mini"){if(Math.random()<dt*22)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
+   stepMove(e,dt);
+   if(e.cfg.id==="meteor"||e.cfg.id==="fast"||e.cfg.id==="armored"||e.cfg.id==="mini"){if(B.parts.length<250&&Math.random()<dt*9)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
    if(e.y>=BASEY-16){
      e.dead=true;B.enemies.splice(i,1);B.waveKilled++;B.leaks++;
      B.baseHp-=e.dmg;B.baseFlashT=0.12;B.baseHitTextT=0.2;B.shake=Math.min(12,B.shake+5);burst(e.x,BASEY,14,"#ff5470");SFX.boom();
      if(B.baseHp<=0){B.baseHp=0;endBattle(false);return;}
    }
+ }
+ /* Time-weighted enemy occupancy per wave, for headless calibration. */
+ if(B.waveState==="fighting"&&B.wave>0){
+  var density=B.waveDensity[B.wave]||(B.waveDensity[B.wave]={seconds:0,enemySeconds:0,peak:0});
+  density.seconds+=dt;density.enemySeconds+=B.enemies.length*dt;density.peak=Math.max(density.peak,B.enemies.length);
  }
  /* Guardian movement at a capped velocity, while auto-firing. */
  if(B.soldier&&B.guardianGoalX!==undefined){var delta=B.guardianGoalX-B.soldier.x;B.soldier.x+=Math.max(-480*dt,Math.min(480*dt,delta));}

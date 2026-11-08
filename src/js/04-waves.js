@@ -40,7 +40,7 @@ function spawnEnemy(kind,opts){
  if(!cfg)return false;
  /* Elite has higher pressure, occasional champions and a forced warning at the beginning
     of the first and every fifth wave; once launched, the champion is an independent foe. */
- var scripted=B.elite&&B.waveQueue===B.waveTotal&&(B.wave===1||B.wave%5===0);
+ var scripted=B.elite&&B.waveQueue===B.waveTotal&&Object.keys(B.waveKindCount||{}).length===0&&(B.wave===1||B.wave%5===0);
  var champion=B.elite&&(scripted||cfg.id==="elite"||Math.random()<Math.min(BALANCE.eliteChampionMaxChance,BALANCE.eliteChampionBaseChance+B.wave*BALANCE.eliteChampionWaveChance));
  var champMul=champion?BALANCE.eliteChampionHp:1;
  var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*champMul*0.78;
