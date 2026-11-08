@@ -9,7 +9,7 @@ function update(dt){
    if(B.spawnT<=0){if(spawnEnemy(wavePickKind()))B.waveQueue--;B.spawnT=interval*(0.7+Math.random()*0.6);}
  }
  /* Never lose the boss when the enemy cap is reached or the spawn queue empties. */
- if(B.wave===WAVES&&!B.bossSpawned&&B.waveQueue<=Math.floor(B.waveTotal/2)){
+ if(B.wave===finalWave()&&!B.bossSpawned&&B.waveQueue<=Math.floor(B.waveTotal/2)){
    if(spawnBoss())B.bossSpawned=true;
  }
  /* enemies */
@@ -26,6 +26,20 @@ function update(dt){
        ringFx(e.x,e.y,"#4ade80",95);
      }
    }
+   if(e.revealedT>0)e.revealedT=Math.max(0,e.revealedT-dt);
+   if(e.vulnerableT>0){e.vulnerableT-=dt;if(e.vulnerableT<=0)e.vulnerableStacks=0;}
+   if(e.kind==="phase"){
+     e.cloakCooldown=(e.cloakCooldown===undefined?3.0:e.cloakCooldown)-dt;
+     if(e.revealedT>0){e.cloakT=0;e.cloakCooldown=Math.max(e.cloakCooldown,1.8);}
+     else if(e.cloakT>0)e.cloakT=Math.max(0,e.cloakT-dt);
+     else if(e.cloakCooldown<=0){e.cloakT=1.8;e.cloakCooldown=5.0;}
+   }
+   if(e.kind==="charger"){
+     e.chargeT=(e.chargeT===undefined?2.4:e.chargeT)-dt;
+     if(e.chargeT<=0){e.chargeT=4.6;e.chargeRemaining=1.35;}
+     if(e.chargeRemaining>0){e.chargeRemaining=Math.max(0,e.chargeRemaining-dt);e.chargeMul=1.85;}
+     else e.chargeMul=1;
+   }
    if(e.flash>0)e.flash-=dt;
    if(e.hasteT>0)e.hasteT=Math.max(0,e.hasteT-dt);
    if(B.elite&&e.champion&&e.kind!=="boss"&&e.y>0){
@@ -39,11 +53,11 @@ function update(dt){
      }
    }
    e.phase+=dt*3;
-   e.y+=e.speed*e.slowFactor*(e.hasteT>0?BALANCE.eliteAuraSpeed:1)*dt;
+   e.y+=e.speed*e.slowFactor*(e.chargeMul||1)*(e.hasteT>0?BALANCE.eliteAuraSpeed:1)*dt;
    if(e.kind==="flyer")e.x+=Math.sin(e.phase)*22*dt;
    if(e.cfg.id==="meteor"||e.cfg.id==="fast"||e.cfg.id==="armored"||e.cfg.id==="mini"){if(Math.random()<dt*22)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
    if(e.y>=BASEY-16){
-     e.dead=true;B.enemies.splice(i,1);B.waveKilled++;
+     e.dead=true;B.enemies.splice(i,1);B.waveKilled++;B.leaks++;
      var d=e.dmg;
      if(B.shield>0){var ab=Math.min(B.shield,d);B.shield-=ab;d-=ab;}
      B.baseHp-=d;B.shake=Math.min(12,B.shake+5);burst(e.x,BASEY,14,"#ff5470");SFX.boom();
@@ -89,7 +103,7 @@ function update(dt){
  for(var wi=B.wheels.length-1;wi>=0;wi--){
    var wheel=B.wheels[wi];wheel.life-=dt;
    var wx0=wheel.x,wy0=wheel.y;
-   var nextTarget=pickTarget(wheel.src);
+   var nextTarget=pickDroneTarget({x:wheel.x,y:wheel.y});
    if(nextTarget){
      var curr=Math.atan2(wheel.vy,wheel.vx),wanted=Math.atan2(nextTarget.y-wheel.y,nextTarget.x-wheel.x);
      var turn=Math.atan2(Math.sin(wanted-curr),Math.cos(wanted-curr));
@@ -106,7 +120,7 @@ function update(dt){
     if(B.t-prev<0.3)return;
     wheel.last.set(e,B.t);wheel.hits++;
     dealDamage(wheel.src,e,wheel.src.cfg.damage*1.15*bonus,{burn:true});
-    if(wheel.src.fireTrail)B.parts.push({x:wheel.x,y:wheel.y,vx:0,vy:0,life:0.5,t:0,color:"#ff8a3c",r:6});
+    if(wheel.src.fireTrail&&B.fields.length<48)B.fields.push({kind:"firetrail",x:wheel.x,y:wheel.y,r:23,life:1.1,src:wheel.src,tick:0.15});
     if(wheel.hits%20===0){ringFx(wheel.x,wheel.y,"#ff8a3c",100);B.enemies.forEach(function(o){if(!o.dead&&o.hp>0&&Math.hypot(o.x-wheel.x,o.y-wheel.y)<=45)dealDamage(wheel.src,o,wheel.src.cfg.damage*2,{});});}
    });
    if(wheel.life<=0)B.wheels.splice(wi,1);
@@ -114,12 +128,26 @@ function update(dt){
  /* Tesla matrices and Disruption fields. Pulses stop when the field expires. */
  for(var fi=B.fields.length-1;fi>=0;fi--){
    var field=B.fields[fi];field.life-=dt;field.tick-=dt;
+   if(field.kind==="gravity"){
+     B.enemies.forEach(function(e){
+       if(e.dead||e.hp<=0)return;
+       var dx=field.x-e.x,dy=field.y-e.y,d=Math.hypot(dx,dy);
+       if(d>=field.r||d<4)return;
+       var strength=field.pull*(1-d/field.r)*(e.kind==="boss"?0.20:e.champion?0.48:1);
+       e.x=Math.max(e.r,Math.min(W-e.r,e.x+dx/d*strength*dt));
+       e.y=Math.max(VIS_TOP,Math.min(BASEY-20,e.y+dy/d*strength*dt*0.28));
+     });
+   }
    if(field.tick<=0){
-    field.tick+=field.kind==="matrix"?0.45:0.4;
+    field.tick+=field.kind==="gravity"?0.5:field.kind==="matrix"?0.45:0.4;
     B.enemies.forEach(function(e){
       if(e.dead||e.hp<=0||Math.hypot(e.x-field.x,e.y-field.y)>field.r)return;
       if(field.kind==="slow"){e.slowFactor=Math.min(e.slowFactor,1-(field.src.slowPow||0.35));e.slowT=0.65;}
-      else dealDamage(field.src,e,field.src.cfg.damage*(field.src.teslaMatrixPlus?0.95:0.65),{});
+      else if(field.kind==="gravity")dealDamage(field.src,e,field.src.cfg.damage*0.65*(field.power||1),{vulnerable:!!field.src.gravityShred});
+      else if(field.kind==="firetrail")dealDamage(field.src,e,field.src.cfg.damage*0.23,{burn:true});
+      else{dealDamage(field.src,e,field.src.cfg.damage*(field.src.teslaMatrixPlus?0.95:0.65),{});
+        if(field.src.teslaThunder&&Math.random()<0.25){e.slowFactor=Math.min(e.slowFactor,0.65);e.slowT=Math.max(e.slowT,0.7);}
+      }
     });
    }
    if(field.life<=0)B.fields.splice(fi,1);
@@ -169,7 +197,7 @@ function update(dt){
  /* wave clear? — волна сама по себе карточек больше НЕ даёт:
     следующая волна стартует сразу, а драфт открывается только по очкам */
  if(B.waveState==="fighting"&&B.waveQueue<=0&&B.enemies.length===0&&!B.over){
-   if(B.wave>=WAVES){if(!B.bossSpawned)return;endBattle(true);return;}
+   if(B.wave>=finalWave()){if(!B.bossSpawned)return;endBattle(true);return;}
    if(B.pendingDrafts>0){B.waveState="draft";B.draftReturn="nextwave";openDraft();}
    else startWave(B.wave+1);
    syncHud();return;
