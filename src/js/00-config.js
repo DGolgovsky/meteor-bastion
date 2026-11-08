@@ -35,7 +35,7 @@ var STAGES=[
 var WAVES=20, MAX_ENEMIES=58;
 /* Battle pacing parameters; values are test targets, not official Galaxy Defense numbers. */
 var BALANCE={
- draftFirst:2,draftGrowth:8,
+ draftFirst:2,draftGrowth:8,draftWaveGrowth:2,
  waveStart:6,waveGrowth:2.4,
  spawnBase:0.86,spawnReduction:0.027,spawnMin:0.28,
  waveHpGrowth:0.165,bossHpGrowth:0.12,
@@ -55,6 +55,10 @@ function secondaryName(id){return ({skyguard:"Радиус взрыва",laser:"
 
 /* Placement order in a run: far left, far right, center left, center right. */
 var TURRET_X=[52,368,128,292], SOLDIER_X=210, LINE_Y=660, BASEY=660, W=420, H=700;
+/* Верх видимости турелей: чуть ниже строки состояния HUD (~24px). Враги выше этой
+   линии не берутся в прицел; спавн (y=-30) не меняется — враг становится целью,
+   как только опустится ниже линии. */
+var VIS_TOP=30;
 /* типы урона по вики Galaxy Defense: Fire / Energy / Force-field / Physical / Electric */
 var DTYPES={skyguard:"fire",laser:"energy",disruption:"force",aeroblast:"phys",thunder:"electric",beam:"energy",firewheel:"fire",hive:"force",railgun:"phys",tesla:"electric",soldier:"phys"};
 TURRETS.concat([SOLDIER_CFG]).forEach(function(t){t.dtype=DTYPES[t.id];});

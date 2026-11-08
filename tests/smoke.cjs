@@ -15,7 +15,13 @@ function harness(legacySave) {
   const gradient = { addColorStop() {} };
   const canvasContext = new Proxy({
     createRadialGradient: () => gradient,
-    createLinearGradient: () => gradient
+    createLinearGradient: () => gradient,
+    /* measureText: приближение ширины по текущему шрифту (для адаптивного HUD) */
+    measureText(s) {
+      const m = /(\d+(?:\.\d+)?)px/.exec(canvasContext.font || "11px");
+      const size = m ? parseFloat(m[1]) : 11;
+      return { width: s.length * size * 0.6 };
+    }
   }, {
     get(target, key) { return target[key] ?? (() => {}); },
     set(target, key, value) { target[key] = value; return true; }
@@ -206,10 +212,14 @@ test("final boss appears even after the regular spawn queue is empty", () => {
   assert.ok(g.B.enemies.some(e => e.kind === "boss"));
 });
 
-test("draft progression yields roughly 21 picks for a full clear", () => {
+test("draft progression slows with waves", () => {
   g.B = g.newBattle(g.STAGES[0]);
   g.addDraftScore(1791);
   assert.equal(g.B.draftsEarned, 21);
+  g.B = g.newBattle(g.STAGES[0]);
+  g.B.wave = 20;
+  g.addDraftScore(1791);
+  assert.equal(g.B.draftsEarned, 17);
 });
 
 test("smoke combat loops do not crash during spawning and drawing", () => {

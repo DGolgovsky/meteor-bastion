@@ -1,8 +1,10 @@
 /* ---------- targeting & damage ---------- */
 /* Дальность ограничивает только высоту: по ширине юнит видит всё поле целиком,
-   а вниз зона поражения тянется до самой базы (враг у базы виден при любом x). */
+   а вниз зона поражения тянется до самой базы (враг у базы виден при любом x).
+   Сверху — VIS_TOP: враги выше строки состояния (за HUD) в прицел не берутся. */
 function inRange(t,e){
  if(e.hp<=0||e.dead)return false;
+ if(e.y<VIS_TOP)return false;
  return (t.y-e.y)<=t.cfg.range && e.y<=BASEY+12;
 }
 /* Hive launches within turret range, but deployed wasps hunt across the WHOLE field. */
@@ -81,7 +83,7 @@ function addDraftScore(pts){
  B.scoreTotal+=pts;B.score+=pts;
  while(B.score>=B.draftNeed){
    B.score-=B.draftNeed;B.draftsEarned++;B.pendingDrafts++;
-   B.draftNeed=BALANCE.draftFirst+B.draftsEarned*BALANCE.draftGrowth;
+   B.draftNeed=BALANCE.draftFirst+B.draftsEarned*BALANCE.draftGrowth+Math.max(0,B.wave-1)*BALANCE.draftWaveGrowth;
  }
 }
 function killEnemy(e){
@@ -244,7 +246,13 @@ function unitFire(t,dt){
  }
  if(cfg.effect==="hive"){
    var hcount=Math.min(12,t.hiveCount*(t.hiveDouble?2:1));
-   for(var h=0;h<hcount&&B.drones.length<90;h++)B.drones.push({x:t.x+(h%3-1)*8,y:t.y-10-Math.floor(h/3)*5,src:t,life:5.5*t.durationMul,tgt:target,hitT:0,hits:t.hiveAttacks,boost:1});
+   for(var h=0;h<hcount&&B.drones.length<90;h++){
+     /* осы ВЫЛЕТАЮТ веером вверх от турели (разброс 10–14px от неё), а не появляются
+        в её точке: короткая фаза вылета (~0,25 с) наружу, затем самонаведение (см. update). */
+     var la=-Math.PI/2+(Math.random()*1.1-0.55);
+     var lr=10+Math.random()*4;
+     B.drones.push({x:t.x+Math.cos(la)*lr,y:t.y-10+Math.sin(la)*lr,src:t,life:5.5*t.durationMul,tgt:target,hitT:0,hits:t.hiveAttacks,boost:1,launchT:0.25,vx:Math.cos(la)*120,vy:Math.sin(la)*120});
+   }
    SFX.shoot();return;
  }
  if(cfg.id==="firewheel"){
@@ -276,7 +284,7 @@ function applyHit(p,e){
  if(cfg.effect==="charge"){
    /* Direct burst, overlapping AoE and nearby chain are separate hits. */
    dealDamage(p.src,e,p.dmg*0.8,{});
-   var radius=Math.max(35,p.src.splash||42);
+   var radius=Math.max(55,p.src.splash||60);
    B.enemies.forEach(function(o){
      if(o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=radius)dealDamage(p.src,o,p.dmg*0.65,{});
    });
@@ -286,7 +294,7 @@ function applyHit(p,e){
    if(p.src.teslaMatrix&&B.fields.length<32){
      B.fields.push({kind:"matrix",x:e.x,y:e.y,r:radius*1.6,life:p.src.teslaMatrixPlus?4.2:2.6,src:p.src,tick:0.1});
    }
-   ringFx(e.x,e.y,"#a06bff",120);burst(e.x,e.y,8,"#a06bff");
+   ringFx(e.x,e.y,"#a06bff",170);burst(e.x,e.y,12,"#a06bff");
    return;
  }
  if(cfg.effect==="rocket"){

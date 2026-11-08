@@ -44,9 +44,9 @@ function newBattle(stage){
   wave:0,waveQueue:0,waveTotal:0,waveKilled:0,spawnT:0,bossSpawned:false,
   kills:0,reroll:true,turrets:[],soldier:null,usedTypes:{},
   /* Очки боя: убийства копят очки, карточка выдаётся при достижении порога.
-     Баланс порогов: 2, 10, 18, 26… (+8 к стоимости каждой следующей карточки) —
+     Баланс порогов: 2, 10, 18, 26… (+8 за карточку и +2 за каждую пройденную волну) —
      как в оригинале, первая карточка приходит уже после второго монстра
-     (первые враги волны 1 — метеориты по 1 очку), дальше темп ровный. */
+     (первые враги волны 1 — метеориты по 1 очку), дальше темп замедляется с волнами. */
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
   enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],
   shake:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,

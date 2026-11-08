@@ -3,6 +3,7 @@ function drawUnit(t){
  var col=t.cfg.color,id=t.cfg.id;
  t.recoil=Math.max(0,(t.recoil||0)-1.1);
  ctx.save();ctx.translate(t.x,t.y);
+ ctx.scale(0.88,0.88); /* турели и солдат чуть меньше; подпись уровня ниже — вне save/restore, не масштабируется */
  /* посадочная платформа, на которой СТОИТ установка */
  ctx.fillStyle="#0c1626";ctx.strokeStyle="rgba(120,160,190,.45)";ctx.lineWidth=1;
  ctx.beginPath();ctx.ellipse(0,13,21,5.5,0,0,6.29);ctx.fill();ctx.stroke();
@@ -110,30 +111,37 @@ function drawUnit(t){
  ctx.font="700 9px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#cfe8e2";
  ctx.fillText((t.isSoldier?"СОЛДАТ ":"")+"Lv."+t.runLv,t.x,t.y+30);
 }
-/* Compact, high-contrast combat HUD drawn over enemy sprites. */
+/* Боевой HUD — одна строка на прозрачном фоне, без подложки и шкал.
+   Слева направо: режим/этап, волна, средний DPS, убийства; таймер — справа.
+   DOM-кнопки (пауза/×2/сборка) занимают левые ~130px поля, поэтому текст начинается с x=140.
+   Размер шрифта подбирается по измеренной ширине, чтобы всё влезло в 420px. */
 function drawCombatHud(){
  ctx.save();
- ctx.fillStyle="rgba(4,10,18,.94)";ctx.fillRect(0,0,W,86);
- if(B.elite){ctx.fillStyle="rgba(147,53,154,.20)";ctx.fillRect(0,0,W,85);}
- ctx.fillStyle=B.elite?"#c994fc":"#2ee6c8";ctx.fillRect(0,83,W,2);
- ctx.font="800 11px 'Segoe UI',sans-serif";ctx.textAlign="left";
- ctx.fillStyle=B.elite?"#e6b2ff":"#9df8e6";
- ctx.fillText((B.elite?"ELITE":"NORMAL")+" STAGE "+B.stage.n,145,18);
- ctx.textAlign="right";ctx.fillStyle="#d4e6e8";ctx.font="800 13px 'Segoe UI',sans-serif";
- ctx.fillText(mmss(B.elapsed),W-10,18);
- ctx.textAlign="left";ctx.font="800 11px 'Segoe UI',sans-serif";
- ctx.fillStyle="#e5f2f4";ctx.fillText("WAVE "+B.wave+" / "+WAVES,10,47);
- ctx.fillStyle="#a6bfca";ctx.fillText("KILL "+B.kills,143,47);
+ var left=140,gap=9,y=18;
+ var stage=(B.elite?"ELITE":"NORMAL")+" STAGE "+B.stage.n;
+ var wave="WAVE "+B.wave+" / "+WAVES;
  var dps=Math.round(allFighters().reduce(function(sum,t){return sum+t.totalDmg;},0)/Math.max(1,B.elapsed));
- ctx.fillText("AVG DPS "+fmt(dps),269,47);
- var progress=B.waveTotal?Math.min(1,Math.max(0,B.waveKilled/B.waveTotal)):0;
- ctx.fillStyle="#223543";ctx.fillRect(10,54,W-20,3);
- ctx.fillStyle=B.elite?"#bd76de":"#2ee6c8";ctx.fillRect(10,54,(W-20)*progress,3);
- ctx.fillStyle="#cfe8e2";ctx.font="700 10.5px 'Segoe UI',sans-serif";
- ctx.fillText("LV "+(B.drafts+1),10,75);
- ctx.fillStyle="#142738";ctx.fillRect(66,68,270,8);
- ctx.fillStyle="#b083ed";ctx.fillRect(66,68,270*Math.min(1,Math.max(0,B.score/Math.max(1,B.draftNeed))),8);
- ctx.textAlign="right";ctx.fillStyle="#d9c1ff";ctx.fillText(B.score+" / "+B.draftNeed,W-10,75);
+ var items=[stage,wave,"AVG DPS "+fmt(dps),"KILL "+B.kills];
+ var timeS=mmss(B.elapsed);
+ var fs=11,tw=0,total=0,ws=[];
+ function measure(){
+   ctx.font="800 "+fs+"px 'Segoe UI',sans-serif";
+   ws=items.map(function(s){return ctx.measureText(s).width;});
+   ctx.font="800 "+(fs+1)+"px 'Segoe UI',sans-serif";
+   tw=ctx.measureText(timeS).width;
+   total=ws[0]+ws[1]+ws[2]+ws[3]+gap*3;
+ }
+ measure();
+ while(fs>8.5&&left+total+8+tw>W-10){fs-=0.5;measure();}
+ ctx.font="800 "+fs+"px 'Segoe UI',sans-serif";ctx.textAlign="left";
+ ctx.fillStyle=B.elite?"#e6b2ff":"#9df8e6";
+ ctx.fillText(items[0],left,y);
+ var x=left+ws[0]+gap;
+ ctx.fillStyle="#e5f2f4";ctx.fillText(items[1],x,y);x+=ws[1]+gap;
+ ctx.fillStyle="#a6bfca";ctx.fillText(items[2],x,y);x+=ws[2]+gap;
+ ctx.fillStyle="#e5f2f4";ctx.fillText(items[3],x,y);
+ ctx.font="800 "+(fs+1)+"px 'Segoe UI',sans-serif";ctx.textAlign="right";ctx.fillStyle="#d4e6e8";
+ ctx.fillText(timeS,W-10,y);
  ctx.restore();
 }
 function draw(){
@@ -164,15 +172,17 @@ function draw(){
  ctx.fillStyle="rgba(46,230,200,.4)";ctx.fillRect(0,BASEY+14,W,2);
  ctx.fillStyle="#16283e";ctx.fillRect(0,BASEY+14,W,8);
  ctx.font="26px serif";ctx.textAlign="center";ctx.fillText("🏰",W/2,BASEY+12);
- /* HP и щит базы — внутри поля, над куполом */
- var bw=230,bx=W/2-bw/2,by=LINE_Y-58;
- ctx.fillStyle="rgba(4,10,18,.8)";ctx.fillRect(bx-6,by-13,bw+12,32);
- ctx.font="800 10.5px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#e8f4f2";
- ctx.fillText("БАЗА "+Math.ceil(B.baseHp)+" / "+B.baseMax,W/2,by-3);
- ctx.fillStyle="#0c2a25";ctx.fillRect(bx,by+2,bw,7);
- ctx.fillStyle=B.elite?"#bc8ee3":"#2ee6c8";ctx.fillRect(bx,by+2,bw*Math.max(0,B.baseHp/B.baseMax),7);
- ctx.fillStyle="#0d2233";ctx.fillRect(bx,by+11,bw,4);
- ctx.fillStyle="#38c8ff";ctx.fillRect(bx,by+11,bw*Math.max(0,B.shield/B.shieldMax),4);
+ /* HP и щит базы — две дуги над куполом (тот же центр, что у купола: W/2, BASEY+22),
+    длина дуги ∝ доле HP/щита, симметрично по центру вершины. Точное HP — числом над куполом. */
+ function baseArc(r,frac,color,bg,width){
+   ctx.strokeStyle=bg;ctx.lineWidth=width;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI,6.29);ctx.stroke();
+   if(frac>0){ctx.strokeStyle=color;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-Math.PI*frac/2,Math.PI*1.5+Math.PI*frac/2);ctx.stroke();}
+ }
+ baseArc(112,Math.max(0,B.baseHp/B.baseMax),B.elite?"#bc8ee3":"#2ee6c8","rgba(46,230,200,.14)",5);
+ baseArc(121,Math.max(0,B.shield/B.shieldMax),"#38c8ff","rgba(56,200,255,.12)",3.5);
+ ctx.font="800 10px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#e8f4f2";
+ ctx.fillText(Math.ceil(B.baseHp),W/2,BASEY-106);
+ ctx.lineWidth=1;
  /* пустые слоты турелей */
  TURRET_X.forEach(function(x,i){
    if(!B.turrets.some(function(t){return t.slot===i;})){

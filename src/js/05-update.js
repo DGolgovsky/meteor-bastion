@@ -57,10 +57,20 @@ function update(dt){
  /* Persistent multi-hit wasps, retargeting instead of exploding at first contact. */
  for(var j=B.drones.length-1;j>=0;j--){
    var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);
+   if(dr.launchT>0){
+     /* фаза вылета: оса летит наружу от турели, самонаведение ещё не включено,
+        но цель уже переназначается, если первая погибла, — после вылета оса
+        сразу летит к живой цели, а не тратит время на перевыбор */
+     if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
+     dr.launchT-=dt;dr.x+=dr.vx*dt;dr.y+=dr.vy*dt;
+     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
+     if(dr.life<=0)B.drones.splice(j,1);
+     continue;
+   }
    if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
    if(dr.tgt){
     var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);
-    dr.x+=Math.cos(a)*270*dt;dr.y+=Math.sin(a)*270*dt;
+    dr.x+=Math.cos(a)*240*dt;dr.y+=Math.sin(a)*240*dt;
     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
     if(dr.hitT<=0&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<19){
       dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*0.65*dr.boost,dr.src.hiveBurn?{burn:true}:{});
