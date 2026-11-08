@@ -462,4 +462,50 @@ test("enemy breach reduces fortress defenses and increments leak counter", () =>
   assert.ok(g.B.shield<shield);
 });
 
+test("Fortress chips spend components and modify the next battle", () => {
+  const {game:chip,store}=harness({v:1,coins:200,components:200,energy:30});
+  chip.META.music=false;chip.META.sfx=false;
+  const base=chip.mkUnit(chip.TURRETS.find(t=>t.id==="skyguard"),52,0,false);
+  assert.equal(chip.META.chips.core,0);
+  assert.equal(chip.purchaseChip("core"),true);
+  assert.equal(chip.purchaseChip("speed"),true);
+  assert.equal(chip.purchaseChip("fort"),true);
+  const next=chip.mkUnit(chip.TURRETS.find(t=>t.id==="skyguard"),52,0,false);
+  assert.ok(next.dmgMul>base.dmgMul);
+  assert.ok(next.haste>base.haste);
+  const oldComponents=chip.META.components;
+  assert.equal(chip.purchaseChip("missing"),false);
+  assert.equal(chip.META.components,oldComponents);
+  chip.startBattle();
+  assert.equal(chip.B.shieldMax,190);
+  const saved=JSON.parse(store.get("meteor-bastion-save-v1"));
+  assert.equal(saved.v,1);
+  assert.equal(saved.chips.core,1);
+  assert.equal(saved.chips.speed,1);
+  assert.equal(saved.chips.fort,1);
+  for(let i=0;i<4;i++)chip.purchaseChip("core");
+  assert.equal(chip.META.chips.core,5);
+  assert.equal(chip.purchaseChip("core"),false);
+});
+
+test("Cosmetic liveries persist in v1 without combat modifiers", () => {
+  const {game:appearance,store,element}=harness();
+  const soldier=appearance.mkUnit(appearance.SOLDIER_CFG,210,-1,true);
+  assert.equal(appearance.META.livery,"classic");
+  assert.equal(appearance.setLivery("arctic"),true);
+  assert.equal(element("livery-arctic").classList.contains("selected"),true);
+  assert.equal(appearance.META.livery,"arctic");
+  assert.equal(appearance.setLivery("ember"),true);
+  assert.equal(appearance.setLivery("not-a-livery"),false);
+  assert.equal(appearance.META.livery,"ember");
+  const newSoldier=appearance.mkUnit(appearance.SOLDIER_CFG,210,-1,true);
+  assert.equal(newSoldier.dmgMul,soldier.dmgMul);
+  assert.equal(newSoldier.haste,soldier.haste);
+  const saved=JSON.parse(store.get("meteor-bastion-save-v1"));
+  assert.equal(saved.v,1);
+  assert.equal(saved.livery,"ember");
+  const {game:restored}=harness(saved);
+  assert.equal(restored.META.livery,"ember");
+});
+
 console.log("\n" + tests.length + " smoke tests passed.");
