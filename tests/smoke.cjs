@@ -548,25 +548,75 @@ test("Cosmetic liveries persist in v1 without combat modifiers", () => {
   assert.equal(restored.META.livery,"ember");
 });
 
-test("Aeroblast is a close-range shotgun: pellet fan, no fire beyond range", () => {
+test("Aeroblast reaches mid-field and keeps an accurate shotgun fan", () => {
   g.B = g.newBattle(g.STAGES[0]);
   g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
   const aero = g.mkUnit(g.TURRETS.find(t => t.id === "aeroblast"), 52, 0, false);
   g.B.turrets = [aero];
-  assert.equal(aero.cfg.range, 200, "shotgun range stays short");
-  const e = sampleEnemy(g, 600); e.x = 52; e.speed = 0;
-  g.B.enemies = [e];
+  assert.equal(aero.cfg.range, 540, "Aeroblast should engage before enemies reach the base");
+  assert.equal(aero.cfg.projSpeed, 520, "pellets must reach distant moving targets quickly");
+  const close = sampleEnemy(g, 600); close.x = 52; close.speed = 0;
+  g.B.enemies = [close];
   g.unitFire(aero, 0.4);
-  const pellets = g.B.projs.filter(p => p.src === aero);
-  assert.equal(pellets.length, 5, "one shotgun volley is 5 pellets, got " + pellets.length);
-  const vxs = pellets.map(p => p.vx);
-  assert.ok(Math.max(...vxs) - Math.min(...vxs) > 50, "pellets must fan out");
-  assert.ok(pellets.every(p => p.dmg === aero.cfg.damage), "each pellet deals the turret damage");
-  g.B.projs = [];
-  const far = sampleEnemy(g, 300); far.x = 52;
-  g.B.enemies = [far];
-  for (let i = 0; i < 10; i++) g.unitFire(aero, 0.3);
-  assert.equal(g.B.projs.length, 0, "shotgun must not fire beyond its short range");
+  const closeShots = g.B.projs.filter(p => p.src === aero);
+  assert.equal(closeShots.length, 5);
+  const width = shots => Math.max(...shots.map(p => p.vx)) - Math.min(...shots.map(p => p.vx));
+  const closeWidth = width(closeShots);
+  assert.ok(closeWidth > 50, "close shots still spread like a shotgun");
+
+  g.B.projs = []; aero.cd = 0;
+  const mid = sampleEnemy(g, 300); mid.x = 52; mid.speed = 0;
+  g.B.enemies = [mid];
+  assert.equal(g.inRange(aero, mid), true, "mid-field enemy is within activation range");
+  g.unitFire(aero, 0.4);
+  const distantShots = g.B.projs.filter(p => p.src === aero);
+  assert.equal(distantShots.length, 5);
+  assert.ok(width(distantShots) < closeWidth * 0.5, "pellet fan tightens with distance");
+  assert.ok(width(distantShots) > 5, "pellets retain distinct firing directions");
+  assert.ok(distantShots.every(p => p.dmg === aero.cfg.damage));
+  g.B.wave = 1; g.B.waveState = "fighting"; g.B.waveQueue = 1; g.B.spawnT = 9999;
+  g.B.soldier.cd = 9999; aero.cd = 9999;
+  for (let i = 0; i < 160; i++) g.update(1 / 60);
+  assert.ok(aero.totalDmg >= aero.cfg.damage * aero.dmgMul * 2.5,
+    "at least three distant pellets should hit a stationary centre-line enemy");
+
+  g.B.projs = []; aero.cd = 0;
+  const outside = sampleEnemy(g, 150); outside.x = 52;
+  g.B.enemies = [outside];
+  assert.equal(g.inRange(aero, outside), false, "range must still have a hard limit");
+  g.unitFire(aero, 0.4);
+  assert.equal(g.B.projs.length, 0, "no shots beyond the new range");
+});
+
+test("Aeroblast hits moving enemies at mid-field distance", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  const aero = g.mkUnit(g.TURRETS.find(t => t.id === "aeroblast"), 52, 0, false);
+  g.B.turrets = [aero];
+  const e = sampleEnemy(g, 300); e.x = 210; e.speed = 95;
+  g.B.enemies = [e]; g.B.wave = 1; g.B.waveState = "fighting";
+  g.B.waveQueue = 1; g.B.spawnT = 9999;
+  g.B.soldier.cd = 9999;
+  g.unitFire(aero, 0.4); aero.cd = 9999;
+  for (let i = 0; i < 160; i++) g.update(1 / 60);
+  assert.ok(aero.totalDmg > 0, "leading and pellet speed should allow a mid-field hit");
+});
+
+test("Aeroblast R&D improves splash, not its activation distance", () => {
+  const previous = g.META.levels.aeroblast;
+  try {
+    g.META.levels.aeroblast = 45;
+    g.B = g.newBattle(g.STAGES[0]);
+    const aero = g.mkUnit(g.TURRETS.find(t => t.id === "aeroblast"), 52, 0, false);
+    assert.equal(aero.cfg.range, 540);
+    assert.ok(aero.splash >= 80, "R&D secondary should double blast radius at level 45");
+    const atEdge = sampleEnemy(g, 180);
+    const outside = sampleEnemy(g, 179);
+    assert.equal(g.inRange(aero, atEdge), true);
+    assert.equal(g.inRange(aero, outside), false);
+  } finally {
+    g.META.levels.aeroblast = previous;
+  }
 });
 
 test("wasps live longer and spread across targets, max 2 per target", () => {
