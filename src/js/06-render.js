@@ -94,6 +94,14 @@ function drawUnit(t){
    head(0,-3,function(){var r=t.recoil*0.8;ctx.fillStyle="#0d1420";ctx.fillRect(-1.7,-32+r,3.4,29);
      ctx.strokeStyle="#f472b6";ctx.lineWidth=2;[-24,-17,-10].forEach(function(ry){ctx.beginPath();ctx.moveTo(-5,ry+r);ctx.lineTo(5,ry+r);ctx.stroke();});
      ctx.fillStyle="#fff";ctx.fillRect(-1.7,-33.5+r,3.4,2);});
+ }else if(id==="gravity"){
+   stand(12,8,11);
+   ctx.save();ctx.translate(0,-13);ctx.rotate(B.t*0.9);
+   ctx.strokeStyle="#8cb5ff";ctx.shadowColor="#8cb5ff";ctx.shadowBlur=10;ctx.lineWidth=2.5;
+   ctx.beginPath();ctx.ellipse(0,0,11,5,0,0,Math.PI*2);ctx.stroke();
+   ctx.rotate(-B.t*1.8);ctx.beginPath();ctx.ellipse(0,0,6,12,-0.5,0,Math.PI*2);ctx.stroke();
+   ctx.fillStyle="#05050d";ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle="#cfddff";ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(0,0,3.5,0,Math.PI*2);ctx.stroke();ctx.restore();
  }else if(id==="tesla"){
    ctx.strokeStyle=col;ctx.lineWidth=1.4;ctx.fillStyle="#182a42";
    [13,10,7].forEach(function(rw,i){var ry=10-i*7;ctx.beginPath();ctx.ellipse(0,ry,rw,rw*0.34,0,0,6.29);ctx.fill();ctx.stroke();});
@@ -119,7 +127,7 @@ function drawCombatHud(){
  ctx.save();
  var left=140,gap=9,y=18;
  var stage=(B.elite?"ELITE":"NORMAL")+" STAGE "+B.stage.n;
- var wave="WAVE "+B.wave+" / "+WAVES;
+ var wave="WAVE "+B.wave+" / "+finalWave();
  var dps=Math.round(allFighters().reduce(function(sum,t){return sum+t.totalDmg;},0)/Math.max(1,B.elapsed));
  var items=[stage,wave,"AVG DPS "+fmt(dps),"KILL "+B.kills];
  var timeS=mmss(B.elapsed);
@@ -195,6 +203,7 @@ function draw(){
  /* враги */
  B.enemies.forEach(function(e){
    ctx.save();ctx.translate(e.x,e.y);
+   if(e.kind==="phase"&&e.cloakT>0&&!e.revealedT)ctx.globalAlpha=0.38;
    if(e.kind==="healer"){
      /* звезда регенерации: вращающаяся звезда с медицинским крестом */
      ctx.save();ctx.rotate(e.phase*0.35);
@@ -228,6 +237,7 @@ function draw(){
      ctx.closePath();ctx.fill();
      ctx.fillStyle="rgba(255,138,60,.85)";ctx.beginPath();ctx.arc(0,0,e.r*0.34,0,6.29);ctx.fill();
      ctx.rotate(-e.phase*0.15);
+     if(e.kind==="charger"){ctx.strokeStyle="#ff9a4d";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,e.r+2+Math.sin(B.t*14)*1.5,0,6.29);ctx.stroke();}
      if(e.kind==="elite"||e.kind==="boss"){ctx.strokeStyle="#ffd34d";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,e.r+4+Math.sin(e.phase*2)*1.5,0,6.29);ctx.stroke();}
      if(e.slowFactor<1){ctx.strokeStyle="rgba(56,200,255,.8)";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,e.r+2,0,6.29);ctx.stroke();}
    }
@@ -249,13 +259,23 @@ function draw(){
    ctx.fillStyle="rgba(220,240,255,.8)";
    ctx.beginPath();ctx.ellipse(-3,-4.6,4.8,2.1,-0.7-flap*0.35,0,6.29);ctx.fill();
    ctx.beginPath();ctx.ellipse(3,-4.6,4.8,2.1,0.7+flap*0.35,0,6.29);ctx.fill();
-   ctx.fillStyle="#facc15";ctx.beginPath();ctx.ellipse(0,0,6.2,4.4,0,0,6.29);ctx.fill();
+   ctx.fillStyle=d.isEcho?"#b7baff":"#facc15";ctx.beginPath();ctx.ellipse(0,0,6.2,4.4,0,0,6.29);ctx.fill();
    ctx.fillStyle="#191919";ctx.fillRect(-3,-4.1,2.3,8.2);ctx.fillRect(0.9,-4.1,2.3,8.2);
    ctx.fillStyle="#fff7cc";ctx.beginPath();ctx.arc(5.2,0,1.7,0,6.29);ctx.fill();
    ctx.restore();
  });
  /* Persistent Firewheel and field effects. */
- B.fields.forEach(function(f){ctx.save();ctx.globalAlpha=Math.max(0,Math.min(0.28,f.life/7));ctx.fillStyle=f.kind==="matrix"?"#a06bff":"#38c8ff";ctx.strokeStyle=f.kind==="matrix"?"#d8b4fe":"#38c8ff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,6.29);ctx.fill();ctx.stroke();ctx.restore();});
+ B.fields.forEach(function(f){
+   ctx.save();ctx.globalAlpha=Math.max(0,Math.min(0.26,f.life/7));
+   var fieldColor=f.kind==="matrix"?"#a06bff":f.kind==="gravity"?"#7a8cff":f.kind==="firetrail"?"#ff8538":"#38c8ff";
+   ctx.fillStyle=fieldColor;ctx.strokeStyle=fieldColor;ctx.lineWidth=f.kind==="gravity"?2.7:2;
+   ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+   if(f.kind==="gravity"){
+     ctx.globalAlpha=0.72;ctx.strokeStyle="#d2d8ff";ctx.beginPath();
+     ctx.arc(f.x,f.y,f.r*(0.35+0.08*Math.sin(B.t*5)),B.t,B.t+Math.PI*1.6);ctx.stroke();
+   }
+   ctx.restore();
+ });
  B.wheels.forEach(function(w){ctx.save();ctx.translate(w.x,w.y);ctx.rotate(B.t*12);ctx.shadowColor="#ff8a3c";ctx.shadowBlur=18;ctx.strokeStyle="#ffb03c";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,14,0,6.29);ctx.stroke();for(var i=0;i<3;i++){var a=i*2.094;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);ctx.stroke();}ctx.restore();});
  allFighters().forEach(drawUnit);
  /* снаряды: у каждого типа турели свой силуэт и свечение */
