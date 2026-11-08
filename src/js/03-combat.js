@@ -141,7 +141,7 @@ function fireLaser(t,dt){
  if(t.laserActive<=0){
    if(t.cd>0)return;
    var initial=pickTarget(t);if(!initial)return;
-   t.laserActive=1.65*t.durationMul*(t.laserDurationMul||1);
+   t.laserActive=1.65*t.durationMul*(t.laserDurationMul||1);t.recoil=3;
    t.laserTickT=0;
    t.cd=7.8*t.metaCd/t.haste; /* перезарядка между импульсами увеличена в 1,5 раза (было 5,2) */
    /* луч НЕ ведёт цель: направление и точка прицела фиксируются в момент выстрела
@@ -228,7 +228,7 @@ function fireFocusedBeam(t,dt){
  var steps=0;
  while(t.beamTickT<=0&&t.beamTicks>0&&steps++<4){
   t.beamTickT+=Math.max(0.08,t.beamInterval||0.20);
-  t.beamTicks--;
+  t.beamTicks--;t.recoil=2;
   var target=t.beamTarget;
   if(!target||target.hp<=0||target.dead||!inRange(t,target)){
    target=pickTarget(t);
@@ -272,7 +272,7 @@ function unitFire(t,dt){
        src:t,tick:0.15,pull:t.gravityPull,power:t.gravityPower||1});
      ringFx(centerX,centerY,"#8cb5ff",135);
    }
-   SFX.zap();return;
+   t.recoil=3;SFX.zap();return;
  }
  if(cfg.effect==="chain"){
    var hit=[target],cur=target;arcFx(t.x,t.y-8,target.x,target.y,t.cfg.color);dealDamage(t,target,cfg.damage,t.thunderParalyze?{slow:true,slowPow:0.30}:{});
@@ -281,10 +281,11 @@ function unitFire(t,dt){
      B.enemies.forEach(function(e){if(e.hp>0&&!e.dead&&hit.indexOf(e)<0){var d=Math.hypot(e.x-cur.x,e.y-cur.y);if(d<bd){bd=d;nx=e;}}});
      if(!nx)break;arcFx(cur.x,cur.y,nx.x,nx.y,t.cfg.color);dealDamage(t,nx,cfg.damage*0.7,t.thunderParalyze?{slow:true,slowPow:0.25}:{});hit.push(nx);cur=nx;
    }
-   SFX.zap();return;
+   t.recoil=3;SFX.zap();return;
  }
  if(cfg.effect==="hive"){
-   var hcount=Math.min(12,t.hiveCount*(t.hiveDouble?2:1));
+   t.recoil=2;
+    var hcount=Math.min(12,t.hiveCount*(t.hiveDouble?2:1));
    for(var h=0;h<hcount&&B.drones.length<90;h++){
      /* осы ВЫЛЕТАЮТ веером вверх от турели (разброс 10–14px от неё), а не появляются
         в её точке: короткая фаза вылета (~0,25 с) наружу, затем самонаведение (см. update). */
@@ -311,7 +312,7 @@ function unitFire(t,dt){
        src:t,life:10*t.durationMul+(t.wheelDurationBonus||0),speed:speed,bounces:0,last:new Map(),hits:0});
      spawned++;
    }
-   if(spawned)SFX.shoot();return;
+   if(spawned){t.recoil=3;SFX.shoot();}return;
  }
  if(cfg.id==="aeroblast"){
    /* ДРОБОВИК: веер широк вблизи, но сужается к дальним целям. Без этого
@@ -326,7 +327,8 @@ function unitFire(t,dt){
      B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:0,hitSet:[],life:2.6,tgt:target});
    }
    t.recoil=5;
-   B.parts.push({x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:0.12,t:0,color:cfg.color,r:2.2});
+   if(cfg.id==="skyguard")for(var sm=0;sm<4;sm++)B.parts.push({x:t.x+(sm-1.5)*5.5,y:t.y-25,vx:(sm-1.5)*8,vy:-22,life:0.35,t:0,color:"#8fa1b4",r:2});
+  B.parts.push({x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:0.12,t:0,color:cfg.color,r:2.2});
    SFX.shoot();return;
  }
  var n=1+t.extraProj;
