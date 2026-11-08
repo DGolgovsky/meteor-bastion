@@ -133,7 +133,7 @@ table.stats td:first-child{text-align:left;font-weight:700}
     </div>
     <div class="hero-art">
       <div class="big">Солдат и четыре турели против шторма</div>
-      <div class="small">20 волн метеоритов. Карточки выдаются за очки боя: убийства копят очки, порог растёт (2, 6, 10, 14…) — первая карточка уже после второго монстра. Каждый уничтоженный враг даёт базе +2 HP. Каждые 5 уровней юнита — супер-карточка.</div>
+      <div class="small">20 волн метеоритов. Карточки выдаются за очки боя: убийства копят очки, порог растёт (2, 10, 18, 26…) — первая карточка уже после второго монстра. Каждый уничтоженный враг даёт базе +2 HP. Каждые 5 уровней юнита — супер-карточка.</div>
     </div>
     <div class="stage-row" id="stage-row"></div>
     <div class="stage-row" style="margin-bottom:10px">
@@ -265,6 +265,13 @@ var STAGES=[
  {n:3,name:"Hard Stage 3",hpMul:2.0,spdMul:1.16,desc:"Шторм: элитки с 5-й волны и усиленный босс."}
 ];
 var WAVES=20, MAX_ENEMIES=58;
+/* Battle pacing parameters; values are test targets, not official Galaxy Defense numbers. */
+var BALANCE={
+ draftFirst:2,draftGrowth:8,
+ waveStart:6,waveGrowth:2.4,
+ spawnBase:0.86,spawnReduction:0.027,spawnMin:0.28,
+ waveHpGrowth:0.165,bossHpGrowth:0.12
+};
 /* 45-level long-term progression. Levels upgrade DMG every time, cooldown at four milestones,
    and a turret-specific secondary stat at five other milestones. */
 var CD_LEVELS=[8,16,28,36], SECONDARY_LEVELS=[4,12,24,32,44];
@@ -301,7 +308,7 @@ function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;va
  if(d.mats)allUnitsCfg().forEach(function(t){var v=d.mats[t.id];if(typeof v==="number"&&v>=0)META.mats[t.id]=Math.floor(v);});
 }catch(e){}}
 loadSave();
-function totalCritBonus(){var s=0;allUnitsCfg().forEach(function(t){s+=(META.levels[t.id]-1)*3;});return s;}
+function totalCritBonus(){var s=0;allUnitsCfg().forEach(function(t){s+=(Math.min(45,META.levels[t.id])-1)*3;});return Math.min(180,s);}
 function upCost(t){var lv=META.levels[t.id];return{mats:14+lv*9,coins:70+lv*30};}
 function refillEnergy(){var now=Date.now();if(!META.lastEnergyAt)META.lastEnergyAt=now;
  if(META.energy>=30){META.energy=30;META.lastEnergyAt=now;return;}
@@ -451,10 +458,10 @@ function newBattle(stage){
   wave:0,waveQueue:0,waveTotal:0,waveKilled:0,spawnT:0,bossSpawned:false,
   kills:0,reroll:true,turrets:[],soldier:null,usedTypes:{},
   /* Очки боя: убийства копят очки, карточка выдаётся при достижении порога.
-     Баланс порогов: 2, 6, 10, 14, 18… (+4 за каждую следующую карточку) —
+     Баланс порогов: 2, 10, 18, 26, 18… (+4 за каждую следующую карточку) —
      как в оригинале, первая карточка приходит уже после второго монстра
      (первые враги волны 1 — метеориты по 1 очку), дальше темп ровный. */
-  score:0,scoreTotal:0,draftNeed:2,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
+  score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
   enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],
   shake:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,
   allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{}};
@@ -495,7 +502,7 @@ function allFighters(){return B.turrets.concat([B.soldier]);}
 /* ---------- waves ---------- */
 function startWave(n){
  B.wave=n;B.waveState="fighting";B.bossSpawned=false;
- B.waveTotal=B.waveQueue=6+Math.round(n*2.4)+(B.stage.n-1)*2;
+ B.waveTotal=B.waveQueue=BALANCE.waveStart+Math.round(n*BALANCE.waveGrowth)+(B.stage.n-1)*2;
  B.waveKilled=0;B.spawnT=0.35;
  toast("Волна "+n+" / "+WAVES+(n===WAVES?" — БОСС":""));
 }
@@ -521,7 +528,7 @@ function spawnEnemy(kind){
  var cfg=ENEMIES.filter(function(e){return e.id===kind;})[0];
  /* рост HP врагов по волнам смягчён под забег из 20 волн: ×0,20 за волну
     (волна 20 ≈ ×4,8 вместо ×6,7) — силу игрок набирает карточками по очкам */
- var hpMul=B.stage.hpMul*(1+(B.wave-1)*0.165);
+ var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth);
  B.enemies.push({cfg:cfg,kind:cfg.kind,x:26+Math.random()*(W-52),y:-30,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
   speed:cfg.speed*B.stage.spdMul*B.enemySpdMul*(0.9+Math.random()*0.25),dmg:cfg.dmg,armor:cfg.armor,xp:cfg.xp,r:cfg.r,color:cfg.color,
   phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:Math.random()*2});
@@ -529,7 +536,7 @@ function spawnEnemy(kind){
 }
 function spawnBoss(){
  if(B.enemies.length>=MAX_ENEMIES)return false;
- var cfg=ENEMIES.filter(function(e){return e.id==="boss";})[0];var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*0.12);
+ var cfg=ENEMIES.filter(function(e){return e.id==="boss";})[0];var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*BALANCE.bossHpGrowth);
  B.enemies.push({cfg:cfg,kind:"boss",x:W/2,y:-50,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,speed:cfg.speed*B.stage.spdMul,dmg:cfg.dmg,armor:cfg.armor,xp:cfg.xp,r:cfg.r,color:cfg.color,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false});
  toast("⚠ БОСС «Голиаф»!");SFX.boom();return true;
 }
@@ -600,7 +607,7 @@ function addDraftScore(pts){
  B.scoreTotal+=pts;B.score+=pts;
  while(B.score>=B.draftNeed){
    B.score-=B.draftNeed;B.draftsEarned++;B.pendingDrafts++;
-   B.draftNeed=2+B.draftsEarned*4;
+   B.draftNeed=BALANCE.draftFirst+B.draftsEarned*BALANCE.draftGrowth;
  }
 }
 function killEnemy(e){
@@ -618,7 +625,7 @@ function killEnemy(e){
  /* голем-матка при гибели делится на двух осколков (как Alien Golem в Galaxy Defense) */
  if(e.cfg.id==="splitter"){
    var mini=ENEMIES.filter(function(x){return x.id==="mini";})[0];
-   var hpMul=B.stage.hpMul*(1+(B.wave-1)*0.165);
+   var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth);
    [-16,16].forEach(function(off){
      B.enemies.push({cfg:mini,kind:mini.kind,x:Math.max(16,Math.min(W-16,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
       speed:mini.speed*B.stage.spdMul*B.enemySpdMul,dmg:mini.dmg,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
@@ -859,7 +866,7 @@ function update(dt){
  /* spawning */
  if(B.waveQueue>0){
    B.spawnT-=dt;
-   var interval=Math.max(0.28,0.86-B.wave*0.027);
+   var interval=Math.max(BALANCE.spawnMin,BALANCE.spawnBase-B.wave*BALANCE.spawnReduction);
    if(B.spawnT<=0){if(spawnEnemy(wavePickKind()))B.waveQueue--;B.spawnT=interval*(0.7+Math.random()*0.6);}
  }
  /* Never lose the boss when the enemy cap is reached or the spawn queue empties. */
