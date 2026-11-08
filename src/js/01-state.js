@@ -1,16 +1,18 @@
 /* ==================== STATE + SAVE ==================== */
 function allUnitsCfg(){return TURRETS.concat([SOLDIER_CFG]);}
 function freshMeta(){
-  var m={coins:600,gems:12,energy:30,playerXp:0,wins:0,unlocked:1,selStage:1,music:true,sfx:true,levels:{},mats:{},components:0,elite:false,eliteCleared:{},normalCleared:{},lastPatrol:Date.now(),lastEnergyAt:Date.now()};
+  var m={coins:600,gems:12,energy:30,playerXp:0,wins:0,unlocked:1,selStage:1,music:true,sfx:true,levels:{},mats:{},components:0,chips:{core:0,speed:0,fort:0},livery:"classic",elite:false,eliteCleared:{},normalCleared:{},lastPatrol:Date.now(),lastEnergyAt:Date.now()};
   allUnitsCfg().forEach(function(t){m.levels[t.id]=1;m.mats[t.id]=0;});
   return m;
 }
 var META=freshMeta();
 /* ===== Сохранение прогресса: localStorage, схема v1 (явный запрос игрока: прогресс должен переживать перезагрузку) ===== */
 var SAVE_KEY="meteor-bastion-save-v1";
-function persist(){try{var d={v:1};["coins","gems","energy","components","playerXp","wins","unlocked","selStage","music","sfx","elite","lastPatrol","lastEnergyAt"].forEach(function(k){d[k]=META[k];});d.eliteCleared=META.eliteCleared;d.normalCleared=META.normalCleared;d.levels=META.levels;d.mats=META.mats;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}}
+function persist(){try{var d={v:1};["coins","gems","energy","components","playerXp","wins","unlocked","selStage","music","sfx","elite","lastPatrol","lastEnergyAt"].forEach(function(k){d[k]=META[k];});d.chips=META.chips;d.livery=META.livery;d.eliteCleared=META.eliteCleared;d.normalCleared=META.normalCleared;d.levels=META.levels;d.mats=META.mats;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}}
 function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var d=JSON.parse(raw);if(!d||d.v!==1)return;
  ["coins","gems","energy","components","playerXp","wins","unlocked","selStage"].forEach(function(k){if(typeof d[k]==="number"&&isFinite(d[k]))META[k]=d[k];});
+ if(d.chips&&typeof d.chips==="object")["core","speed","fort"].forEach(function(k){var n=d.chips[k];if(typeof n==="number"&&isFinite(n))META.chips[k]=Math.max(0,Math.min(5,Math.floor(n)));});
+ if(["classic","arctic","ember"].includes(d.livery))META.livery=d.livery;
  if(typeof d.music==="boolean")META.music=d.music; if(typeof d.sfx==="boolean")META.sfx=d.sfx;
  if(typeof d.elite==="boolean")META.elite=d.elite; if(typeof d.lastPatrol==="number"&&isFinite(d.lastPatrol)&&d.lastPatrol>0)META.lastPatrol=d.lastPatrol;
  if(typeof d.lastEnergyAt==="number"&&isFinite(d.lastEnergyAt)&&d.lastEnergyAt>0)META.lastEnergyAt=d.lastEnergyAt;
@@ -23,6 +25,31 @@ function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;va
 loadSave();
 function totalCritBonus(){var s=0;allUnitsCfg().forEach(function(t){s+=(Math.min(45,META.levels[t.id])-1)*3;});return Math.min(100,s);}
 function upCost(t){var lv=META.levels[t.id];return{mats:14+lv*9,coins:70+lv*30};}
+var CHIP_DEFS=[
+ {id:"core",name:"Усилитель турелей",icon:"◆",desc:"Урон турелей +3% за уровень",max:5},
+ {id:"speed",name:"Хрономодуль",icon:"✧",desc:"Скорострельность +2% за уровень",max:5},
+ {id:"fort",name:"Резерв щита",icon:"⬡",desc:"+40 к щиту за уровень",max:5}
+];
+function chipCost(id){return 4+(META.chips[id]||0)*4;}
+function purchaseChip(id){
+ var def=CHIP_DEFS.find(function(c){return c.id===id;}),cost=chipCost(id);
+ if(!def||META.chips[id]>=def.max||META.components<cost)return false;
+ META.components-=cost;META.chips[id]++;persist();SFX.pick();renderTurrets();return true;
+}
+function renderChips(){
+ var grid=$("chip-grid");grid.innerHTML="";
+ CHIP_DEFS.forEach(function(def){
+  var lv=META.chips[def.id],cost=chipCost(def.id),can=lv<def.max&&META.components>=cost;
+  var card=document.createElement("div");card.className="chip-card";
+  card.innerHTML='<strong>'+def.icon+' '+def.name+'</strong><span>Lv. '+lv+' / '+def.max+'</span><small>'+def.desc+'</small>'+
+    '<button class="btn" '+(can?'':'disabled')+'>'+(lv>=def.max?'МАКС. УР.':'⬡ '+cost+' компонентов')+'</button>';
+  card.querySelector("button").addEventListener("click",function(){purchaseChip(def.id);});grid.appendChild(card);
+ });
+}
+function setLivery(id){
+ if(!["classic","arctic","ember"].includes(id)||META.livery===id)return false;
+ META.livery=id;persist();syncToggles();SFX.pick();return true;
+}
 function rdTierUnlock(id){return {skyguard:14,laser:18,disruption:18,aeroblast:14,thunder:18,beam:18,firewheel:10,hive:18,railgun:14,tesla:18,gravity:10,soldier:18}[id]||18;}
 function rdTierName(level){return level>=22?"T3/Combo":level>=14?"Breakthrough":level>=10?"T3":level>=6?"T2":level>=2?"T1":"БАЗОВЫЙ";}
 
@@ -132,7 +159,7 @@ $("btn-home-info").addEventListener("click",openStageInfo);
 $("btn-close-stage-info").addEventListener("click",function(){$("ov-stage-info").classList.remove("on");});
 $("btn-patrol").addEventListener("click",function(){var pa=patrolAccrued();if(pa<=0)return;META.coins+=pa;META.lastPatrol=Date.now();persist();SFX.pick();toast("Авто-патруль привёз "+pa+" монет");renderHome();bindTops();});
 function renderTurrets(){refillEnergy();
- $("tur-cur").innerHTML=curHTML();
+ $("tur-cur").innerHTML=curHTML();renderChips();
  $("bonus-bar").innerHTML='<div class="upgrade-stat"><span>ПОСТОЯННЫЕ УСИЛЕНИЯ</span><b>CRIT DMG +'+totalCritBonus()+'%</b><small>Урон +8% / уровень · CD и эффекты по этапам</small></div>';
  var g=$("tgrid");g.innerHTML="";
  allUnitsCfg().forEach(function(t){
@@ -153,7 +180,11 @@ function renderTurrets(){refillEnergy();
    g.appendChild(d);
  });
 }
-function syncToggles(){$("tgl-music").classList.toggle("on",META.music);$("tgl-sfx").classList.toggle("on",META.sfx);}
+function syncToggles(){
+ $("tgl-music").classList.toggle("on",META.music);$("tgl-sfx").classList.toggle("on",META.sfx);
+ ["classic","arctic","ember"].forEach(function(id){$("livery-"+id).classList.toggle("selected",META.livery===id);});
+}
+["classic","arctic","ember"].forEach(function(id){$("livery-"+id).addEventListener("click",function(){setLivery(id);});});
 $("tgl-music").addEventListener("click",function(){META.music=!META.music;persist();syncToggles();if(META.music)startMusic();else stopMusic();});
 $("tgl-sfx").addEventListener("click",function(){META.sfx=!META.sfx;persist();syncToggles();});
 var resetArm=false;

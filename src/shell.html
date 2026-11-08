@@ -211,6 +211,21 @@ table.stats td:first-child{text-align:left;font-weight:700}
  .hq-account strong{font-size:11px}
  .hq-primary-action #btn-start{font-size:16px}
 }
+/* Lightweight permanent Chips and cosmetic liveries */
+.chip-heading{display:flex;justify-content:space-between;align-items:center;margin:4px 0 6px;font-size:11px;font-weight:900;letter-spacing:.05em;color:var(--teal)}
+.chip-heading small{font-size:10px;color:var(--muted)}
+.chip-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.chip-card{display:flex;flex-direction:column;gap:4px;border:1px solid #345465;border-radius:9px;padding:7px 5px;background:#0e1c2b;text-align:center;min-width:0}
+.chip-card strong{font-size:11px}.chip-card span{font-size:11px;color:var(--cyan);font-weight:900}
+.chip-card small{font-size:10px;min-height:36px;color:var(--muted)}
+.chip-card button{padding:6px 2px;font-size:10px;margin-top:auto}
+.livery-section{padding:12px;border:1px solid var(--line);background:var(--panel);border-radius:11px;margin:0 0 8px}
+.livery-section>strong{font-size:13px}.livery-section>small{font-size:11px;color:var(--muted)}
+.livery-options{display:flex;gap:6px;margin:9px 0 6px}
+.livery-option{flex:1;border-radius:7px;background:#121f2c;border:1px solid #304859;padding:9px 2px;font-size:11px;font-weight:800}
+.livery-option.selected{border-color:var(--teal);box-shadow:0 0 8px rgba(46,230,200,.2);color:#b8f6e9}
+#livery-arctic.selected{border-color:#90d5ff;color:#90d5ff}
+#livery-ember.selected{border-color:#ff995e;color:#ffba8f}
 </style>
 </head>
 <body>
@@ -289,6 +304,8 @@ table.stats td:first-child{text-align:left;font-weight:700}
   <section class="screen" id="scr-turrets">
     <div class="topbar" id="tur-cur"></div>
     <div class="bonus-bar" id="bonus-bar"></div>
+    <div class="chip-heading">ЧИПЫ КРЕПОСТИ <small>Компоненты · мета-прокачка</small></div>
+    <div class="chip-grid" id="chip-grid"></div>
     <div class="tgrid" id="tgrid"></div>
     <nav class="nav">
       <button data-nav="home">🏠 База</button>
@@ -303,6 +320,13 @@ table.stats td:first-child{text-align:left;font-weight:700}
     <p class="sub">Звук синтезируется на лету — файлов не нужно.</p>
     <div class="setrow"><span>🎵 Музыка</span><button class="tgl" id="tgl-music"><i></i></button></div>
     <div class="setrow"><span>🔊 Звуковые эффекты</span><button class="tgl" id="tgl-sfx"><i></i></button></div>
+    <div class="livery-section"><strong>Оформление Guardian и крепости</strong>
+      <div class="livery-options">
+        <button id="livery-classic" class="livery-option selected">◈ Classic</button>
+        <button id="livery-arctic" class="livery-option">❄ Arctic</button>
+        <button id="livery-ember" class="livery-option">✦ Ember</button>
+      </div><small>Только внешний вид, без боевых бонусов.</small>
+    </div>
     <div class="setrow"><span>Сбросить прогресс</span><button class="btn" id="btn-reset" style="padding:8px 12px">Сброс</button></div>
     <p class="note">Прогресс (валюты, уровни турелей и солдата, материалы, открытые этапы и настройки звука) автоматически сохраняется на этом устройстве и переживает перезагрузку страницы. Сброс возвращает всё к стартовым значениям.</p>
     <nav class="nav">

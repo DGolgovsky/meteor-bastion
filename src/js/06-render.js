@@ -1,6 +1,6 @@
 /* ---------- draw ---------- */
 function drawUnit(t){
- var col=t.cfg.color,id=t.cfg.id;
+ var col=t.isSoldier?({classic:"#2ee6c8",arctic:"#90d5ff",ember:"#ff995e"}[META.livery]||"#2ee6c8"):t.cfg.color,id=t.cfg.id;
  t.recoil=Math.max(0,(t.recoil||0)-1.1);
  ctx.save();ctx.translate(t.x,t.y);
  ctx.scale(0.88,0.88); /* турели и солдат чуть меньше; подпись уровня ниже — вне save/restore, не масштабируется */
@@ -15,7 +15,7 @@ function drawUnit(t){
    ctx.strokeStyle="#2b3f57";ctx.lineWidth=3.4;ctx.lineCap="round";
    ctx.beginPath();ctx.moveTo(-3,1);ctx.lineTo(-4.5,12);ctx.moveTo(3,1);ctx.lineTo(4.5,12);ctx.stroke();
    ctx.fillStyle="#1e4034";ctx.fillRect(-6.5,-9,13,11);
-   ctx.fillStyle="#2ee6c8";ctx.fillRect(-6.5,-9,13,2.4);
+   ctx.fillStyle=col;ctx.fillRect(-6.5,-9,13,2.4);
    ctx.fillStyle="#d9b380";ctx.beginPath();ctx.arc(0,-13.5,4.8,0,6.29);ctx.fill();
    ctx.fillStyle="#476b2a";ctx.beginPath();ctx.arc(0,-14.5,5.6,Math.PI,0);ctx.fill();ctx.fillRect(-6.4,-14.8,12.8,1.8);
    ctx.save();ctx.translate(3,-6);ctx.rotate(t.angle);
@@ -188,7 +188,7 @@ function draw(){
    ctx.strokeStyle=bg;ctx.lineWidth=width;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-Math.PI/3,Math.PI*1.5+Math.PI/3);ctx.stroke();
    if(frac>0){ctx.strokeStyle=color;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-(Math.PI/3)*frac,Math.PI*1.5+(Math.PI/3)*frac);ctx.stroke();}
  }
- baseArc(112,Math.max(0,B.baseHp/B.baseMax),B.elite?"#bc8ee3":"#2ee6c8","rgba(46,230,200,.14)",5);
+ baseArc(112,Math.max(0,B.baseHp/B.baseMax),B.elite?"#bc8ee3":({classic:"#2ee6c8",arctic:"#90d5ff",ember:"#ff995e"}[META.livery]||"#2ee6c8"),"rgba(46,230,200,.14)",5);
  baseArc(121,Math.max(0,B.shield/B.shieldMax),"#38c8ff","rgba(56,200,255,.12)",3.5);
  ctx.font="800 10px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#e8f4f2";
  ctx.fillText(Math.ceil(B.baseHp),W/2,BASEY-106);
