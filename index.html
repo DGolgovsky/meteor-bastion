@@ -234,7 +234,7 @@ table.stats td:first-child{text-align:left;font-weight:700}
       </div>
     </section>
 
-    <div class="hq-scene" id="hq-scene" role="img" aria-label="Схематичная космическая планета обороны">
+    <div class="hq-scene" id="hq-scene" role="region" aria-label="Выбор этапа обороны">
       <div class="hq-starfield" aria-hidden="true"></div>
       <button id="stage-prev" class="hq-stage-arrow prev" aria-label="Предыдущий этап">‹</button>
       <div class="hq-planet-orbit" aria-hidden="true">
@@ -1358,34 +1358,50 @@ function drawUnit(t){
  ctx.font="700 9px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#cfe8e2";
  ctx.fillText((t.isSoldier?"СОЛДАТ ":"")+"Lv."+t.runLv,t.x,t.y+30);
 }
+/* Compact, high-contrast combat HUD drawn over enemy sprites. */
+function drawCombatHud(){
+ ctx.save();
+ ctx.fillStyle="rgba(4,10,18,.94)";ctx.fillRect(0,0,W,86);
+ if(B.elite){ctx.fillStyle="rgba(147,53,154,.20)";ctx.fillRect(0,0,W,85);}
+ ctx.fillStyle=B.elite?"#c994fc":"#2ee6c8";ctx.fillRect(0,83,W,2);
+ ctx.font="800 11px 'Segoe UI',sans-serif";ctx.textAlign="left";
+ ctx.fillStyle=B.elite?"#e6b2ff":"#9df8e6";
+ ctx.fillText((B.elite?"ELITE":"NORMAL")+" STAGE "+B.stage.n,145,18);
+ ctx.textAlign="right";ctx.fillStyle="#d4e6e8";ctx.font="800 13px 'Segoe UI',sans-serif";
+ ctx.fillText(mmss(B.elapsed),W-10,18);
+ ctx.textAlign="left";ctx.font="800 11px 'Segoe UI',sans-serif";
+ ctx.fillStyle="#e5f2f4";ctx.fillText("WAVE "+B.wave+" / "+WAVES,10,47);
+ ctx.fillStyle="#a6bfca";ctx.fillText("KILL "+B.kills,143,47);
+ var dps=Math.round(allFighters().reduce(function(sum,t){return sum+t.totalDmg;},0)/Math.max(1,B.elapsed));
+ ctx.fillText("DPS "+fmt(dps),269,47);
+ var progress=B.waveTotal?Math.min(1,Math.max(0,B.waveKilled/B.waveTotal)):0;
+ ctx.fillStyle="#223543";ctx.fillRect(10,54,W-20,3);
+ ctx.fillStyle=B.elite?"#bd76de":"#2ee6c8";ctx.fillRect(10,54,(W-20)*progress,3);
+ ctx.fillStyle="#cfe8e2";ctx.font="700 10.5px 'Segoe UI',sans-serif";
+ ctx.fillText("LV "+(B.drafts+1),10,75);
+ ctx.fillStyle="#142738";ctx.fillRect(66,68,270,8);
+ ctx.fillStyle="#b083ed";ctx.fillRect(66,68,270*Math.min(1,Math.max(0,B.score/Math.max(1,B.draftNeed))),8);
+ ctx.textAlign="right";ctx.fillStyle="#d9c1ff";ctx.fillText(B.score+" / "+B.draftNeed,W-10,75);
+ ctx.restore();
+}
 function draw(){
  /* рендерим в физических пикселях экрана, рисуя в логических координатах 420×700 */
  ctx.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
  ctx.clearRect(0,0,W,H);
  var sx=B.shake?(Math.random()*B.shake-B.shake/2):0, sy=B.shake?(Math.random()*B.shake-B.shake/2):0;
  ctx.save();ctx.translate(sx,sy);
- ctx.fillStyle="#04060c";ctx.fillRect(-14,-14,W+28,H+28);
+ ctx.fillStyle=B.elite?"#0d0714":"#04060c";ctx.fillRect(-14,-14,W+28,H+28);
+ if(B.elite){
+   var eliteGlow=ctx.createRadialGradient(W/2,230,12,W/2,230,350);
+   eliteGlow.addColorStop(0,"rgba(108,23,106,.16)");
+   eliteGlow.addColorStop(1,"rgba(50,16,57,0)");
+   ctx.fillStyle=eliteGlow;ctx.fillRect(0,86,W,H-86);
+ }
  ctx.fillStyle="rgba(140,180,220,.5)";
  for(var i=0;i<40;i++){var px=(i*67)%W,py=((i*131)+((B?B.t*6*(1+i%3):0)%H))%H;ctx.fillRect(px,py,1.6,1.6);}
  ctx.strokeStyle="rgba(46,230,200,.05)";ctx.lineWidth=1;
  for(var gx=0;gx<=W;gx+=42){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
- /* баннер волны — внутри поля */
- ctx.font="800 13px 'Segoe UI',sans-serif";ctx.textAlign="center";
- ctx.fillStyle="rgba(46,230,200,.85)";
- ctx.fillText(B.wave===0?"ПРИГОТОВЬСЯ…":"ВОЛНА "+B.wave+" / "+WAVES+(B.waveState==="draft"?" · ЗАЧИЩЕНО":""),W/2,20);
- /* метрики боя — внутри поля: этап, время, убийства, прогресс волны */
- var prg=B.waveTotal?Math.min(1,B.waveKilled/B.waveTotal):0;
- ctx.fillStyle="rgba(10,20,34,.72)";ctx.fillRect(W/2-85,25,170,5);
- ctx.fillStyle="#2ee6c8";ctx.fillRect(W/2-85,25,170*prg,5);
- ctx.textAlign="left";ctx.fillStyle="rgba(207,232,226,.95)";
- ctx.font="700 11px 'Segoe UI',sans-serif";ctx.fillText(B.stage.name,10,42);
- ctx.font="700 12.5px 'Segoe UI',sans-serif";
- ctx.fillText("⏱ "+mmss(B.elapsed)+"   ☠ "+B.kills+(B.elite?"   ⚔ ELITE":""),10,59);
- /* прогресс до следующей карточки — очки боя копятся с убийств, а не с волн */
- ctx.font="700 11.5px 'Segoe UI',sans-serif";ctx.fillStyle="rgba(216,180,254,.95)";
- ctx.fillText("🎴 "+B.score+" / "+B.draftNeed+" до карты · Guardian: свайп снизу",10,76);
- ctx.fillStyle="rgba(20,12,34,.75)";ctx.fillRect(10,81,120,4);
- ctx.fillStyle="#a06bff";ctx.fillRect(10,81,120*Math.min(1,B.score/B.draftNeed),4);
+ /* HUD is drawn last, over enemies and projectiles. */
  /* купол базы */
  var grd=ctx.createRadialGradient(W/2,BASEY+16,8,W/2,BASEY+16,120);
  grd.addColorStop(0,"rgba(46,230,200,.35)");grd.addColorStop(1,"rgba(46,230,200,0)");
@@ -1401,8 +1417,8 @@ function draw(){
  ctx.fillStyle="rgba(4,10,18,.8)";ctx.fillRect(bx-6,by-13,bw+12,32);
  ctx.font="800 10.5px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#e8f4f2";
  ctx.fillText("БАЗА "+Math.ceil(B.baseHp)+" / "+B.baseMax,W/2,by-3);
- ctx.fillStyle="#2a1218";ctx.fillRect(bx,by+2,bw,7);
- ctx.fillStyle="#ff5470";ctx.fillRect(bx,by+2,bw*Math.max(0,B.baseHp/B.baseMax),7);
+ ctx.fillStyle="#0c2a25";ctx.fillRect(bx,by+2,bw,7);
+ ctx.fillStyle=B.elite?"#bc8ee3":"#2ee6c8";ctx.fillRect(bx,by+2,bw*Math.max(0,B.baseHp/B.baseMax),7);
  ctx.fillStyle="#0d2233";ctx.fillRect(bx,by+11,bw,4);
  ctx.fillStyle="#38c8ff";ctx.fillRect(bx,by+11,bw*Math.max(0,B.shield/B.shieldMax),4);
  /* пустые слоты турелей */
@@ -1451,8 +1467,16 @@ function draw(){
      if(e.kind==="elite"||e.kind==="boss"){ctx.strokeStyle="#ffd34d";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,e.r+4+Math.sin(e.phase*2)*1.5,0,6.29);ctx.stroke();}
      if(e.slowFactor<1){ctx.strokeStyle="rgba(56,200,255,.8)";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,e.r+2,0,6.29);ctx.stroke();}
    }
+   if(e.champion){
+     ctx.save();
+     ctx.strokeStyle=B.elite?"rgba(228,141,255,.94)":"rgba(255,211,77,.8)";
+     ctx.shadowColor="#d884ff";ctx.shadowBlur=13;ctx.lineWidth=2.2;
+     ctx.beginPath();ctx.arc(0,0,e.r+6+Math.sin(B.t*5+e.phase)*1.2,0,Math.PI*2);ctx.stroke();
+     ctx.fillStyle="#f2c3ff";ctx.font="bold 10px sans-serif";ctx.textAlign="center";ctx.fillText("✦",0,-e.r-8);
+     ctx.restore();
+   }
    ctx.restore();
-   if(e.hp<e.maxHp){ctx.fillStyle="#20060c";ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2,4);ctx.fillStyle=e.kind==="boss"?"#ff5470":"#4ade80";ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2*Math.max(0,e.hp/e.maxHp),4);}
+   if(e.hp<e.maxHp||e.champion){ctx.fillStyle="#20060c";ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2,4);ctx.fillStyle=e.champion?"#d88cff":e.kind==="boss"?"#ff5470":"#4ade80";ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2*Math.max(0,e.hp/e.maxHp),4);}
  });
  /* Hive выпускает рой пчёл: полосатое тельце, машущие крылья, жало */
  B.drones.forEach(function(d){
@@ -1514,6 +1538,7 @@ function draw(){
  /* числа урона: крит — золото, уязвимость врага — оранжевым крупнее, сопротивление — приглушённо */
  B.nums.forEach(function(n){ctx.save();ctx.globalAlpha=1-n.t/0.85;ctx.font=(n.crit?"800 17px":(n.rm>1.15?"800 14.5px":"700 12px"))+" 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle=n.crit?"#ff9f2e":(n.rm>1.15?"#ff7a4d":(n.rm<0.85?"#8fa8b5":"#ffffff"));ctx.fillText(n.txt,n.x,n.y);ctx.restore();});
  ctx.restore();
+ drawCombatHud();
 }
 function mmss(s){s=Math.max(0,Math.floor(s));return "0"+Math.floor(s/60)+":"+("0"+(s%60)).slice(-2);}
 function syncHud(){ /* все метрики боя рисуются прямо на канвасе внутри поля (draw) */ }
