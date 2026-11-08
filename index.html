@@ -636,11 +636,17 @@ function ringFx(x,y,color,vr){B.rings.push({x:x,y:y,r:5,vr:vr||110,t:0,life:0.35
 function unitFire(t,dt){
  var cfg=t.cfg;
  if(cfg.effect==="beam"){
+   if(t.laserTicks<=0){
+     t.cd-=dt;if(t.cd>0)return;
+     var first=pickTarget(t);if(!first)return;
+     t.laserTicks=0.75*t.durationMul;t.cd=2.8*(t.metaCd||1)/t.haste;t.laserTarget=first;
+   }
+   t.laserTicks=Math.max(0,t.laserTicks-dt);
    /* Луч на всю карту: урон получают ВСЕ враги, попавшие в линию луча.
       Улучшения: преломление (refract) — две боковые ветви у точки цели;
       отражение (reflect) — луч от крайней цели рикошетит в соседних врагов. */
-   var tg=pickTarget(t);
-   if(tg){
+   var tg=(t.laserTarget&&inRange(t,t.laserTarget))?t.laserTarget:pickTarget(t);
+   if(tg){t.laserTarget=tg;
      var ox=t.x,oy=t.y-14;
      t.angle=Math.atan2(tg.y-oy,tg.x-ox);
      var dx=Math.cos(t.angle),dy=Math.sin(t.angle);
@@ -683,6 +689,14 @@ function unitFire(t,dt){
          dealDamage(t,nx,cfg.damage*dt*2.0,bopts);
          seen.push(nx);cur=nx;
        }
+     }
+     if(t.laserSweep&&hits.length){
+       var other=B.enemies.filter(function(e){return e.hp>0&&!e.dead&&hits.indexOf(e)<0&&inRange(t,e);}).sort(function(a,b){return b.y-a.y;})[0];
+       if(other){beamFx(tg.x,tg.y,other.x,other.y,"#86efac",2);dealDamage(t,other,cfg.damage*dt*1.4,bopts);}
+     }
+     if(t.laserDeflect&&hits.length){
+       var extra=B.enemies.filter(function(e){return e.hp>0&&!e.dead&&hits.indexOf(e)<0&&inRange(t,e);})[0];
+       if(extra){beamFx(t.x,t.y-14,extra.x,extra.y,"#4ade80",2);dealDamage(t,extra,cfg.damage*dt*1.8,bopts);}
      }
      if(t.beamSplit){
        var others=B.enemies.filter(function(e){return e!==tg&&inRange(t,e)&&hits.indexOf(e)<0;});
@@ -780,6 +794,7 @@ function update(dt){
    if(B.spawnT<=0){if(spawnEnemy(wavePickKind()))B.waveQueue--;B.spawnT=interval*(0.7+Math.random()*0.6);
      }
  }
+ if(B.wave===WAVES&&!B.bossSpawned&&B.waveQueue<=Math.floor(B.waveTotal/2)){if(spawnBoss())B.bossSpawned=true;}
  /* enemies */
  for(var i=B.enemies.length-1;i>=0;i--){
    var e=B.enemies[i];
