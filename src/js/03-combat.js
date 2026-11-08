@@ -271,7 +271,7 @@ function unitFire(t,dt){
         в её точке: короткая фаза вылета (~0,25 с) наружу, затем самонаведение (см. update). */
      var la=-Math.PI/2+(Math.random()*1.1-0.55);
      var lr=10+Math.random()*4;
-     B.drones.push({x:t.x+Math.cos(la)*lr,y:t.y-10+Math.sin(la)*lr,src:t,life:5.5*t.durationMul,tgt:target,hitT:0,hits:t.hiveAttacks,boost:1,launchT:0.25,vx:Math.cos(la)*120,vy:Math.sin(la)*120});
+     B.drones.push({x:t.x+Math.cos(la)*lr,y:t.y-10+Math.sin(la)*lr,src:t,life:5.5*t.durationMul,tgt:target,hitT:0,hits:t.hiveAttacks,boost:1,echoed:false,isEcho:false,launchT:0.25,vx:Math.cos(la)*120,vy:Math.sin(la)*120});
    }
    SFX.shoot();return;
  }
@@ -328,11 +328,11 @@ function applyHit(p,e){
  }
  if(cfg.effect==="rocket"){
    /* Sky Guard missile has separate impact and explosion damage, including the impact target. */
-   dealDamage(p.src,e,p.dmg*0.55,{});
+   dealDamage(p.src,e,p.dmg*0.55,p.src.rocketBurn?{burn:true}:{});
    var r=Math.max(24,p.src.splash);
    B.enemies.forEach(function(o){
      if(o.dead||o.hp<=0||Math.hypot(o.x-e.x,o.y-e.y)>r)return;
-     dealDamage(p.src,o,p.dmg*0.7,{});
+     dealDamage(p.src,o,p.dmg*0.7,p.src.rocketBurn?{burn:true}:{});
    });
    if(p.src.zapOnHit){
     var next=B.enemies.filter(function(o){return o!==e&&o.hp>0&&!o.dead;}).sort(function(a,b){return Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y);})[0];
@@ -341,7 +341,7 @@ function applyHit(p,e){
    ringFx(e.x,e.y,"#ff8a3c",130);burst(e.x,e.y,12,"#ff8a3c");
    return;
  }
- if(cfg.effect==="slow"){opts={slow:true,slowPow:p.src.slowPow};if(B.fields.length<32)B.fields.push({kind:"slow",x:e.x,y:e.y,r:Math.max(30,p.src.splash),life:2.2,src:p.src,tick:0.1});}
+ if(cfg.effect==="slow"){opts={slow:true,slowPow:p.src.slowPow,vulnerable:!!p.src.fieldExpose};if(B.fields.length<32)B.fields.push({kind:"slow",x:e.x,y:e.y,r:Math.max(30,p.src.splash),life:2.2,src:p.src,tick:0.1});}
  if(cfg.effect==="knockback")opts={knock:p.src.knock};
  if(cfg.effect==="burn")opts={burn:true};
  dealDamage(p.src,e,p.dmg,opts);
