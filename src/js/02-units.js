@@ -35,7 +35,7 @@ function mkUnit(cfg,x,slot,isSoldier){
   splash:(area[cfg.effect]||0)*secondary,critBonus:0,slowPow:0.35,totalDmg:0,mods:[],
   beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:16,
   laserTicks:0,laserTickT:0,laserTarget:null,beamTicks:0,beamTickT:0,beamTarget:null,beamRamp:0,
-  chargeT:0,hiveCount:3,hiveAttacks:Math.round(7*secondary),wheelHits:Math.round(50*secondary),
+  chargeT:0,hiveCount:3,hiveAttacks:Math.round(7*secondary),wheelHits:Math.round(50*secondary),gravityRadius:Math.round(70*secondary),gravityPull:65,gravityDuration:3.5,gravityPower:1.0,
   laserDeflect:0,laserSweep:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false,wheelMax:1};
 }
 function newBattle(stage){
@@ -50,14 +50,14 @@ function newBattle(stage){
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
   enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],
   shake:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,
-  allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{}};
+  allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }
 function startBattle(){refillEnergy();
  if(META.energy<5){toast("Недостаточно энергии: +1 каждые 12 минут.");return;}
  META.energy-=5;if(META.energy===25)META.lastEnergyAt=Date.now();persist();
  var st=STAGES[META.selStage-1];
  var eff={n:st.n,name:(META.elite?"Elite":"Normal")+" Stage "+st.n,
-   elite:!!META.elite,hpMul:st.hpMul*(META.elite?BALANCE.eliteHp:1),spdMul:st.spdMul*(META.elite?BALANCE.eliteSpeed:1),
+   elite:!!META.elite,waves:stageWaves(st),hpMul:st.hpMul*(META.elite?BALANCE.eliteHp:1),spdMul:st.spdMul*(META.elite?BALANCE.eliteSpeed:1),
    contactMul:META.elite?BALANCE.eliteContact:1,desc:st.desc};
  B=newBattle(eff);B.elite=META.elite;
  B.soldier=mkUnit(SOLDIER_CFG,SOLDIER_X,-1,true);
