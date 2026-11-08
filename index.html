@@ -121,6 +121,11 @@ table.stats td:first-child{text-align:left;font-weight:700}
 .note{font-size:12px;color:var(--muted);line-height:1.45}
 
 /* ==== Galaxy Defense-inspired compact stage lobby (all graphics are original CSS) ==== */
+.upgrade-stat{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px}
+.upgrade-stat>span{color:#82a8ad;font-size:10px;font-weight:800;letter-spacing:.06em}
+.upgrade-stat>b{color:#f0d27a;font-size:13px}
+.upgrade-stat>small{width:100%;color:#93acb6;font-size:11px}
+
 .home-screen{--hq-accent:#45dfc8;--hq-aura:rgba(45,221,193,.22);gap:0;min-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 14px);background:radial-gradient(ellipse at 50% 40%,rgba(34,68,76,.14),transparent 68%);color:#e8f4f2}
 .home-screen.elite-mode{--hq-accent:#c895ff;--hq-aura:rgba(175,80,225,.25);background:radial-gradient(ellipse at 52% 46%,rgba(95,33,115,.19),transparent 72%)}
 .hq-top{padding:8px 7px 8px}
@@ -348,7 +353,7 @@ table.stats td:first-child{text-align:left;font-weight:700}
     <p class="csub" id="res-sub">Normal Stage 1</p>
     <p class="csub" style="margin-bottom:6px;font-weight:800;color:var(--text)">🎁 Награды</p>
     <div class="rgrid" id="res-rewards"></div>
-    <p class="csub" style="margin-bottom:4px;font-weight:800;color:var(--text)">📊 Урон обороны</p>
+    <p class="csub" style="margin-bottom:4px;font-weight:800;color:var(--text)">📊 Урон и средний DPS</p>
     <table class="stats"><thead><tr><th>Юнит</th><th>DMG</th><th>DPS</th></tr></thead><tbody id="res-stats"></tbody></table>
     <div class="btnrow">
       <button class="btn" id="btn-res-back">← На базу</button>
@@ -561,7 +566,7 @@ $("btn-close-stage-info").addEventListener("click",function(){$("ov-stage-info")
 $("btn-patrol").addEventListener("click",function(){var pa=patrolAccrued();if(pa<=0)return;META.coins+=pa;META.lastPatrol=Date.now();persist();SFX.pick();toast("Авто-патруль привёз "+pa+" монет");renderHome();bindTops();});
 function renderTurrets(){refillEnergy();
  $("tur-cur").innerHTML=curHTML();
- $("bonus-bar").innerHTML="⭐ Total Crit DMG Increase: <b>+"+totalCritBonus()+"%</b> · до 45 уровня: урон +8%/уровень; CD и спецэффекты по этапам";
+ $("bonus-bar").innerHTML='<div class="upgrade-stat"><span>ПОСТОЯННЫЕ УСИЛЕНИЯ</span><b>CRIT DMG +'+totalCritBonus()+'%</b><small>Урон +8% / уровень · CD и эффекты по этапам</small></div>';
  var g=$("tgrid");g.innerHTML="";
  allUnitsCfg().forEach(function(t){
    var lv=META.levels[t.id],c=upCost(t),can=lv<45&&META.mats[t.id]>=c.mats&&META.coins>=c.coins;
@@ -1113,7 +1118,7 @@ function update(dt){
    if(e.kind==="flyer")e.x+=Math.sin(e.phase)*22*dt;
    if(e.cfg.id==="meteor"||e.cfg.id==="fast"||e.cfg.id==="armored"||e.cfg.id==="mini"){if(Math.random()<dt*22)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
    if(e.y>=BASEY-16){
-     B.enemies.splice(i,1);B.waveKilled++;
+     e.dead=true;B.enemies.splice(i,1);B.waveKilled++;
      var d=e.dmg;
      if(B.shield>0){var ab=Math.min(B.shield,d);B.shield-=ab;d-=ab;}
      B.baseHp-=d;B.shake=Math.min(12,B.shake+5);burst(e.x,BASEY,14,"#ff5470");SFX.boom();
@@ -1127,7 +1132,7 @@ function update(dt){
  /* Persistent multi-hit wasps, retargeting instead of exploding at first contact. */
  for(var j=B.drones.length-1;j>=0;j--){
    var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);
-   if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead)dr.tgt=pickDroneTarget(dr);
+   if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
    if(dr.tgt){
     var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);
     dr.x+=Math.cos(a)*270*dt;dr.y+=Math.sin(a)*270*dt;
@@ -1373,7 +1378,7 @@ function drawCombatHud(){
  ctx.fillStyle="#e5f2f4";ctx.fillText("WAVE "+B.wave+" / "+WAVES,10,47);
  ctx.fillStyle="#a6bfca";ctx.fillText("KILL "+B.kills,143,47);
  var dps=Math.round(allFighters().reduce(function(sum,t){return sum+t.totalDmg;},0)/Math.max(1,B.elapsed));
- ctx.fillText("DPS "+fmt(dps),269,47);
+ ctx.fillText("AVG DPS "+fmt(dps),269,47);
  var progress=B.waveTotal?Math.min(1,Math.max(0,B.waveKilled/B.waveTotal)):0;
  ctx.fillStyle="#223543";ctx.fillRect(10,54,W-20,3);
  ctx.fillStyle=B.elite?"#bd76de":"#2ee6c8";ctx.fillRect(10,54,(W-20)*progress,3);
