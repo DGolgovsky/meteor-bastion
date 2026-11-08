@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:," />
+<title>Meteor Bastion</title>
+<style>
+:root{
+  --bg:#05070d; --bg2:#0a0f1c; --panel:rgba(16,24,42,.92); --panel2:rgba(10,16,30,.85);
+  --line:#1e3a4a; --teal:#2ee6c8; --cyan:#38c8ff; --violet:#a06bff; --green:#4ade80;
+  --orange:#ff8a3c; --red:#ff5470; --gold:#ffd34d; --text:#e8f4f2; --muted:#8fa8b5;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:#02040a;color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+body{min-height:100dvh;background:radial-gradient(120% 60% at 50% 0%, #0a1626 0%, #02040a 60%)}
+#app{max-width:460px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 10px calc(10px + env(safe-area-inset-bottom))}
+button{font-family:inherit;cursor:pointer;border:none;color:var(--text)}
+.screen{display:none;flex-direction:column;flex:1;min-height:0}
+.screen.on{display:flex}
+.pill{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600}
+.pill b{color:var(--gold)} .pill .gem{color:#7dd7ff} .pill .en{color:var(--green)}
+.btn{background:linear-gradient(180deg,#12303e,#0b1c28);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px;font-weight:700}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:linear-gradient(180deg,#0e5f52,#083f36);border-color:var(--teal);color:#d9fff6;box-shadow:0 0 14px rgba(46,230,200,.35)}
+.btn.gold{background:linear-gradient(180deg,#6b5312,#4a380a);border-color:var(--gold);color:#fff3cf}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.big{font-size:17px;padding:14px;border-radius:14px;width:100%}
+.sub{color:var(--muted);font-size:13px;margin:0 0 10px}
+.topbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.profile{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px}
+.avatar{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,#8a6d1f 75%);display:flex;align-items:center;justify-content:center;font-size:22px;border:2px solid var(--gold)}
+.profile .nm{font-weight:800;font-size:16px}
+.profile .lv{color:var(--muted);font-size:12px}
+.stage-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.stage-card.sel{border-color:var(--teal);box-shadow:0 0 12px rgba(46,230,200,.25)}
+.stage-card h3{margin:0 0 4px;font-size:16px}
+.stage-card p{margin:0;color:var(--muted);font-size:12.5px}
+.stage-row{display:flex;gap:8px}.stage-row .stage-card{flex:1}
+.lock{opacity:.55}
+.hero-art{border-radius:16px;border:1px solid var(--line);background:
+  radial-gradient(60% 40% at 50% 88%, rgba(46,230,200,.28), transparent 70%),
+  radial-gradient(30% 22% at 22% 18%, rgba(255,138,60,.35), transparent 70%),
+  radial-gradient(26% 20% at 78% 12%, rgba(160,107,255,.3), transparent 70%),
+  linear-gradient(180deg,#081426,#04070f);padding:16px 14px;margin-bottom:12px;min-height:104px;display:flex;flex-direction:column;justify-content:flex-end}
+.hero-art .big{font-size:19px;font-weight:800}
+.hero-art .small{color:var(--muted);font-size:12.5px}
+.nav{display:flex;gap:6px;margin-top:auto;padding-top:10px}
+.nav button{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 4px;font-size:13px;font-weight:700;color:var(--muted)}
+.nav button.on{color:var(--teal);border-color:var(--teal);box-shadow:inset 0 0 12px rgba(46,230,200,.15)}
+.bonus-bar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:14px}
+.bonus-bar b{color:var(--gold)}
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;overflow-y:auto;padding-bottom:6px}
+.tcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 7px;text-align:center;position:relative}
+.tcard.soldier{border-color:var(--gold)}
+.tcard .tic{font-size:30px;line-height:1.15;filter:drop-shadow(0 0 6px rgba(56,200,255,.5))}
+.tcard .tn{font-size:12.5px;font-weight:800;min-height:30px;display:flex;align-items:center;justify-content:center}
+.tcard .tl{font-size:12px;color:var(--cyan);font-weight:700}
+.tcard .prog{height:6px;background:#12202e;border-radius:3px;margin:6px 0 4px;overflow:hidden}
+.tcard .prog i{display:block;height:100%;background:var(--teal)}
+.tcard .mats{font-size:11px;color:var(--muted)}
+.tcard .up{margin-top:6px;width:100%;padding:7px 2px;font-size:11.5px;border-radius:9px}
+.tcard .avail{position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+.tcard .dmg{font-size:10.5px;color:var(--muted)}
+.bhud{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 9px;margin-bottom:8px}
+.bhud .row1{display:flex;align-items:center;gap:6px}
+.bhud .stage-name{font-weight:800;font-size:14px;flex:1;white-space:nowrap;overflow:hidden}
+.ibtn{background:#0d1a29;border:1px solid var(--line);border-radius:9px;min-width:38px;height:34px;font-size:15px;font-weight:800;padding:0 8px}
+.ibtn.on{border-color:var(--teal);color:var(--teal)}
+.bhud .row2{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12.5px;color:var(--muted)}
+.wavebar{flex:1;height:9px;background:#12202e;border-radius:5px;overflow:hidden}
+.wavebar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--cyan));transition:width .2s}
+.lvchip{color:var(--teal);font-weight:800;font-size:13px;white-space:nowrap}
+#cvwrap{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#04060c}
+.field-ui{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:5}
+.field-ui .ibtn{background:rgba(10,20,34,.82)}
+/* Поле занимает всю доступную ширину экрана; физический размер канваса
+   (canvas.width/height) JS подбирает под devicePixelRatio устройства —
+   см. fitCanvas() ниже. CSS-размер при этом всегда 100% ширины. */
+canvas#cv{display:block;width:100%;height:auto;aspect-ratio:420/700;touch-action:none}
+@media (max-width:480px){
+  /* На телефонах (Pixel 10a: CSS-ширина ~412 px) ужимаем боковые отступы,
+     чтобы полю досталось максимум ширины экрана */
+  #app{padding-left:6px;padding-right:6px}
+}
+.overlay{position:fixed;inset:0;background:rgba(2,4,10,.78);display:none;align-items:flex-end;justify-content:center;z-index:50;padding:10px}
+.overlay.on{display:flex}
+.sheet{background:var(--bg2);border:1px solid var(--teal);border-radius:18px;width:100%;max-width:440px;max-height:92dvh;overflow-y:auto;padding:16px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 0 30px rgba(46,230,200,.2);animation:up .25s ease}
+@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.sheet h2{margin:0 0 2px;font-size:22px;text-align:center}
+.sheet h2.win{color:var(--teal)} .sheet h2.lose{color:var(--red)}
+.sheet .csub{text-align:center;color:var(--muted);font-size:13px;margin:0 0 12px}
+.ucard{display:flex;gap:11px;width:100%;text-align:left;background:var(--panel);border:2px solid #5b7a8c;border-radius:14px;padding:12px;margin-bottom:9px;align-items:center}
+.ucard:active{transform:scale(.98)}
+.ucard.rare{border-color:var(--cyan)} .ucard.epic{border-color:var(--violet)} .ucard.legend{border-color:var(--gold)}
+.ucard.super{border-color:var(--gold);background:linear-gradient(180deg,rgba(107,83,18,.35),var(--panel));box-shadow:0 0 16px rgba(255,211,77,.35)}
+.ucard .uic{font-size:36px;width:52px;text-align:center;flex:0 0 auto}
+.ucard .un{font-weight:800;font-size:15.5px}
+.ucard .utag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;background:#12303e;color:var(--teal);margin-left:6px;vertical-align:2px}
+.ucard.rare .utag{background:#0d2c44;color:#7dd7ff}.ucard.epic .utag{background:#2c1c4d;color:#cdb2ff}.ucard.legend .utag,.ucard.super .utag{background:#4a380a;color:var(--gold)}
+.ucard .ud{color:var(--muted);font-size:12.5px;margin-top:2px;line-height:1.35}
+.ucard .ud b{color:var(--text)}
+.cur-build{display:flex;gap:5px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+.bchip{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:5px 8px;font-size:11.5px}
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.rwd{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:9px 6px;text-align:center}
+.rwd .ric{font-size:22px}.rwd .rv{font-weight:800;font-size:15px}.rwd .rn{font-size:11px;color:var(--muted)}
+table.stats{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px}
+table.stats th{color:var(--muted);text-align:right;font-size:11.5px;padding:4px 6px;border-bottom:1px solid var(--line)}
+table.stats th:first-child{text-align:left}
+table.stats td{padding:6px;border-bottom:1px solid #12202e;text-align:right;font-variant-numeric:tabular-nums}
+table.stats td:first-child{text-align:left;font-weight:700}
+.btnrow{display:flex;gap:8px}.btnrow .btn{flex:1}
+.setrow{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:8px;font-size:14px;font-weight:600}
+.tgl{width:52px;height:28px;border-radius:999px;background:#22303e;position:relative;flex:0 0 auto}
+.tgl i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#8fa8b5;transition:.15s}
+.tgl.on{background:#0e5f52}.tgl.on i{left:27px;background:var(--teal)}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#0d2233;border:1px solid var(--teal);color:var(--text);padding:9px 16px;border-radius:999px;font-size:13.5px;font-weight:700;z-index:99;display:none;box-shadow:0 4px 18px rgba(0,0,0,.5);max-width:92vw;text-align:center}
+.toast.on{display:block}
+.note{font-size:12px;color:var(--muted);line-height:1.45}
+
+/* ==== Galaxy Defense-inspired compact stage lobby (all graphics are original CSS) ==== */
+.upgrade-stat{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px}
+.upgrade-stat>span{color:#82a8ad;font-size:10px;font-weight:800;letter-spacing:.06em}
+.upgrade-stat>b{color:#f0d27a;font-size:13px}
+.upgrade-stat>small{width:100%;color:#93acb6;font-size:11px}
+
+.home-screen{--hq-accent:#45dfc8;--hq-aura:rgba(45,221,193,.22);gap:0;min-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 14px);background:radial-gradient(ellipse at 50% 40%,rgba(34,68,76,.14),transparent 68%);color:#e8f4f2}
+.home-screen.elite-mode{--hq-accent:#c895ff;--hq-aura:rgba(175,80,225,.25);background:radial-gradient(ellipse at 52% 46%,rgba(95,33,115,.19),transparent 72%)}
+.hq-top{padding:8px 7px 8px}
+.hq-profile-row{display:flex;align-items:center;gap:10px;min-height:43px}
+.hq-avatar{height:40px;width:40px;border-radius:50%;flex-shrink:0;border:2px solid #6bc8bc;background:radial-gradient(circle at 35% 25%,#324a5b,#0b1524 72%);font-size:20px;box-shadow:0 0 11px rgba(46,230,200,.2)}
+.hq-account{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.hq-account strong{font-size:13px;font-weight:900;letter-spacing:.085em}
+.hq-account span{font-size:11px;color:#91a9b6}
+.hq-info-btn{height:28px;width:28px;border:1px solid #365766;border-radius:7px;background:#10202b;color:var(--hq-accent);font-size:19px}
+.hq-resources{display:flex;gap:5px;flex-wrap:nowrap;margin:7px 0 0;justify-content:space-between}
+.hq-resources .resource-item{flex:1;min-width:0;justify-content:center;padding:6px 4px}
+.resource-item{display:inline-flex;gap:5px;align-items:center;background:linear-gradient(180deg,#152330,#09131f);border:1px solid #2d4456;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+.resource-item b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resource-item .currency-icon{font-size:14px}
+.resource-item.gold .currency-icon{color:#efc75b}
+.resource-item.gem .currency-icon{color:#b4a2ff}
+.resource-item.energy .currency-icon{color:#7fe2bd}
+.resource-item.parts .currency-icon{color:#d9e6f2}
+.hq-stage-head{text-align:center;padding:5px 0 0}
+.hq-stage-caption{display:flex;align-items:center;justify-content:center;gap:9px;color:#657f8b;font-size:9px;letter-spacing:.15em;font-weight:750}
+.hq-stage-caption-line{width:24px;height:1px;background:#3a5861}
+.hq-stage-title{font-size:18px;font-weight:900;letter-spacing:.085em;text-transform:uppercase;background:linear-gradient(180deg,#78c6ba,#2b9f91);padding:5px 12px;min-width:200px;display:table;margin:8px auto 5px;color:#ecfff8;box-shadow:0 3px 0 #145d55}
+.elite-mode .hq-stage-title{background:linear-gradient(180deg,#81519c,#502868);box-shadow:0 3px 0 #2e1744}
+.hq-mode-tabs{display:flex;width:186px;align-items:center;justify-content:center;margin:7px auto 0;gap:0;background:#091720;border:1px solid #2e4348;padding:2px;border-radius:6px}
+.mode-tab{flex:1;border-radius:4px;padding:5px 7px;background:transparent;color:#738e96;font-size:11px;font-weight:800}
+.mode-tab.selected{color:#e6fff9;background:linear-gradient(180deg,#32786d,#145248)}
+.elite-mode .mode-tab.selected{background:linear-gradient(180deg,#7e4097,#4e246a);color:#fff0ff}
+.hq-scene{position:relative;flex:1;min-height:195px;margin:3px -4px 5px;overflow:hidden;background:radial-gradient(ellipse at 50% 54%,var(--hq-aura),transparent 57%)}
+.hq-starfield{position:absolute;inset:0;opacity:.62;background-image:radial-gradient(1px 1px at 11% 17%,#91c8c8,transparent),radial-gradient(1px 1px at 75% 24%,#a7d5ed,transparent),radial-gradient(1px 1px at 87% 63%,#c4bce2,transparent),radial-gradient(2px 2px at 29% 84%,#b3dacf,transparent),radial-gradient(1px 1px at 53% 11%,#edf9f9,transparent)}
+.hq-planet-orbit{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);width:min(60vw,246px);height:min(60vw,246px);max-height:240px}
+.hq-planet-halo{position:absolute;inset:-22%;border:1px solid rgba(91,157,174,.06);border-radius:50%;box-shadow:0 0 28px var(--hq-aura)}
+.hq-planet-ring{position:absolute;inset:-13%;border:13px solid rgba(85,106,114,.21);border-left-color:rgba(127,170,181,.28);border-top-color:transparent;border-radius:50%;transform:rotate(-32deg);box-shadow:inset 0 0 12px rgba(7,13,19,.9)}
+.hq-planet{position:absolute;inset:5%;overflow:hidden;border-radius:50%;background:radial-gradient(circle at 30% 22%,rgba(172,184,179,.25),transparent 18%),radial-gradient(circle at 62% 62%,rgba(13,18,26,.9),transparent 36%),radial-gradient(circle at 33% 36%,#65716f 0%,#2e3f45 38%,#121d29 73%,#081018 94%);border:1px solid #3d6068;box-shadow:inset -26px -32px 32px rgba(0,0,0,.65),inset 5px 7px 15px rgba(190,201,196,.11),0 0 40px var(--hq-aura);transform:rotate(-19deg)}
+.elite-mode .hq-planet{filter:hue-rotate(63deg) saturate(1.45)}
+.hq-crater{position:absolute;display:block;border-radius:50%;background:radial-gradient(ellipse at 38% 28%,#657472,#192831 66%,#111b25 83%);border:2px solid rgba(94,112,120,.35);box-shadow:inset -3px -5px 9px rgba(0,0,0,.6)}
+.hq-crater.a{width:24%;height:22%;top:11%;left:23%}.hq-crater.b{width:38%;height:34%;top:34%;left:48%}.hq-crater.c{width:18%;height:16%;top:66%;left:16%}.hq-crater.d{width:12%;height:14%;top:48%;left:24%}.hq-crater.e{width:13%;height:12%;top:14%;left:70%}
+.hq-planet-mark{position:absolute;left:41%;top:36%;width:14px;height:14px;border-radius:50%;background:#ee9865;box-shadow:0 0 6px #fca96a,0 0 14px rgba(250,124,60,.65);transform:rotate(28deg)}
+.hq-debris{position:absolute;background:linear-gradient(135deg,#52616e,#131d27);clip-path:polygon(20% 0,88% 5%,100% 70%,35% 100%,0 40%);border:1px solid #485762}
+.hq-debris.one{height:33px;width:30px;top:0;right:10%}.hq-debris.two{height:23px;width:22px;bottom:9%;left:0}.hq-debris.three{height:19px;width:17px;right:1%;top:49%}
+.hq-stage-arrow{position:absolute;top:46%;z-index:2;transform:translateY(-50%);width:42px;height:70px;border-radius:6px;background:linear-gradient(90deg,rgba(18,36,45,.55),transparent);border:0;color:var(--hq-accent);font-family:Arial,sans-serif;font-size:40px;font-weight:250}
+.hq-stage-arrow:disabled{opacity:.14;cursor:default}
+.hq-stage-arrow.prev{left:2px}.hq-stage-arrow.next{right:2px;background:linear-gradient(270deg,rgba(18,36,45,.55),transparent)}
+.hq-scene-footer{position:absolute;bottom:4px;left:9px;right:9px;display:flex;justify-content:space-between;color:#8da7b4;font-size:10px;letter-spacing:.08em;font-weight:800}
+.hq-scene-footer span:last-child{color:var(--hq-accent)}
+.hq-intel{padding:8px 10px;margin:0 3px 8px;background:rgba(12,24,33,.87);border-top:1px solid #34515a;border-bottom:1px solid #243741}
+.elite-mode .hq-intel{border-top-color:#7b478f}
+.hq-intel-title{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:800}
+.hq-intel-title span:last-child{color:var(--hq-accent)}
+.hq-intel-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:6px}
+.hq-metric{display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;color:#a8bec6;background:#13232b;border:1px solid rgba(90,131,145,.23);border-radius:5px;padding:4px 2px;white-space:nowrap}
+.hq-metric b{color:#e5f3f2;font-size:11px}
+.hq-actions{display:grid;grid-template-columns:1fr 2.1fr 1fr;align-items:end;gap:7px;margin:0 3px}
+.hq-side-action{height:62px;background:linear-gradient(180deg,#152632,#07131e);border:1px solid #31515d;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;padding:5px 2px;text-align:center;font-size:10px;font-weight:800;color:#9cb7bf}
+.hq-side-action:disabled{opacity:.55}
+.hq-action-ico{font-size:23px;line-height:26px;color:var(--hq-accent)}
+.hq-primary-action{display:flex;flex-direction:column;gap:5px;text-align:center}
+.hq-primary-action #btn-start{height:52px;border-radius:6px;font-size:19px;text-transform:uppercase;letter-spacing:.055em;background:linear-gradient(180deg,#43d6be,#218879);color:#061c1b;box-shadow:0 0 15px rgba(40,218,192,.26)}
+.elite-mode .hq-primary-action #btn-start{background:linear-gradient(180deg,#b581db,#7a3e9e);border-color:#dc9bff;color:#100916;box-shadow:0 0 18px rgba(199,111,240,.3)}
+.hq-primary-action #btn-start small{font-size:12px;opacity:.8;margin-left:4px}
+.hq-primary-action>span{font-size:10px;font-weight:700;color:#95aaa9}
+.hq-nav{margin:7px -3px 0;display:flex;gap:0;border-top:1px solid #1e3540;padding:0;flex-shrink:0}
+.hq-nav button{border-radius:0;border:0;border-right:1px solid #1e3540;display:flex;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:1px;padding:7px 4px 6px;background:#09151e;font-size:20px;color:#73909c;box-shadow:none!important}
+.hq-nav button.on{color:var(--hq-accent);background:#112b30}
+.hq-nav button small{font-size:10px;font-weight:700;line-height:1.1}
+.hq-stage-sheet .hq-stage-info-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.hq-stage-info-cell{padding:11px;background:#132735;border:1px solid #325460;border-radius:8px;font-size:12px}
+.hq-stage-info-cell b{display:block;color:#e7f9f7;margin:3px 0}
+.hq-stage-info-cell span{color:#9db6c3}
+#scr-battle .field-ui{left:7px;right:auto;top:6px}
+#scr-battle .field-ui .ibtn{height:30px;min-width:34px;background:rgba(9,20,31,.91);border-color:#315560;font-size:13px;border-radius:6px;padding:0 6px}
+@media (max-height:690px){
+ .hq-scene{min-height:155px}
+ .hq-planet-orbit{height:175px;width:175px}
+ .hq-intel{padding:5px 10px;margin-bottom:5px}
+ .hq-primary-action #btn-start{height:45px}
+ .hq-side-action{height:55px}
+ .hq-top{padding-top:4px;padding-bottom:3px}
+ .hq-stage-title{margin-top:4px}
+}
+@media (max-width:355px){
+ .hq-scene{min-height:164px}
+ .hq-resources .resource-item{font-size:10px;gap:2px}
+ .hq-account strong{font-size:11px}
+ .hq-primary-action #btn-start{font-size:16px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ HOME · stage-centric lobby ============ -->
+  <section class="screen on home-screen" id="scr-home">
+    <header class="hq-top">
+      <div class="hq-profile-row">
+        <button class="hq-avatar" id="btn-profile" aria-label="Открыть прокачку">🪖</button>
+        <div class="hq-account">
+          <strong>METEOR BASTION</strong>
+          <span id="prof-line">Командир · Ур. 1</span>
+        </div>
+        <button class="hq-info-btn" id="btn-home-info" aria-label="Сведения об этапе">ⓘ</button>
+      </div>
+      <div class="topbar hq-resources" id="home-cur"></div>
+    </header>
+
+    <section class="hq-stage-head" aria-label="Выбор этапа">
+      <div class="hq-stage-caption">КАМПАНИЯ <span class="hq-stage-caption-line"></span> ОБОРОНА КРЕПОСТИ</div>
+      <div class="hq-stage-title" id="home-stage-title">NORMAL STAGE 1</div>
+      <div class="hq-mode-tabs" role="group" aria-label="Сложность">
+        <button id="btn-normal" class="mode-tab selected" aria-label="Обычный режим">Normal</button>
+        <button id="btn-elite" class="mode-tab" aria-label="Элитный режим">Elite</button>
+      </div>
+    </section>
+
+    <div class="hq-scene" id="hq-scene" role="region" aria-label="Выбор этапа обороны">
+      <div class="hq-starfield" aria-hidden="true"></div>
+      <button id="stage-prev" class="hq-stage-arrow prev" aria-label="Предыдущий этап">‹</button>
+      <div class="hq-planet-orbit" aria-hidden="true">
+        <div class="hq-planet-halo"></div>
+        <div class="hq-planet-ring"></div>
+        <div class="hq-planet">
+          <i class="hq-crater a"></i><i class="hq-crater b"></i><i class="hq-crater c"></i>
+          <i class="hq-crater d"></i><i class="hq-crater e"></i>
+          <i class="hq-planet-mark"></i>
+        </div>
+        <span class="hq-debris one"></span><span class="hq-debris two"></span>
+        <span class="hq-debris three"></span>
+      </div>
+      <button id="stage-next" class="hq-stage-arrow next" aria-label="Следующий этап">›</button>
+      <div class="hq-scene-footer">
+        <span id="scene-stage-num">01 / 03</span>
+        <span id="scene-stage-status">ЭТАП ДОСТУПЕН</span>
+      </div>
+    </div>
+
+    <section class="hq-intel" aria-label="Параметры этапа">
+      <div class="hq-intel-title"><span id="stage-brief">Оборона системы</span><span id="stage-risk">NORMAL</span></div>
+      <div class="hq-intel-metrics" id="stage-metrics"></div>
+    </section>
+
+    <div class="hq-actions">
+      <button class="hq-side-action" id="btn-stage-chest" aria-label="Сундук и сведения об этапе">
+        <span class="hq-action-ico">▣</span><span>Сундук этапа</span>
+      </button>
+      <div class="hq-primary-action">
+        <button class="btn primary big" id="btn-start">BATTLE</button>
+        <span id="battle-energy-note">⚡ 5 за попытку</span>
+      </div>
+      <button class="hq-side-action" id="btn-patrol" aria-label="Собрать награды патруля">
+        <span class="hq-action-ico">◉</span><span>Автопатруль</span>
+      </button>
+    </div>
+
+    <nav class="nav hq-nav" aria-label="Разделы">
+      <button class="on" data-nav="home">⌂<small>База</small></button>
+      <button data-nav="turrets">♜<small>Турели</small></button>
+      <button data-nav="settings">⚙<small>Настройки</small></button>
+    </nav>
+  </section>
+
+  <!-- ============ UPGRADES ============ -->
+  <section class="screen" id="scr-turrets">
+    <div class="topbar" id="tur-cur"></div>
+    <div class="bonus-bar" id="bonus-bar"></div>
+    <div class="tgrid" id="tgrid"></div>
+    <nav class="nav">
+      <button data-nav="home">🏠 База</button>
+      <button class="on" data-nav="turrets">🗼 Прокачка</button>
+      <button data-nav="settings">⚙️ Настройки</button>
+    </nav>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="screen" id="scr-settings">
+    <h1 style="font-size:26px;margin:6px 0 2px">Настройки</h1>
+    <p class="sub">Звук синтезируется на лету — файлов не нужно.</p>
+    <div class="setrow"><span>🎵 Музыка</span><button class="tgl" id="tgl-music"><i></i></button></div>
+    <div class="setrow"><span>🔊 Звуковые эффекты</span><button class="tgl" id="tgl-sfx"><i></i></button></div>
+    <div class="setrow"><span>Сбросить прогресс</span><button class="btn" id="btn-reset" style="padding:8px 12px">Сброс</button></div>
+    <p class="note">Прогресс (валюты, уровни турелей и солдата, материалы, открытые этапы и настройки звука) автоматически сохраняется на этом устройстве и переживает перезагрузку страницы. Сброс возвращает всё к стартовым значениям.</p>
+    <nav class="nav">
+      <button data-nav="home">🏠 База</button>
+      <button data-nav="turrets">🗼 Прокачка</button>
+      <button class="on" data-nav="settings">⚙️ Настройки</button>
+    </nav>
+  </section>
+
+  <!-- ============ BATTLE ============ -->
+  <section class="screen" id="scr-battle">
+    <div id="cvwrap">
+      <canvas id="cv" width="420" height="700"></canvas>
+      <div class="field-ui">
+        <button class="ibtn" id="btn-pause" aria-label="Пауза">⏸</button>
+        <button class="ibtn" id="btn-speed">×1</button>
+        <button class="ibtn" id="btn-buildinfo" aria-label="Сборка">🧰</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Stage chest / information: local progress, no invented rewards or monetization. -->
+<div class="overlay" id="ov-stage-info">
+  <div class="sheet hq-stage-sheet">
+    <h2 id="stage-info-title">Normal Stage 1</h2>
+    <p class="csub" id="stage-info-sub"></p>
+    <div class="hq-stage-info-body" id="stage-info-body"></div>
+    <button class="btn primary" id="btn-close-stage-info" style="width:100%">Закрыть</button>
+  </div>
+</div>
+
+<!-- ============ DRAFT (по накоплению очков боя) ============ -->
+<div class="overlay" id="ov-levelup">
+  <div class="sheet">
+    <h2 style="color:var(--teal)" id="lu-title">🎴 Очки накоплены!</h2>
+    <p class="csub" id="lu-sub">Выбери одно усиление из трёх</p>
+    <div class="cur-build" id="lu-build"></div>
+    <div id="lu-cards"></div>
+    <button class="btn" id="btn-reroll" style="width:100%">🔄 Обновить варианты (1 раз за бой)</button>
+  </div>
+</div>
+
+<!-- ============ RESULTS ============ -->
+<div class="overlay" id="ov-result">
+  <div class="sheet">
+    <h2 id="res-title">Victory</h2>
+    <p class="csub" id="res-sub">Normal Stage 1</p>
+    <p class="csub" style="margin-bottom:6px;font-weight:800;color:var(--text)">🎁 Награды</p>
+    <div class="rgrid" id="res-rewards"></div>
+    <p class="csub" style="margin-bottom:4px;font-weight:800;color:var(--text)">📊 Урон и средний DPS</p>
+    <table class="stats"><thead><tr><th>Юнит</th><th>DMG</th><th>DPS</th></tr></thead><tbody id="res-stats"></tbody></table>
+    <div class="btnrow">
+      <button class="btn" id="btn-res-back">← На базу</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PAUSE / BUILD INFO ============ -->
+<div class="overlay" id="ov-pause">
+  <div class="sheet">
+    <h2 id="pause-title">⏸ Пауза</h2>
+    <p class="csub">Текущая сборка</p>
+    <div id="pause-body"></div>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="btn primary" id="btn-resume">▶ Продолжить</button>
+      <button class="btn" id="btn-quit">Сдаться</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+<!-- __GAME_JS__ -->
+</script>
+</body>
+</html>
