@@ -176,10 +176,10 @@ test("Guardian fires alternating hands in a checkerboard stream", () => {
   e.x = 210;
   g.B.enemies = [e];
   const xs = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 14; i++) {
+    const before = g.B.projs.length;
     g.unitFire(s, 0.2);
-    const p = g.B.projs[g.B.projs.length - 1];
-    if (p) xs.push(p.x);
+    if (g.B.projs.length > before) xs.push(g.B.projs[g.B.projs.length - 1].x);
   }
   assert.ok(xs.length >= 4, "soldier should fire repeatedly, got " + xs.length);
   for (let i = 1; i < xs.length; i++) {
