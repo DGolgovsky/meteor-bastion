@@ -129,10 +129,13 @@ function genCards(allowSuper){
  /* комбо-карточки пар турелей (механика Combo из Galaxy Defense) */
  var hasT=function(id){return B.turrets.some(function(u){return u.cfg.id===id;});};
  var fuT=function(id){return B.turrets.filter(function(u){return u.cfg.id===id;})[0];};
- if(hasT("laser")&&hasT("tesla")&&!B.combos.spin)pool.push({kind:"combo",modId:"spin",u:fuT("laser"),w:3});
- if(hasT("skyguard")&&hasT("thunder")&&!B.combos.det)pool.push({kind:"combo",modId:"det",u:fuT("skyguard"),w:3});
- if(hasT("firewheel")&&hasT("hive")&&!B.combos.blaze)pool.push({kind:"combo",modId:"blaze",u:fuT("hive"),w:3});
- if(hasT("beam")&&hasT("disruption")&&!B.combos.disr)pool.push({kind:"combo",modId:"disr",u:fuT("beam"),w:3});
+ if(hasT("laser")&&hasT("tesla")&&META.levels.tesla>=14&&!B.combos.spin)pool.push({kind:"combo",modId:"spin",u:fuT("laser"),w:3});
+ if(hasT("skyguard")&&hasT("thunder")&&META.levels.skyguard>=14&&!B.combos.det)pool.push({kind:"combo",modId:"det",u:fuT("skyguard"),w:3});
+ if(hasT("firewheel")&&hasT("hive")&&META.levels.firewheel>=22&&!B.combos.blaze)pool.push({kind:"combo",modId:"blaze",u:fuT("hive"),w:3});
+ if(hasT("beam")&&hasT("disruption")&&META.levels.beam>=22&&!B.combos.disr)pool.push({kind:"combo",modId:"disr",u:fuT("beam"),w:3});
+ if(hasT("firewheel")&&hasT("gravity")&&META.levels.gravity>=18&&!B.combos.vortexWheel)pool.push({kind:"combo",modId:"vortexWheel",u:fuT("firewheel"),w:3});
+ if(hasT("gravity")&&hasT("hive")&&META.levels.gravity>=22&&!B.combos.binaryStars)pool.push({kind:"combo",modId:"binaryStars",u:fuT("gravity"),w:3});
+ if(hasT("railgun")&&hasT("tesla")&&META.levels.railgun>=22&&!B.combos.surgePierce)pool.push({kind:"combo",modId:"surgePierce",u:fuT("railgun"),w:3});
  /* модули крепости — глобальные усиления боя, каждый один раз за бой */
  ["boost","shieldm","regenm","jam"].forEach(function(mid){if(!B.modulesUsed[mid])pool.push({kind:"module",modId:mid,w:3});});
  var guard=0;
@@ -150,12 +153,12 @@ function cardHTML(c){
  if(c.kind==="chain")return{cls:c.tier===3?"legend":"epic",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+c.def.name,tag:"T"+c.tier+" · R&D "+c.def.rd,desc:c.def.desc+" <b>+1 уровень юнита</b>."};
  if(c.kind==="super"){var s=SUPERS[c.u.cfg.id];return{cls:"super",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+s.name,tag:"⭐ СУПЕР · Lv. "+(c.u.runLv+1),desc:s.desc+" <b>+1 уровень юнита.</b>"};}
  if(c.kind==="new")return{cls:c.cfg.rarity,icon:c.cfg.icon,name:c.cfg.name,tag:"NEW",desc:"Построить <b>"+c.cfg.name+"</b>: "+c.cfg.desc+"<br>Урон: <b>"+c.cfg.damage+"</b> · "+c.cfg.dmgType+" · "+RARITY[c.cfg.rarity].n};
- if(c.kind==="up")return{cls:c.u.cfg.rarity,icon:c.u.cfg.icon,name:c.u.cfg.name,tag:"Lv. "+(c.u.runLv+1),desc:"<b>+25% урона</b>, +6% скорострельности."+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Юбилейный уровень — в следующем драфте будет СУПЕР-карточка!</b>":"")+" Урон за бой: <b>"+fmt(c.u.totalDmg)+"</b>."};
- if(c.kind==="combo"){var CM={spin:["Вращающийся лазер","Laser + Tesla Coil: луч бьёт вторую цель, +30% урона Laser."],det:["Детонационная молния","Sky Guard + Thunderbolt: попадания ракет бьют током соседнего врага."],blaze:["Пылающий рой","Firewheel + Hive: пчёлы улья поджигают врагов."],disr:["Разрушающий луч","Beam + Disruption Drone: луч Beam замедляет цели на 30%."]}[c.modId];
+ if(c.kind==="up")return{cls:c.u.cfg.rarity,icon:c.u.cfg.icon,name:c.u.cfg.name,tag:"Lv. "+(c.u.runLv+1),desc:"<b>+18% урона</b>, +4% скорострельности."+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Условие Super Mode: R&D турели и уровень боя</b>":"")+" Урон за бой: <b>"+fmt(c.u.totalDmg)+"</b>."};
+ if(c.kind==="combo"){var CM={spin:["Вращающийся лазер","Laser + Tesla Coil: дополнительный луч и +20% урона Laser."],det:["Детонационная молния","Sky Guard + Thunderbolt: ракеты поражают соседей током."],blaze:["Пылающий рой","Firewheel + Hive: осы поджигают противников."],disr:["Разрушающий луч","Beam + Disruption Drone: луч замедляет цель."],vortexWheel:["Вихревой диск","Firewheel + Gravity: диск получает +25% урона и срок жизни +2 с."],binaryStars:["Двойная сингулярность","Gravity + Hive: сильнее притяжение, радиус поля +30%."],surgePierce:["Электрорельса","Railgun + Tesla: пробитие +2, урон +25%."]}[c.modId];
   return{cls:"epic",icon:"🔗",name:"Комбо: "+CM[0],tag:"КОМБО · Lv. "+(c.u.runLv+1),desc:CM[1]+" <b>+1 уровень: "+c.u.cfg.name+"</b>."};}
  if(c.kind==="module"){var MD={boost:["Усиление поля боя","Все юниты наносят +12% урона до конца боя."],shieldm:["Щит крепости","Немедленно +250 к щиту базы и к его максимуму."],regenm:["Цикл регенерации","Немедленно восстановить 300 HP базы."],jam:["Глушилка волн","Все враги на 15% медленнее до конца боя."]}[c.modId];
   return{cls:"rare",icon:"🧩",name:"Модуль: "+MD[0],tag:"МОДУЛЬ КРЕПОСТИ",desc:MD[1]};}
- var M={dmg:["Силовой модуль","+30% к урону юнита."],crit:["Прицел крита","+10% шанс крита."],haste:["Ускоритель","+18% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."],
+ var M={dmg:["Силовой модуль","+15% к урону юнита."],crit:["Прицел крита","+6% шанс крита."],haste:["Ускоритель","+10% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."],
    laserSweep:["Сканирующий луч","Луч может поражать дополнительную случайную цель."],
    laserDeflect:["Дефлектор","Дополнительный луч бьёт вторую цель при работе лазера."],
    laserDuration:["Усиленный конденсатор","Длительность лазерного импульса +30%."],
@@ -168,7 +171,7 @@ function cardHTML(c){
    hiveAttacks:["Усиленные жала","+2 атаки каждой осы."],
    wheelDuration:["Стабилизатор Firewheel","Время полёта огненного диска +2 секунды."],
    wheelCount:["Второй светлячок","Firewheel держит в поле два огненных диска вместо одного."]};
- var m=M[c.mod];return{cls:"rare",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+m[0],tag:"МОД · Lv. "+(c.u.runLv+1),desc:m[1]+" <b>+1 уровень юнита.</b>"+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Юбилейный уровень — в следующем драфте будет СУПЕР-карточка!</b>":"")};
+ var m=M[c.mod];return{cls:"rare",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+m[0],tag:"МОД · Lv. "+(c.u.runLv+1),desc:m[1]+" <b>+1 уровень юнита.</b>"+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Условие Super Mode: R&D турели и уровень боя</b>":"")};
 }
 var curCards=[];
 function openDraft(){
@@ -201,14 +204,18 @@ $("btn-reroll").addEventListener("click",function(){if(!B.reroll)return;B.reroll
    Каждый 5-й уровень ставит супер-карточку в очередь на следующий драфт. */
 function gainLevel(u,statBoost){
  u.runLv++;
- if(statBoost){u.dmgMul*=1.25;u.haste*=1.06;}
+ if(statBoost){u.dmgMul*=1.18;u.haste*=1.04;}
  burst(u.x,u.y,12,u.cfg.color);
- if(u.runLv%5===0&&!u.mods.includes("super")&&!B.pendingSuper.includes(u)){B.pendingSuper.push(u);toast("⭐ "+u.cfg.name+" достиг "+u.runLv+" уровня — супер-карточка в следующем драфте!");}
+ if(u.runLv>=5&&u.runLv%5===0&&META.levels[u.cfg.id]>=rdTierUnlock(u.cfg.id)&&!u.mods.includes("super")&&!B.pendingSuper.includes(u)){B.pendingSuper.push(u);toast("⭐ "+u.cfg.name+" достиг "+u.runLv+" уровня — супер-карточка в следующем драфте!");}
 }
 function applyCard(c){
  if(c.kind==="new"){
    var s=freeSlot();if(s<0){toast("Все 4 слота турелей заняты");return;}
    var nt=mkUnit(c.cfg,TURRET_X[s],s,false);B.turrets.push(nt);B.usedTypes[c.cfg.id]=1;burst(nt.x,nt.y,16,c.cfg.color);
+  }else if(c.kind==="chain"){
+   if(META.levels[c.u.cfg.id]<c.def.rd||(c.tier>1&&!c.u.mods.includes(CARD_CHAINS[c.u.cfg.id][c.tier-2].id)))return;
+   if(c.u.mods.includes(c.def.id))return;
+   c.def.apply(c.u);c.u.mods.push(c.def.id);gainLevel(c.u,false);
  }else if(c.kind==="super"){
    SUPERS[c.u.cfg.id].apply(c.u);c.u.mods.push("super");burst(c.u.x,c.u.y,22,"#ffd34d");B.shake=6;
    gainLevel(c.u,false);
@@ -216,27 +223,30 @@ function applyCard(c){
    gainLevel(c.u,true);
  }else if(c.kind==="combo"){
    B.combos[c.modId]=1;
-   if(c.modId==="spin"){c.u.beamSplit=true;c.u.dmgMul*=1.3;}
+   if(c.modId==="spin"){c.u.beamSplit=true;c.u.dmgMul*=1.2;}
    if(c.modId==="det")c.u.zapOnHit=true;
    if(c.modId==="blaze")c.u.hiveBurn=true;
    if(c.modId==="disr")c.u.beamSlow=true;
+   if(c.modId==="vortexWheel"){c.u.dmgMul*=1.25;c.u.wheelDurationBonus=(c.u.wheelDurationBonus||0)+2;}
+   if(c.modId==="binaryStars"){c.u.gravityPull*=1.25;c.u.gravityRadius*=1.3;}
+   if(c.modId==="surgePierce"){c.u.pierce=Math.min(15,c.u.pierce+2);c.u.dmgMul*=1.25;}
    burst(c.u.x,c.u.y,16,"#a06bff");
    gainLevel(c.u,false);
  }else if(c.kind==="module"){
    B.modulesUsed[c.modId]=1;
    if(c.modId==="boost")B.allDmgMul*=1.12;
-   if(c.modId==="shieldm"){B.shieldMax+=250;B.shield+=250;}
-   if(c.modId==="regenm")B.baseHp=Math.min(B.baseMax,B.baseHp+300);
+   if(c.modId==="shieldm"){B.shieldMax+=150;B.shield+=150;}
+   if(c.modId==="regenm")B.baseHp=Math.min(B.baseMax,B.baseHp+200);
    if(c.modId==="jam"){B.enemySpdMul*=0.85;B.enemies.forEach(function(e){e.speed*=0.85;});}
    burst(W/2,BASEY-46,18,"#2ee6c8");
  }else{
    var t=c.u;
-   if(c.mod==="dmg")t.dmgMul*=1.3;
-   if(c.mod==="crit")t.critBonus+=0.10;
-   if(c.mod==="haste")t.haste*=1.18;
+   if(c.mod==="dmg")t.dmgMul*=1.15;
+   if(c.mod==="crit")t.critBonus+=0.06;
+   if(c.mod==="haste")t.haste*=1.10;
    if(c.mod==="proj")t.extraProj++;
    if(c.mod==="chain")t.chain++;
-   if(c.mod==="pierce")t.pierce+=2;
+   if(c.mod==="pierce")t.pierce=Math.min(15,t.pierce+2);
    if(c.mod==="splash")t.splash+=28;
    if(c.mod==="slowpow")t.slowPow=Math.min(0.75,t.slowPow+0.12);
    if(c.mod==="refract")t.refract=true;
@@ -274,21 +284,21 @@ function endBattle(win){
  var time=Math.max(1,B.elapsed);
  var stats=allFighters().slice().sort(function(a,b){return b.totalDmg-a.totalDmg;}).map(function(t){return{t:t,dmg:t.totalDmg,dps:t.totalDmg/time};});
  var rw=B.elite?1.6:1; /* Elite: враги крепче — награды щедрее */
- var coins=Math.floor((B.kills*2.2+(win?220:60)+B.wave*25)*rw);
+ var coins=Math.floor((B.kills*2.2+(win?220:60)+B.wave*25)*(1+(B.stage.n-1)*0.23)*rw);
  var comp=Math.floor((2+Math.floor(B.kills/25)+(win?3:0))*rw);
  var gems=(win?2:(B.kills>60?1:0))+(B.elite&&win?1:0);
- var pxp=Math.floor((win?40+B.wave*6:10+B.wave*3)*rw);
+ var pxp=Math.floor((win?40+B.wave*6:10+B.wave*3)*rw*(1+(B.stage.n-1)*0.17));
  var mats={};
- allFighters().forEach(function(t){mats[t.cfg.id]=Math.floor((3+Math.floor(t.totalDmg/400))*rw);});
+ allFighters().forEach(function(t){mats[t.cfg.id]=Math.floor((8+Math.floor(t.totalDmg/260))*(1+(B.stage.n-1)*0.15)*rw);});
  lastRewards={win:win,coins:coins,gems:gems,comp:comp,pxp:pxp,mats:mats,applied:false};
  if(win){META.wins++;
    if(B.elite)META.eliteCleared[B.stage.n]=true;else META.normalCleared[B.stage.n]=true;
-   if(B.stage.n===META.unlocked&&META.unlocked<3)META.unlocked++;
+   if(B.stage.n===META.unlocked&&META.unlocked<STAGES.length)META.unlocked++;
  }
  persist();
  $("res-title").textContent=win?"Victory":"Defeat";
  $("res-title").className=win?"win":"lose";
- $("res-sub").textContent=B.stage.name+" · Волн пройдено: "+(win?WAVES:B.wave)+" · Убийств: "+B.kills+" · Время: "+mmss(B.elapsed)+" · 🎴 Карточек взято: "+B.drafts+" · ❤ Базе восстановлено: "+Math.floor(B.totalHealed)+" HP";
+ $("res-sub").textContent=B.stage.name+" · Волн пройдено: "+(win?finalWave():B.wave)+" · Убийств: "+B.kills+" · Время: "+mmss(B.elapsed)+" · 🎴 Карточек взято: "+B.drafts+" · ❤ Базе восстановлено: "+Math.floor(B.totalHealed)+" HP";
  renderRewards();
  var tb=$("res-stats");tb.innerHTML="";
  stats.forEach(function(s){tb.innerHTML+="<tr><td>"+s.t.cfg.icon+" "+s.t.cfg.name+" <span style='color:var(--muted)'>Lv."+s.t.runLv+"</span></td><td>"+fmt(s.dmg)+"</td><td>"+fmt(s.dps)+"</td></tr>";});
