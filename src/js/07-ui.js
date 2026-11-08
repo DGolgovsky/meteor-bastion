@@ -11,8 +11,85 @@ var SUPERS={
  hive:{name:"Рой-мать",desc:"Дроны выпускаются парами и наносят двойной урон.",apply:function(u){u.hiveDouble=true;u.dmgMul*=1.35;}},
  railgun:{name:"Сквозной залп",desc:"Снаряд пробивает ВСЕХ врагов на линии, +80% урона.",apply:function(u){u.pierce=99;u.dmgMul*=1.8;}},
  tesla:{name:"Сверхнапряжение",desc:"Разряды бьют по 6 целям, +60% урона.",apply:function(u){u.multiCount=6;u.dmgMul*=1.6;}},
+ gravity:{name:"Чёрная сингулярность",desc:"Радиус поля +50%, притяжение +35%, +40% урона поля.",apply:function(u){u.gravityRadius*=1.5;u.gravityPull*=1.35;u.gravityPower*=1.4;}},
  soldier:{name:"Легендарный стрелок",desc:"+100% урона, +25% шанса крита и +1 снаряд в очереди — на всё поле.",apply:function(u){u.dmgMul*=2;u.critBonus+=0.25;u.extraProj+=1;}}
 };
+
+/* Tier paths are tied to R&D upgrades, not to an arbitrary fifth battle level.
+   The chains are original-inspired gameplay, not a claim that every numerical value matches the reference. */
+var CARD_CHAINS={
+ skyguard:[
+  {id:"rocketPayload",name:"Усиленный заряд",desc:"T1 · взрыв ракеты +35%.",rd:2,apply:function(u){u.splash*=1.35;}},
+  {id:"rocketCluster",name:"Кассетный залп",desc:"T2 · +1 ракета, урон каждой −10%.",rd:6,apply:function(u){u.extraProj++;u.dmgMul*=0.90;}},
+  {id:"thermalWarhead",name:"Термобоевая часть",desc:"T3 · взрыв поджигает противников.",rd:14,apply:function(u){u.rocketBurn=true;}}
+ ],
+ laser:[
+  {id:"laserVulnerable",name:"Метка уязвимости",desc:"T1 · повторные попадания лучом увеличивают входящий урон до +30%.",rd:2,apply:function(u){u.laserVulnerable=true;}},
+  {id:"laserResonance",name:"Оптический резонанс",desc:"T2 · длительность +30% и второй луч.",rd:6,apply:function(u){u.laserDurationMul=(u.laserDurationMul||1)+0.3;u.laserDeflect=1;}},
+  {id:"laserStorm",name:"Сканирующая система",desc:"T3 · отражение +1 и сканирующий луч.",rd:14,apply:function(u){u.reflect=(u.reflect||0)+1;u.laserSweep=1;}}
+ ],
+ disruption:[
+  {id:"fieldSaturation",name:"Насыщение поля",desc:"T1 · поле на 20% больше.",rd:2,apply:function(u){u.splash*=1.20;}},
+  {id:"fieldStasis",name:"Стазис помех",desc:"T2 · замедление +15 п.п.",rd:6,apply:function(u){u.slowPow=Math.min(0.75,u.slowPow+0.15);}},
+  {id:"fieldExpose",name:"Вскрытие защиты",desc:"T3 · импульсы поля накладывают уязвимость.",rd:14,apply:function(u){u.fieldExpose=true;}}
+ ],
+ aeroblast:[
+  {id:"aeroPressure",name:"Компрессия",desc:"T1 · отброс и радиус +20%.",rd:2,apply:function(u){u.knock*=1.2;u.splash*=1.2;}},
+  {id:"aeroCascade",name:"Ударная волна",desc:"T2 · +1 воздушный снаряд.",rd:6,apply:function(u){u.extraProj++;}},
+  {id:"aeroStorm",name:"Воздушный шторм",desc:"T3 · область удара +50%, урон +20%.",rd:14,apply:function(u){u.splash*=1.5;u.dmgMul*=1.2;}}
+ ],
+ thunder:[
+  {id:"thunderLink",name:"Двойная цепь",desc:"T1 · +1 цель цепной молнии.",rd:2,apply:function(u){u.chain++;}},
+  {id:"thunderStun",name:"Парализующий разряд",desc:"T2 · молния замедляет врагов.",rd:6,apply:function(u){u.thunderParalyze=true;}},
+  {id:"thunderStorm",name:"Разрядный шторм",desc:"T3 · скорострельность +25%.",rd:14,apply:function(u){u.haste*=1.25;}}
+ ],
+ beam:[
+  {id:"beamConcentrate",name:"Фокусировка Beam",desc:"T1 · урон возрастает при повторном поражении цели.",rd:2,apply:function(u){u.beamFocusCap=Math.max(0.8,u.beamFocusCap||0);}},
+  {id:"beamStack",name:"Stacking Damage",desc:"T2 · накопленный бонус сохраняется при смене цели.",rd:6,apply:function(u){u.beamStacking=true;}},
+  {id:"beamOvercharge",name:"Концентрированный поток",desc:"T3 · предел фокусировки до +300%.",rd:14,apply:function(u){u.beamFocusCap=3.0;}}
+ ],
+ firewheel:[
+  {id:"flameTrail",name:"Flame Trail",desc:"T1 · диск оставляет горящие области.",rd:2,apply:function(u){u.fireTrail=true;}},
+  {id:"blazingTrail",name:"Blazing Trail",desc:"T2 · горящий диск +25% урона.",rd:6,apply:function(u){u.dmgMul*=1.25;}},
+  {id:"extendedTrail",name:"Extended Trail",desc:"T3 · диск летает на 3 секунды дольше.",rd:14,apply:function(u){u.wheelDurationBonus=(u.wheelDurationBonus||0)+3;}}
+ ],
+ hive:[
+  {id:"swarmEcho",name:"Swarm Echo",desc:"T1 · осы выпускают один дополнительный эхорой с 50% уроном.",rd:2,apply:function(u){u.hiveEcho=1;}},
+  {id:"echoUpgrade2",name:"Echo Upgrade II",desc:"T2 · урон эхоос до 75%.",rd:6,apply:function(u){u.hiveEcho=2;}},
+  {id:"echoUpgrade3",name:"Echo Upgrade III",desc:"T3 · эхоосы получают полный урон.",rd:10,apply:function(u){u.hiveEcho=3;}}
+ ],
+ railgun:[
+  {id:"railExplosive",name:"Explosive Shells",desc:"T1 · пробивающие снаряды взрываются по небольшой области.",rd:2,apply:function(u){u.railExplosive=true;}},
+  {id:"railPiercing",name:"Piercing Impact",desc:"T2 · пробитие +2.",rd:6,apply:function(u){u.pierce=Math.min(15,u.pierce+2);}},
+  {id:"railShock",name:"Ударная рельса",desc:"T3 · урон +30%, дальность пробития +1.",rd:14,apply:function(u){u.dmgMul*=1.3;u.pierce=Math.min(15,u.pierce+1);}}
+ ],
+ tesla:[
+  {id:"trapMatrix",name:"Trap Matrix",desc:"T1 · электрическая матрица после взрыва.",rd:2,apply:function(u){u.teslaMatrix=true;}},
+  {id:"enhancedMatrix",name:"Enhanced Matrix",desc:"T2 · матрица действует дольше и сильнее.",rd:6,apply:function(u){u.teslaMatrixPlus=true;}},
+  {id:"matrixThunder",name:"Matrix Thunderbolt",desc:"T3 · матрица периодически парализует врагов.",rd:10,apply:function(u){u.teslaThunder=true;}}
+ ],
+ gravity:[
+  {id:"smallBlackHole",name:"Small Black Hole",desc:"T1 · поле притягивает врагов дольше.",rd:2,apply:function(u){u.gravityDuration+=1.2;}},
+  {id:"blackHoleExpansion",name:"Black Hole Expansion",desc:"T2 · радиус +35%, притяжение +20%.",rd:6,apply:function(u){u.gravityRadius*=1.35;u.gravityPull*=1.20;}},
+  {id:"destructiveBlackHole",name:"Destructive Black Hole",desc:"T3 · поле накладывает уязвимость.",rd:14,apply:function(u){u.gravityShred=true;}}
+ ],
+ soldier:[
+  {id:"guardianCharge",name:"Заряженный выстрел",desc:"T1 · урон Guardian +25%.",rd:2,apply:function(u){u.dmgMul*=1.25;}},
+  {id:"guardianExplosion",name:"Разрывные пули",desc:"T2 · пули Guardian бьют по области.",rd:6,apply:function(u){u.splash=Math.max(u.splash,34);}},
+  {id:"guardianOverdrive",name:"Перегрузка Guardian",desc:"T3 · скорострельность +25%.",rd:14,apply:function(u){u.haste*=1.25;}}
+ ]
+};
+function chainCandidates(u){
+ var defs=CARD_CHAINS[u.cfg.id]||[],result=[];
+ for(var i=0;i<defs.length;i++){
+  var def=defs[i];
+  if(u.mods.includes(def.id)||META.levels[u.cfg.id]<def.rd||u.runLv<i+2)continue;
+  if(i>0&&!u.mods.includes(defs[i-1].id))continue;
+  result.push({kind:"chain",u:u,def:def,tier:i+1,modId:def.id,w:4+i});
+ }
+ return result;
+}
+
 function genCards(allowSuper){
  var picks=[];
  if(allowSuper!==false&&B.pendingSuper.length){var su=B.pendingSuper.shift();if(!su.mods.includes("super"))picks.push({kind:"super",u:su});}
@@ -47,6 +124,7 @@ function genCards(allowSuper){
   if(u.cfg.id==="hive"&&u.runLv>=2&&u.hiveAttacks<16)pool.push({kind:"mod",u:u,mod:"hiveAttacks",w:3});
   if(u.cfg.id==="firewheel"&&u.runLv>=2&&(u.wheelDurationBonus||0)<6)pool.push({kind:"mod",u:u,mod:"wheelDuration",w:3});
   if(u.cfg.id==="firewheel"&&u.runLv>=2&&(u.wheelMax||1)<2)pool.push({kind:"mod",u:u,mod:"wheelCount",w:3});
+  chainCandidates(u).forEach(function(card){pool.push(card);});
  });
  /* комбо-карточки пар турелей (механика Combo из Galaxy Defense) */
  var hasT=function(id){return B.turrets.some(function(u){return u.cfg.id===id;});};
@@ -69,6 +147,7 @@ function genCards(allowSuper){
  return picks;
 }
 function cardHTML(c){
+ if(c.kind==="chain")return{cls:c.tier===3?"legend":"epic",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+c.def.name,tag:"T"+c.tier+" · R&D "+c.def.rd,desc:c.def.desc+" <b>+1 уровень юнита</b>."};
  if(c.kind==="super"){var s=SUPERS[c.u.cfg.id];return{cls:"super",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+s.name,tag:"⭐ СУПЕР · Lv. "+(c.u.runLv+1),desc:s.desc+" <b>+1 уровень юнита.</b>"};}
  if(c.kind==="new")return{cls:c.cfg.rarity,icon:c.cfg.icon,name:c.cfg.name,tag:"NEW",desc:"Построить <b>"+c.cfg.name+"</b>: "+c.cfg.desc+"<br>Урон: <b>"+c.cfg.damage+"</b> · "+c.cfg.dmgType+" · "+RARITY[c.cfg.rarity].n};
  if(c.kind==="up")return{cls:c.u.cfg.rarity,icon:c.u.cfg.icon,name:c.u.cfg.name,tag:"Lv. "+(c.u.runLv+1),desc:"<b>+25% урона</b>, +6% скорострельности."+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Юбилейный уровень — в следующем драфте будет СУПЕР-карточка!</b>":"")+" Урон за бой: <b>"+fmt(c.u.totalDmg)+"</b>."};
