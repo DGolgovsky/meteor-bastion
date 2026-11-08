@@ -239,11 +239,11 @@ var TURRETS=[
  {id:"disruption",name:"Disruption Drone",icon:"🛸",dmgType:"Силовое поле",damage:7,attackSpeed:1.1,range:180,projSpeed:340,crit:0.05,critMul:1.7,target:"closestBase",effect:"slow",rarity:"rare",color:"#38c8ff",desc:"Импульсы силового поля замедляют врагов на 35%."},
  {id:"aeroblast",name:"Aeroblast",icon:"🌀",dmgType:"Воздух",damage:12,attackSpeed:0.9,range:170,projSpeed:380,crit:0.06,critMul:1.8,target:"nearest",effect:"knockback",rarity:"common",color:"#7dd7ff",desc:"Воздушные заряды отбрасывают врагов назад."},
  {id:"thunder",name:"Thunderbolt",icon:"⚡",dmgType:"Электричество",damage:16,attackSpeed:0.8,range:180,projSpeed:0,crit:0.12,critMul:2.0,target:"nearest",effect:"chain",rarity:"rare",color:"#c084fc",desc:"Молния перескакивает на соседних врагов."},
- {id:"beam",name:"Beam",icon:"🔷",dmgType:"Энергия",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"strongest",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Тяжёлые энергозаряды по самым прочным целям."},
- {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Огонь",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Поджигает врагов: урон продолжает тикать."},
- {id:"hive",name:"Hive",icon:"🐝",dmgType:"Дроны",damage:14,attackSpeed:0.5,range:390,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:"#facc15",desc:"Выпускает автономных дронов-камикадзе."},
+ {id:"beam",name:"Beam",icon:"🔷",dmgType:"Энергия",damage:55,attackSpeed:0.55,range:200,projSpeed:520,crit:0.1,critMul:2.2,target:"strongest",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Тяжёлые энергозаряды по самым прочным целям."},
+ {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Огонь",damage:10,attackSpeed:1.4,range:172,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Поджигает врагов: урон продолжает тикать."},
+ {id:"hive",name:"Hive",icon:"🐝",dmgType:"Дроны",damage:14,attackSpeed:0.5,range:210,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:"#facc15",desc:"Выпускает автономных дронов-камикадзе."},
  {id:"railgun",name:"Railgun",icon:"🎯",dmgType:"Рельса",damage:70,attackSpeed:0.45,range:230,projSpeed:900,crit:0.15,critMul:2.4,target:"closestBase",effect:"pierce",rarity:"legend",color:"#f472b6",desc:"Снаряд пробивает врагов насквозь по линии."},
- {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Электричество",damage:13,attackSpeed:1.0,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"Выпускает летящий заряд энергии: при попадании разряжается дугами по соседним врагам."}
+ {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Электричество",damage:13,attackSpeed:1.0,range:200,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"Выпускает летящий заряд энергии: при попадании разряжается дугами по соседним врагам."}
 ];
 var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:13,attackSpeed:6.6667,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
 /* res — множители входящего урона по типам (как ±50% сопротивлений в Galaxy Defense):
@@ -435,7 +435,7 @@ window.addEventListener("orientationchange",function(){setTimeout(fitCanvas,80);
 var B=null, raf=null, lastTs=0;
 function mkUnit(cfg,x,slot,isSoldier){
  var lv=META.levels[cfg.id],secondary=metaSecondary(lv),area={rocket:32,charge:42,knockback:40,slow:34};
- return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,laserActive:0,laserTickT:0,angle:-Math.PI/2,recoil:0,
+ return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,angle:-Math.PI/2,recoil:0,
   metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:metaDamage(lv),haste:1,extraProj:0,
   pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?Math.floor((secondary-1)*5):0),
   chain:(cfg.effect==="chain"?2:0)+(cfg.id==="thunder"?Math.floor((secondary-1)*2):0),
@@ -455,7 +455,7 @@ function newBattle(stage){
      как в оригинале, первая карточка приходит уже после второго монстра
      (первые враги волны 1 — метеориты по 1 очку), дальше темп ровный. */
   score:0,scoreTotal:0,draftNeed:2,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
-  enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],
+  enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],
   shake:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,
   allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{}};
 }
@@ -633,151 +633,120 @@ function arcFx(x1,y1,x2,y2,color){B.beams.push({x1:x1,y1:y1,x2:x2,y2:y2,mx:(x1+x
 function ringFx(x,y,color,vr){B.rings.push({x:x,y:y,r:5,vr:vr||110,t:0,life:0.35,color:color});if(B.rings.length>40)B.rings.shift();}
 
 /* ---------- firing ---------- */
-/* Laser: finite-duration piercing sweep. Unlike the previous permanent beam,
-   damage is delivered only during a timed channel followed by a real cooldown. */
-function fireLaser(t,dt){
- t.cd-=dt;
- if(t.laserActive<=0){
-   if(t.cd>0)return;
-   var initial=pickTarget(t);if(!initial)return;
-   t.laserActive=1.65*t.durationMul*(t.laserDurationMul||1);
-   t.laserTickT=0;
-   t.cd=5.2*t.metaCd/t.haste;
-   SFX.laser();
- }
- t.laserActive=Math.max(0,t.laserActive-dt);
- var target=pickTarget(t);if(!target)return;
- var ox=t.x,oy=t.y-14;
- t.angle=Math.atan2(target.y-oy,target.x-ox);
- var dx=Math.cos(t.angle),dy=Math.sin(t.angle),hits=[],far=0;
- B.enemies.forEach(function(e){
-   if(!inRange(t,e))return;
-   var px=e.x-ox,py=e.y-oy,pr=px*dx+py*dy;
-   if(pr<=0)return;
-   if(Math.abs(px*dy-py*dx)<=e.r+8){hits.push(e);far=Math.max(far,pr);}
- });
- var len=Math.max(350,far+28);
- beamFx(ox,oy,ox+dx*len,oy+dy*len,"#4ade80",3+(t.laserWidth||0));
- t.laserTickT-=dt;
- if(t.laserTickT>0)return;
- t.laserTickT+=0.12;
- var opts=t.beamSlow?{slow:true,slowPow:0.3}:{};
- hits.forEach(function(e){dealDamage(t,e,t.cfg.damage*(t.laserPower||1),opts);});
- if(t.refract&&hits.length){
-  [-0.34,0.34].forEach(function(a){
-   var ang=t.angle+a,vx=Math.cos(ang),vy=Math.sin(ang);
-   beamFx(target.x,target.y,target.x+vx*160,target.y+vy*160,"#86efac",2);
-   B.enemies.forEach(function(e){
-    if(!inRange(t,e)||hits.indexOf(e)>=0)return;
-    var px=e.x-target.x,py=e.y-target.y,pr=px*vx+py*vy;
-    if(pr>0&&pr<160&&Math.abs(px*vy-py*vx)<e.r+8){
-      hits.push(e);dealDamage(t,e,t.cfg.damage*0.5*(t.laserPower||1),opts);
-    }
-   });
-  });
- }
- if(t.reflect>0&&hits.length){
-  var cur=hits[hits.length-1],seen=hits.slice();
-  for(var z=0;z<t.reflect;z++){
-   var nx=null,dist=170;
-   B.enemies.forEach(function(e){if(!inRange(t,e)||seen.indexOf(e)>=0)return;var d=Math.hypot(e.x-cur.x,e.y-cur.y);if(d<dist){dist=d;nx=e;}});
-   if(!nx)break;
-   beamFx(cur.x,cur.y,nx.x,nx.y,"#86efac",2);
-   dealDamage(t,nx,t.cfg.damage*0.65*(t.laserPower||1),opts);
-   seen.push(nx);cur=nx;
-  }
- }
- if(t.beamSplit){
-  var others=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
-  if(others.length){var e2=others[0];beamFx(ox,oy,e2.x,e2.y,"#4ade80",2);dealDamage(t,e2,t.cfg.damage*0.7,opts);}
- }
- if(t.laserSweep>0&&Math.random()<0.25){
-  var candidate=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
-  if(candidate.length){var sw=candidate[Math.floor(Math.random()*candidate.length)];beamFx(ox,oy,sw.x,sw.y,"#a7f3d0",2);dealDamage(t,sw,t.cfg.damage*0.8,opts);}
- }
-}
-function fireFocusedBeam(t,dt){
- t.cd-=dt;
- if(t.beamTicks<=0){
-  if(t.cd>0)return;
-  var first=pickTarget(t);if(!first)return;
-  t.beamTicks=Math.round(20*t.durationMul*(t.beamDurationMul||1));
-  t.beamTickT=0;t.beamTarget=first;t.beamRamp=0;
-  t.cd=8.0*t.metaCd/t.haste;
-  SFX.laser();
- }
- t.beamTickT-=dt;
- var steps=0;
- while(t.beamTickT<=0&&t.beamTicks>0&&steps++<4){
-  t.beamTickT+=Math.max(0.08,t.beamInterval||0.20);
-  t.beamTicks--;
-  var target=t.beamTarget;
-  if(!target||target.hp<=0||target.dead||!inRange(t,target)){
-   target=pickTarget(t);
-   if(target!==t.beamTarget&&!t.beamStacking)t.beamRamp=0;
-   t.beamTarget=target;
-  }
-  if(!target)continue;
-  t.angle=Math.atan2(target.y-t.y,target.x-t.x);
-  var cap=t.beamFocusCap||0;
-  var ramp=cap?1+Math.min(cap,t.beamRamp):1;
-  var opts=t.beamSlow?{slow:true,slowPow:0.3}:{};
-  dealDamage(t,target,t.cfg.damage*1.45*(t.beamPower||1)*ramp,opts);
-  beamFx(t.x,t.y-14,target.x,target.y,"#38bdf8",4);
-  if(cap)t.beamRamp+=0.09;
-  if(t.beamSplit){
-   var extra=B.enemies.filter(function(e){return e!==target&&inRange(t,e);});
-   var alt=extra.length?extra[0]:target;
-   beamFx(t.x,t.y-10,alt.x,alt.y,"#7dd7ff",1.8);
-   dealDamage(t,alt,t.cfg.damage*0.75,{});
-  }
-  if(t.refract){
-   var other=B.enemies.filter(function(e){return e!==target&&inRange(t,e);}).slice(0,2);
-   other.forEach(function(e){beamFx(target.x,target.y,e.x,e.y,"#38bdf8",1.5);dealDamage(t,e,t.cfg.damage*0.55,{});});
-  }
- }
-}
 function unitFire(t,dt){
  var cfg=t.cfg;
- if(cfg.id==="laser"){fireLaser(t,dt);return;}
- if(cfg.id==="beam"){fireFocusedBeam(t,dt);return;}
+ if(cfg.effect==="beam"){
+   /* Луч на всю карту: урон получают ВСЕ враги, попавшие в линию луча.
+      Улучшения: преломление (refract) — две боковые ветви у точки цели;
+      отражение (reflect) — луч от крайней цели рикошетит в соседних врагов. */
+   var tg=pickTarget(t);
+   if(tg){
+     var ox=t.x,oy=t.y-14;
+     t.angle=Math.atan2(tg.y-oy,tg.x-ox);
+     var dx=Math.cos(t.angle),dy=Math.sin(t.angle);
+     var bopts=t.beamSlow?{slow:true,slowPow:0.3}:{};
+     var hits=[],maxProj=0;
+     B.enemies.forEach(function(e){
+       if(e.hp<=0||e.dead)return;
+       var px=e.x-ox,py=e.y-oy,pr=px*dx+py*dy;
+       if(pr<=0)return;
+       var perp=Math.abs(px*dy-py*dx);
+       if(perp<=e.r+11){hits.push(e);if(pr>maxProj)maxProj=pr;}
+     });
+     hits.forEach(function(e){
+       dealDamage(t,e,cfg.damage*dt*3.2,bopts);
+       if(Math.random()<dt*16)B.parts.push({x:e.x,y:e.y,vx:Math.random()*36-18,vy:Math.random()*36-18,life:0.25,t:0,color:"#4ade80",r:2});
+     });
+     var blen=hits.length?maxProj+26:760;
+     beamFx(ox,oy,ox+dx*blen,oy+dy*blen,"#4ade80",3);
+     if(t.refract&&hits.length){
+       [-0.34,0.34].forEach(function(da){
+         var a2=t.angle+da,dx2=Math.cos(a2),dy2=Math.sin(a2);
+         beamFx(tg.x,tg.y,tg.x+dx2*150,tg.y+dy2*150,"rgba(74,222,128,.75)",2);
+         B.enemies.forEach(function(e){
+           if(e.hp<=0||e.dead||hits.indexOf(e)>=0)return;
+           var px=e.x-tg.x,py=e.y-tg.y,pr=px*dx2+py*dy2;
+           if(pr<=0||pr>160)return;
+           if(Math.abs(px*dy2-py*dx2)<=e.r+9){hits.push(e);dealDamage(t,e,cfg.damage*dt*1.6,bopts);}
+         });
+       });
+     }
+     if(t.reflect>0&&hits.length){
+       var cur=null,bp=-1;
+       hits.forEach(function(e){var pr=(e.x-ox)*dx+(e.y-oy)*dy;if(pr>bp){bp=pr;cur=e;}});
+       var seen=hits.slice();
+       for(var rc=0;rc<t.reflect&&cur;rc++){
+         var nx=null,bd=170;
+         B.enemies.forEach(function(e){if(e.hp>0&&!e.dead&&seen.indexOf(e)<0){var dd=Math.hypot(e.x-cur.x,e.y-cur.y);if(dd<bd){bd=dd;nx=e;}}});
+         if(!nx)break;
+         beamFx(cur.x,cur.y,nx.x,nx.y,"#86efac",2);
+         dealDamage(t,nx,cfg.damage*dt*2.0,bopts);
+         seen.push(nx);cur=nx;
+       }
+     }
+     if(t.beamSplit){
+       var others=B.enemies.filter(function(e){return e!==tg&&inRange(t,e)&&hits.indexOf(e)<0;});
+       if(others.length){var t2=others[0];dealDamage(t,t2,cfg.damage*dt*2.2,{});beamFx(ox,oy,t2.x,t2.y,"#4ade80",2);}
+     }
+     if(Math.random()<dt*8)SFX.laser();
+   }
+   return;
+ }
  t.cd-=dt;
  if(t.cd>0)return;
  var target=pickTarget(t); if(!target)return;
  var ap=aimPoint(t,target); /* упреждение: снаряд летит в точку перехвата движущейся цели */
  t.angle=Math.atan2(ap.y-(t.y-10),ap.x-t.x);
+ t.cd=1/cfg.attackSpeed/t.haste;
+ if(cfg.effect==="chain"){
+   var hit=[target],cur=target;arcFx(t.x,t.y-8,target.x,target.y,t.cfg.color);dealDamage(t,target,cfg.damage,{});
+   for(var c=0;c<t.chain;c++){
+     var nx=null,bd=95;
+     B.enemies.forEach(function(e){if(e.hp>0&&!e.dead&&hit.indexOf(e)<0){var d=Math.hypot(e.x-cur.x,e.y-cur.y);if(d<bd){bd=d;nx=e;}}});
+     if(!nx)break;arcFx(cur.x,cur.y,nx.x,nx.y,t.cfg.color);dealDamage(t,nx,cfg.damage*0.7,{});hit.push(nx);cur=nx;
+   }
+   SFX.zap();return;
+ }
+ if(cfg.effect==="multi"){
+   var list=B.enemies.filter(function(e){return inRange(t,e);});
+   list.sort(function(){return Math.random()-0.5;});
+   list.slice(0,t.multiCount).forEach(function(e){arcFx(t.x,t.y-8,e.x,e.y,t.cfg.color);dealDamage(t,e,cfg.damage,{});});
+   SFX.zap();return;
+ }
+ if(cfg.effect==="hive"){
+   B.drones.push({x:t.x,y:t.y-10,src:t,life:4,tgt:target});
+   if(t.hiveDouble)B.drones.push({x:t.x-8,y:t.y-6,src:t,life:4,tgt:target});
+   SFX.shoot();return;
+ }
+ var n=1+t.extraProj;
+ t.recoil=5; /* отдача ствола при выстреле */
+ for(var k=0;k<n;k++){
+   var off=k-(n-1)/2;
+   if(t.isSoldier){
+     /* Двойной залп солдата идёт строго ПАРАЛЛЕЛЬНО: оба снаряда на одном курсе,
+        стволы лишь разнесены поперёк линии огня — никакого веера вразнобой. */
+     var px=-Math.sin(t.angle),py=Math.cos(t.angle);
+     B.projs.push({x:t.x+px*off*7,y:t.y-10+py*off*7,vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
+   }else{
+     var a=t.angle+off*0.09;
+     B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
+   }
+ }
+ B.parts.push({x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:0.12,t:0,color:cfg.color,r:2.2});
+ SFX.shoot();
+}
+function applyHit(p,e){
+ var cfg=p.src.cfg,opts={};
  if(cfg.effect==="charge"){
-   /* Direct burst, overlapping AoE and nearby chain are separate hits. */
-   dealDamage(p.src,e,p.dmg*0.8,{});
-   var radius=Math.max(35,p.src.splash||42);
-   B.enemies.forEach(function(o){
-     if(o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=radius)dealDamage(p.src,o,p.dmg*0.65,{});
-   });
+   /* заряд энергии Tesla: основное попадание + дуги по ближайшим врагам */
+   dealDamage(p.src,e,p.dmg,{});
    var near=B.enemies.filter(function(o){return o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=125;});
    near.sort(function(a,b){return Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y);});
    near.slice(0,Math.max(0,p.src.multiCount-1)).forEach(function(o){arcFx(e.x,e.y,o.x,o.y,"#a06bff");dealDamage(p.src,o,p.dmg*0.7,{});});
-   if(p.src.teslaMatrix&&B.fields.length<32){
-     B.fields.push({kind:"matrix",x:e.x,y:e.y,r:radius*1.6,life:2.6,src:p.src,tick:0.1});
-   }
    ringFx(e.x,e.y,"#a06bff",120);burst(e.x,e.y,8,"#a06bff");
    return;
  }
- if(cfg.effect==="rocket"){
-   /* Sky Guard missile has separate impact and explosion damage, including the impact target. */
-   dealDamage(p.src,e,p.dmg*0.55,{});
-   var r=Math.max(24,p.src.splash);
-   B.enemies.forEach(function(o){
-     if(o.dead||o.hp<=0||Math.hypot(o.x-e.x,o.y-e.y)>r)return;
-     dealDamage(p.src,o,p.dmg*0.7,{});
-   });
-   if(p.src.zapOnHit){
-    var next=B.enemies.filter(function(o){return o!==e&&o.hp>0&&!o.dead;}).sort(function(a,b){return Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y);})[0];
-    if(next&&Math.hypot(next.x-e.x,next.y-e.y)<100){arcFx(e.x,e.y,next.x,next.y,"#c084fc");dealDamage(p.src,next,p.dmg*0.5,{});}
-   }
-   ringFx(e.x,e.y,"#ff8a3c",130);burst(e.x,e.y,12,"#ff8a3c");
-   return;
- }
- if(cfg.effect==="slow"){opts={slow:true,slowPow:p.src.slowPow};if(B.fields.length<32)B.fields.push({kind:"slow",x:e.x,y:e.y,r:Math.max(30,p.src.splash),life:2.2,src:p.src,tick:0.1});}
+ if(cfg.effect==="slow")opts={slow:true,slowPow:p.src.slowPow};
  if(cfg.effect==="knockback")opts={knock:p.src.knock};
  if(cfg.effect==="burn")opts={burn:true};
  dealDamage(p.src,e,p.dmg,opts);
@@ -788,7 +757,7 @@ function unitFire(t,dt){
    if(nx2){arcFx(e.x,e.y,nx2.x,nx2.y,"#c084fc");dealDamage(p.src,nx2,p.dmg*0.5,{});}
  }
  if(p.src.splash>0){
-   B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=p.src.splash)dealDamage(p.src,o,p.dmg*0.5,cfg.effect==="slow"?{slow:true,slowPow:p.src.slowPow}:cfg.effect==="knockback"?{knock:p.src.knock*0.6}:{});});
+   B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=p.src.splash)dealDamage(p.src,o,p.dmg*0.5,cfg.effect==="slow"?{slow:true,slowPow:p.src.slowPow}:{});});
    burst(e.x,e.y,8,"#ff8a3c");
  }
  /* различимые эффекты попаданий по типу турели */
@@ -841,55 +810,15 @@ function update(dt){
  if(B.soldier&&B.guardianGoalX!==undefined){var delta=B.guardianGoalX-B.soldier.x;B.soldier.x+=Math.max(-480*dt,Math.min(480*dt,delta));}
  /* units */
  allFighters().forEach(function(t){unitFire(t,dt);});
- /* Persistent multi-hit wasps, retargeting instead of exploding at first contact. */
+ /* hive drones */
  for(var j=B.drones.length-1;j>=0;j--){
-   var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);
+   var dr=B.drones[j];dr.life-=dt;
    if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead)dr.tgt=pickTarget(dr.src);
-   if(dr.tgt){
-    var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);
-    dr.x+=Math.cos(a)*270*dt;dr.y+=Math.sin(a)*270*dt;
-    if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
-    if(dr.hitT<=0&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<19){
-      dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*0.65*dr.boost,dr.src.hiveBurn?{burn:true}:{});
-      dr.hits--;dr.hitT=0.26;
-      dr.x+=Math.cos(a+Math.PI)*14;dr.y+=Math.sin(a+Math.PI)*14;
-      burst(dr.x,dr.y,3,"#facc15");
-      if(dr.hits<=0){B.drones.splice(j,1);continue;}
-      dr.tgt=null;
-    }
-   }else dr.y-=35*dt;
+   if(dr.tgt){var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);dr.x+=Math.cos(a)*230*dt;dr.y+=Math.sin(a)*230*dt;
+     if(Math.random()<dt*10)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:14,life:0.22,t:0,color:"rgba(250,204,21,.7)",r:1.4});
+     if(Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<16){dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*1.6,dr.src.hiveBurn?{burn:true}:{});burst(dr.x,dr.y,7,"#facc15");B.drones.splice(j,1);continue;}}
+   else dr.y-=40*dt;
    if(dr.life<=0)B.drones.splice(j,1);
- }
- /* Bouncing Firewheel drones: each foe can be hit repeatedly, with a per-target interval. */
- for(var wi=B.wheels.length-1;wi>=0;wi--){
-   var wheel=B.wheels[wi];wheel.life-=dt;
-   wheel.x+=wheel.vx*dt;wheel.y+=wheel.vy*dt;
-   if(wheel.x<14||wheel.x>W-14){wheel.x=Math.max(14,Math.min(W-14,wheel.x));wheel.vx*=-1;wheel.bounces++;}
-   if(wheel.y<88||wheel.y>BASEY-38){wheel.y=Math.max(88,Math.min(BASEY-38,wheel.y));wheel.vy*=-1;wheel.bounces++;}
-   var bonus=1+Math.min(0.6,wheel.bounces*0.1);
-   B.enemies.forEach(function(e){
-    if(e.dead||e.hp<=0||Math.hypot(e.x-wheel.x,e.y-wheel.y)>e.r+9)return;
-    var prev=wheel.last.get(e)||-99;
-    if(B.t-prev<0.3)return;
-    wheel.last.set(e,B.t);wheel.hits++;
-    dealDamage(wheel.src,e,wheel.src.cfg.damage*1.3*bonus,wheel.src.hiveBurn?{burn:true}:{});
-    if(wheel.src.fireTrail)B.parts.push({x:wheel.x,y:wheel.y,vx:0,vy:0,life:0.5,t:0,color:"#ff8a3c",r:6});
-    if(wheel.hits%20===0){ringFx(wheel.x,wheel.y,"#ff8a3c",100);B.enemies.forEach(function(o){if(!o.dead&&o.hp>0&&Math.hypot(o.x-wheel.x,o.y-wheel.y)<=45)dealDamage(wheel.src,o,wheel.src.cfg.damage*2,{});});}
-   });
-   if(wheel.life<=0)B.wheels.splice(wi,1);
- }
- /* Tesla matrices and Disruption fields. Pulses stop when the field expires. */
- for(var fi=B.fields.length-1;fi>=0;fi--){
-   var field=B.fields[fi];field.life-=dt;field.tick-=dt;
-   if(field.tick<=0){
-    field.tick+=field.kind==="matrix"?0.45:0.4;
-    B.enemies.forEach(function(e){
-      if(e.dead||e.hp<=0||Math.hypot(e.x-field.x,e.y-field.y)>field.r)return;
-      if(field.kind==="slow"){e.slowFactor=Math.min(e.slowFactor,1-(field.src.slowPow||0.35));e.slowT=0.65;}
-      else dealDamage(field.src,e,field.src.cfg.damage*0.65,{});
-    });
-   }
-   if(field.life<=0)B.fields.splice(fi,1);
  }
  /* projectiles */
  for(var q=B.projs.length-1;q>=0;q--){
@@ -1169,9 +1098,6 @@ function draw(){
    ctx.fillStyle="#fff7cc";ctx.beginPath();ctx.arc(5.2,0,1.7,0,6.29);ctx.fill();
    ctx.restore();
  });
- /* Persistent Firewheel and field effects. */
- B.fields.forEach(function(f){ctx.save();ctx.globalAlpha=Math.max(0,Math.min(0.28,f.life/7));ctx.fillStyle=f.kind==="matrix"?"#a06bff":"#38c8ff";ctx.strokeStyle=f.kind==="matrix"?"#d8b4fe":"#38c8ff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,6.29);ctx.fill();ctx.stroke();ctx.restore();});
- B.wheels.forEach(function(w){ctx.save();ctx.translate(w.x,w.y);ctx.rotate(B.t*12);ctx.shadowColor="#ff8a3c";ctx.shadowBlur=14;ctx.strokeStyle="#ffb03c";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,9,0,6.29);ctx.stroke();for(var i=0;i<3;i++){var a=i*2.094;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*8,Math.sin(a)*8);ctx.stroke();}ctx.restore();});
  allFighters().forEach(drawUnit);
  /* снаряды: у каждого типа турели свой силуэт и свечение */
  B.projs.forEach(function(p){
