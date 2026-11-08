@@ -11,34 +11,49 @@ var TURRETS=[
  {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Огонь",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Поджигает врагов: урон продолжает тикать."},
  {id:"hive",name:"Hive",icon:"🐝",dmgType:"Дроны",damage:14,attackSpeed:0.5,range:390,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:"#facc15",desc:"Выпускает автономных дронов-камикадзе."},
  {id:"railgun",name:"Railgun",icon:"🎯",dmgType:"Рельса",damage:70,attackSpeed:0.45,range:230,projSpeed:900,crit:0.15,critMul:2.4,target:"closestBase",effect:"pierce",rarity:"legend",color:"#f472b6",desc:"Снаряд пробивает врагов насквозь по линии."},
- {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Электричество",damage:13,attackSpeed:1.0,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"Выпускает летящий заряд энергии: при попадании разряжается дугами по соседним врагам."}
+ {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Электричество",damage:15,attackSpeed:0.88,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"Заряд наносит взрывной урон и выпускает цепные молнии."},
+ {id:"gravity",name:"Gravity Vortex Gun",icon:"🕳️",dmgType:"Гравитация",damage:9,attackSpeed:0.48,range:390,projSpeed:0,crit:0.04,critMul:1.65,target:"closestBase",effect:"gravity",rarity:"epic",color:"#8cb5ff",desc:"Создаёт гравитационную область, которая притягивает врагов и наносит периодический урон."}
 ];
-var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:13,attackSpeed:6.6667,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
+var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:11,attackSpeed:2.8,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
 /* res — множители входящего урона по типам (как ±50% сопротивлений в Galaxy Defense):
    <1 — сопротивление, >1 — уязвимость */
 var ENEMIES=[
- {id:"meteor",name:"Метеорит",hp:26,speed:34,dmg:40,armor:0,xp:1,r:13,color:"#8a6a55",kind:"meteor",res:{fire:0.6,phys:1.3}},
- {id:"fast",name:"Быстрый метеорит",hp:16,speed:62,dmg:30,armor:0,xp:1,r:9,color:"#a87a52",kind:"meteor",res:{electric:1.35}},
- {id:"armored",name:"Бронированный",hp:95,speed:22,dmg:70,armor:0.35,xp:3,r:16,color:"#6b7686",kind:"meteor",res:{phys:0.5,fire:0.8,electric:1.5}},
- {id:"flyer",name:"Летун",hp:34,speed:44,dmg:45,armor:0,xp:2,r:12,color:"#7c5cbf",kind:"flyer",res:{electric:1.4,energy:0.7}},
- {id:"splitter",name:"Голем-матка",hp:150,speed:20,dmg:60,armor:0.1,xp:5,r:19,color:"#4f7a52",kind:"splitter",res:{force:0.6,phys:1.3}},
- {id:"mini",name:"Осколок голема",hp:30,speed:40,dmg:25,armor:0,xp:1,r:9,color:"#5d8a60",kind:"meteor",res:{force:0.6,phys:1.3}},
- {id:"healer",name:"Звезда регенерации",hp:120,speed:24,dmg:35,armor:0.1,xp:6,r:15,color:"#3fae6a",kind:"healer",res:{energy:1.4,electric:0.7}},
- {id:"elite",name:"Элитный",hp:260,speed:26,dmg:120,armor:0.2,xp:8,r:20,color:"#b03a5b",kind:"elite",res:{energy:0.7,force:1.3}},
- {id:"boss",name:"БОСС «Голиаф»",hp:2600,speed:15,dmg:400,armor:0.25,xp:60,r:34,color:"#5b1f2e",kind:"boss",res:{fire:0.7,phys:0.8}}
+ {id:"meteor",name:"Метеорит",hp:84,speed:94,dmg:36,armor:0,xp:1,r:13,color:"#8a6a55",kind:"meteor",res:{fire:0.65,phys:1.22}},
+ {id:"fast",name:"Быстрый метеорит",hp:58,speed:146,dmg:34,armor:0,xp:1,r:9,color:"#a87a52",kind:"meteor",res:{electric:1.30}},
+ {id:"armored",name:"Бронированный",hp:245,speed:71,dmg:78,armor:0.35,xp:3,r:16,color:"#6b7686",kind:"meteor",res:{phys:0.55,fire:0.82,electric:1.4}},
+ {id:"flyer",name:"Летун",hp:94,speed:115,dmg:49,armor:0,xp:2,r:12,color:"#7c5cbf",kind:"flyer",res:{electric:1.35,energy:0.8}},
+ {id:"splitter",name:"Голем-матка",hp:330,speed:60,dmg:82,armor:0.12,xp:5,r:19,color:"#4f7a52",kind:"splitter",res:{force:0.7,phys:1.25}},
+ {id:"mini",name:"Осколок голема",hp:76,speed:135,dmg:27,armor:0,xp:1,r:9,color:"#5d8a60",kind:"meteor",res:{force:0.7,phys:1.2}},
+ {id:"healer",name:"Звезда регенерации",hp:285,speed:76,dmg:53,armor:0.12,xp:6,r:15,color:"#3fae6a",kind:"healer",res:{energy:1.35,electric:0.75}},
+ {id:"elite",name:"Элитный",hp:550,speed:81,dmg:135,armor:0.26,xp:8,r:20,color:"#b03a5b",kind:"elite",res:{energy:0.75,force:1.25}},
+ {id:"phase",name:"Призрачный разведчик",hp:135,speed:130,dmg:58,armor:0.08,xp:3,r:11,color:"#83a4d9",kind:"phase",res:{energy:1.3,electric:0.85}},
+ {id:"charger",name:"Штурмовой метеорит",hp:170,speed:91,dmg:80,armor:0.12,xp:3,r:13,color:"#e38554",kind:"charger",res:{fire:0.8,force:1.3}},
+ {id:"boss",name:"БОСС «Голиаф»",hp:4600,speed:35,dmg:410,armor:0.25,xp:60,r:34,color:"#5b1f2e",kind:"boss",res:{fire:0.75,phys:0.85}}
 ];
+/* Campaign progression: early stages have 20 waves, sectors II/III have longer runs. */
 var STAGES=[
- {n:1,name:"Normal Stage 1",hpMul:1,spdMul:1,desc:"20 волн метеоритов, босс в последней. Карточки — за очки боя с убийств (первая — уже после второго монстра), лечение базы +2 HP за врага."},
- {n:2,name:"Normal Stage 2",hpMul:1.45,spdMul:1.08,desc:"Крепче и плотнее. Открывается после победы на этапе 1."},
- {n:3,name:"Hard Stage 3",hpMul:2.0,spdMul:1.16,desc:"Шторм: элитки с 5-й волны и усиленный босс."}
+ {n:1,name:"Normal Stage 1",hpMul:1.00,spdMul:1.00,waves:20,desc:"Первые штурмовые волны и метеориты. Финальный босс в волне 20."},
+ {n:2,name:"Normal Stage 2",hpMul:1.30,spdMul:1.04,waves:20,desc:"Плотные метеоритные потоки и быстрые цели."},
+ {n:3,name:"Hard Stage 3",hpMul:1.65,spdMul:1.08,waves:20,desc:"Броня, големы и усиленные волны."},
+ {n:4,name:"Sector II · Stage 4",hpMul:2.05,spdMul:1.12,waves:25,desc:"Разведчики-фантомы и усиленные штурмы. 25 волн."},
+ {n:5,name:"Sector II · Stage 5",hpMul:2.50,spdMul:1.16,waves:25,desc:"Встречные атаки стремительных целей."},
+ {n:6,name:"Sector II · Stage 6",hpMul:3.10,spdMul:1.20,waves:25,desc:"Опасные разделяющиеся метеориты."},
+ {n:7,name:"Sector II · Stage 7",hpMul:3.80,spdMul:1.23,waves:25,desc:"Сильные враги поддержки и тяжёлая броня."},
+ {n:8,name:"Sector II · Stage 8",hpMul:4.60,spdMul:1.26,waves:25,desc:"Экстремальное количество врагов, 25 волн."},
+ {n:9,name:"Sector III · Stage 9",hpMul:5.50,spdMul:1.29,waves:30,desc:"Длинный тридцативолновой штурм."},
+ {n:10,name:"Sector III · Stage 10",hpMul:6.50,spdMul:1.32,waves:30,desc:"Ультрабыстрые противники и чемпионы."},
+ {n:11,name:"Sector III · Stage 11",hpMul:7.70,spdMul:1.35,waves:30,desc:"Осадная группировка и сложные сочетания сопротивлений."},
+ {n:12,name:"Sector III · Stage 12",hpMul:9.10,spdMul:1.38,waves:30,desc:"Финал кампании: 30 волн, усиленный Голиаф."}
 ];
-var WAVES=20, MAX_ENEMIES=58;
+var WAVES=20, MAX_ENEMIES=72;
+function stageWaves(stage){return stage&&stage.waves||WAVES;}
+function finalWave(){return stageWaves(B&&B.stage);}
 /* Battle pacing parameters; values are test targets, not official Galaxy Defense numbers. */
 var BALANCE={
- draftFirst:2,draftGrowth:8,draftWaveGrowth:2,
- waveStart:7,waveGrowth:2.4,
- spawnBase:0.86,spawnReduction:0.027,spawnMin:0.28,
- waveHpGrowth:0.165,bossHpGrowth:0.12,
+ draftFirst:2,draftGrowth:10,draftWaveGrowth:3,
+ waveStart:9,waveGrowth:2.9,
+ spawnBase:0.70,spawnReduction:0.015,spawnMin:0.25,
+ waveHpGrowth:0.19,bossHpGrowth:0.13,
  eliteHp:1.68,eliteSpeed:1.10,eliteContact:1.18,
  eliteWaveBase:2,eliteWaveGrowth:0.28,
  eliteChampionBaseChance:0.095,eliteChampionWaveChance:0.004,eliteChampionMaxChance:0.21,
@@ -51,7 +66,7 @@ var CD_LEVELS=[8,16,28,36], SECONDARY_LEVELS=[4,12,24,32,44];
 function metaDamage(lv){return 1+0.08*(Math.min(45,Math.max(1,lv))-1);}
 function metaCooldown(lv){return 1-0.075*CD_LEVELS.filter(function(x){return lv>=x;}).length;}
 function metaSecondary(lv){return 1+0.2*SECONDARY_LEVELS.filter(function(x){return lv>=x;}).length;}
-function secondaryName(id){return ({skyguard:"Радиус взрыва",laser:"Длительность луча",aeroblast:"Радиус удара",beam:"Длительность луча",firewheel:"Время жизни дрона",hive:"Атаки ос",railgun:"Пробитие",tesla:"Радиус разряда",disruption:"Площадь поля",thunder:"Количество цепных целей",soldier:"Выстрелы"})[id]||"Сила эффекта";}
+function secondaryName(id){return ({skyguard:"Радиус взрыва",laser:"Длительность луча",aeroblast:"Радиус удара",beam:"Длительность луча",firewheel:"Время жизни дрона",hive:"Атаки ос",railgun:"Пробитие",tesla:"Радиус разряда",gravity:"Размер гравитационного поля",disruption:"Площадь поля",thunder:"Количество цепных целей",soldier:"Выстрелы"})[id]||"Сила эффекта";}
 
 /* Placement order in a run: far left, far right, center left, center right. */
 var TURRET_X=[52,368,128,292], SOLDIER_X=210, LINE_Y=720, BASEY=720, W=420, H=760;
@@ -60,7 +75,7 @@ var TURRET_X=[52,368,128,292], SOLDIER_X=210, LINE_Y=720, BASEY=720, W=420, H=76
    как только опустится ниже линии. */
 var VIS_TOP=30;
 /* типы урона по вики Galaxy Defense: Fire / Energy / Force-field / Physical / Electric */
-var DTYPES={skyguard:"fire",laser:"energy",disruption:"force",aeroblast:"phys",thunder:"electric",beam:"energy",firewheel:"fire",hive:"force",railgun:"phys",tesla:"electric",soldier:"phys"};
+var DTYPES={skyguard:"fire",laser:"energy",disruption:"force",aeroblast:"phys",thunder:"electric",beam:"energy",firewheel:"fire",hive:"force",railgun:"phys",tesla:"electric",gravity:"force",soldier:"phys"};
 TURRETS.concat([SOLDIER_CFG]).forEach(function(t){t.dtype=DTYPES[t.id];});
 var DTYPE_RU={fire:"Огонь",energy:"Энергия",force:"Силовое поле",phys:"Физ.",electric:"Электро"};
 
