@@ -205,7 +205,7 @@ function fireFocusedBeam(t,dt){
   var first=pickTarget(t);if(!first)return;
   t.beamTicks=Math.round(20*t.durationMul*(t.beamDurationMul||1));
   t.beamTickT=0;t.beamTarget=first;t.beamRamp=0;
-  t.cd=8.0*t.metaCd/t.haste;
+  t.cd=10.0*t.metaCd/t.haste;
   SFX.laser();
  }
  t.beamTickT-=dt;
