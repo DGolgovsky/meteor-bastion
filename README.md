@@ -14,6 +14,7 @@ python3 build.py
 
 ```sh
 node tests/smoke.cjs
+node tests/balance.cjs
 ```
 
 Набор собирает скрипт из `src/` в памяти и работает на чистом Node.js без установки пакетов.
