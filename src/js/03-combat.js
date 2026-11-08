@@ -314,12 +314,15 @@ function unitFire(t,dt){
    if(spawned)SFX.shoot();return;
  }
  if(cfg.id==="aeroblast"){
-   /* ДРОБОВИК: один выстрел — веер дробинок на близкой дистанции. Дробинки
-      расходятся веером от точки прицеливания; вблизи все попадают в цель,
-      вдали разлетаются. Дополнительные снаряды (карты) = ещё дробинки в веере. */
+   /* ДРОБОВИК: веер широк вблизи, но сужается к дальним целям. Без этого
+      увеличенная дальность давала лишь центральную дробинку: остальные
+      расходились мимо даже неподвижного врага. На дальней дистанции
+      угловой шаг удерживает соседние дробинки примерно в 14px от центра. */
    var pellets=(t.aeroPellets||5)+t.extraProj;
+   var targetDist=Math.hypot(ap.x-t.x,ap.y-(t.y-10));
+   var spreadStep=Math.min(0.14,14/Math.max(90,targetDist));
    for(var k=0;k<pellets;k++){
-     var a=t.angle+(k-(pellets-1)/2)*0.14;
+     var a=t.angle+(k-(pellets-1)/2)*spreadStep;
      B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:0,hitSet:[],life:2.6,tgt:target});
    }
    t.recoil=5;
@@ -399,7 +402,7 @@ function applyHit(p,e){
    ringFx(e.x,e.y,"#ff8a3c",130);burst(e.x,e.y,12,"#ff8a3c");
    return;
  }
- if(cfg.effect==="slow"){opts={slow:true,slowPow:p.src.slowPow,vulnerable:!!p.src.fieldExpose};if(B.fields.length<32)B.fields.push({kind:"slow",x:e.x,y:e.y,r:Math.max(30,p.src.splash),life:2.2,src:p.src,tick:0.1});}
+ if(cfg.effect==="slow"){opts={slow:true,slowPow:p.src.slowPow,vulnerable:!!p.src.fieldExpose};if(B.fields.length<32)B.fields.push({kind:"slow",x:e.x,y:e.y,r:Math.max(30,p.src.splash),life:2.2,age:0,seed:Math.random()*1000,src:p.src,tick:0.1});}
  if(cfg.effect==="knockback")opts={knock:p.src.knock};
  if(cfg.effect==="burn")opts={burn:true};
  dealDamage(p.src,e,p.dmg,opts);

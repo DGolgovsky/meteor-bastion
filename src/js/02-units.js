@@ -49,7 +49,7 @@ function newBattle(stage){
      (первые враги волны 1 — метеориты по 1 очку), дальше темп замедляется с волнами. */
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
   enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],
-  shake:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,
+  shake:0,baseFlashT:0,baseHitTextT:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,
   allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }
 function startBattle(){refillEnergy();

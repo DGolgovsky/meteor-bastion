@@ -8,6 +8,7 @@ function drawUnit(t){
  ctx.fillStyle="#0c1626";ctx.strokeStyle="rgba(120,160,190,.45)";ctx.lineWidth=1;
  ctx.beginPath();ctx.ellipse(0,13,21,5.5,0,0,6.29);ctx.fill();ctx.stroke();
  ctx.fillStyle=col;ctx.globalAlpha=.5;ctx.fillRect(-16,11.6,32,1.6);ctx.globalAlpha=1;
+ ctx.fillStyle="#839bb1";ctx.beginPath();ctx.arc(-17,13,1.5,0,6.29);ctx.arc(17,13,1.5,0,6.29);ctx.fill();
  function head(px,py,fn){ctx.save();ctx.translate(px,py);ctx.rotate(t.angle+Math.PI/2);fn();ctx.restore();}
  function stand(w1,w2,h){ctx.fillStyle="#182a42";ctx.strokeStyle=col;ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(-w1,12);ctx.lineTo(w1,12);ctx.lineTo(w2,12-h);ctx.lineTo(-w2,12-h);ctx.closePath();ctx.fill();ctx.stroke();}
  if(t.isSoldier){
@@ -152,6 +153,57 @@ function drawCombatHud(){
  ctx.fillText(timeS,W-10,y);
  ctx.restore();
 }
+/* Fortress base: a 120-degree, r112 HP arc; no shield mechanic. */
+function drawBaseHp(){
+ var ratio=Math.max(0,Math.min(1,B.baseHp/B.baseMax));
+ var livery=B.elite?"#bc8ee3":({classic:"#2ee6c8",arctic:"#90d5ff",ember:"#ff995e"}[META.livery]||"#2ee6c8");
+ var color=ratio<0.25?"#ff5470":ratio<=0.5?"#ffd34d":livery;
+ var alpha=ratio<0.25?0.7+0.3*Math.sin(B.t*6):1;
+ ctx.save();ctx.globalAlpha=Math.max(0.4,alpha);
+ ctx.lineWidth=7;ctx.lineCap="round";
+ ctx.strokeStyle="rgba(130,165,175,.22)";ctx.beginPath();ctx.arc(W/2,BASEY+22,112,Math.PI*7/6,Math.PI*11/6);ctx.stroke();
+ if(ratio>0){ctx.strokeStyle=B.baseFlashT>0?"#ffffff":color;ctx.beginPath();ctx.arc(W/2,BASEY+22,112,Math.PI*1.5-Math.PI/3*ratio,Math.PI*1.5+Math.PI/3*ratio);ctx.stroke();}
+ ctx.font="800 "+(B.baseHitTextT>0?16:14)+"px 'Segoe UI',sans-serif";
+ ctx.textAlign="center";ctx.lineWidth=2.8;ctx.strokeStyle=color;ctx.strokeText(Math.ceil(B.baseHp),W/2,BASEY-118);
+ ctx.fillStyle=B.baseHitTextT>0?"#ff5470":"#f6ffff";ctx.fillText(Math.ceil(B.baseHp),W/2,BASEY-118);
+ ctx.restore();
+}
+/* Visual-only Disruption strips use circular collision fields unchanged. All fields draw below enemies. */
+function drawBattleFields(){
+ var strips=[];
+ B.fields.forEach(function(f){
+  if(f.kind!=="slow")return;
+  var y=Math.max(VIS_TOP+40,Math.min(BASEY-80,f.y)),h=Math.max(56,Math.min(96,2*f.r));
+  var opacity=Math.min(1,(f.age||0)/0.15,Math.max(0,f.life)/0.3);
+  if(opacity<=0)return;
+  var near=strips.filter(function(s){return Math.abs(s.y-y)<40;})[0];
+  if(near){near.y=(near.y*near.count+y)/(near.count+1);near.count++;near.h=Math.max(h,near.h);near.opacity=Math.max(near.opacity,opacity);}
+  else strips.push({y:y,h:h,opacity:opacity,count:1,seed:f.seed||0});
+ });
+ strips.forEach(function(s){
+  ctx.save();ctx.globalAlpha=s.opacity;
+  var grad=ctx.createLinearGradient(0,s.y-s.h/2,0,s.y+s.h/2);
+  grad.addColorStop(0,"rgba(56,200,255,.05)");grad.addColorStop(.5,"rgba(56,200,255,.16)");grad.addColorStop(1,"rgba(56,200,255,.05)");
+  ctx.fillStyle=grad;ctx.fillRect(0,s.y-s.h/2,W,s.h);
+  ctx.fillStyle="rgba(138,232,255,.10)";
+  for(var k=0;k<6;k++){var x=(s.seed*19+k*79+B.t*(12+k%3*4))%(W+130)-65;ctx.beginPath();ctx.ellipse(x,s.y+Math.sin(s.seed+k)*s.h*.28,28+k%3*13,6+k%2*6,0,0,6.29);ctx.fill();}
+  ctx.strokeStyle="rgba(56,200,255,.65)";ctx.lineWidth=2;ctx.shadowColor="#38c8ff";ctx.shadowBlur=6;
+  [s.y-s.h/2,s.y+s.h/2].forEach(function(y){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();});
+  ctx.restore();
+ });
+ B.fields.forEach(function(f){
+  if(f.kind==="slow")return;
+  ctx.save();ctx.globalAlpha=Math.max(0,Math.min(.26,f.life/7));
+  var col=f.kind==="matrix"?"#a06bff":f.kind==="gravity"?"#7a8cff":"#ff8538";
+  ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=f.kind==="gravity"?2.7:2;
+  ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+  if(f.kind==="gravity"){
+   ctx.globalAlpha=.72;ctx.strokeStyle="#d2d8ff";ctx.beginPath();ctx.arc(f.x,f.y,f.r*(.35+.08*Math.sin(B.t*5)),B.t,B.t+Math.PI*1.6);ctx.stroke();
+   for(var j=0;j<4;j++){var a=B.t*5+j*Math.PI/2,r=f.r*(.17+.26*(j%3)/3);ctx.fillStyle="#d2d8ff";ctx.beginPath();ctx.arc(f.x+Math.cos(a)*r,f.y+Math.sin(a)*r,1.8,0,6.29);ctx.fill();}
+  }
+  ctx.restore();
+ });
+}
 function draw(){
  /* рендерим в физических пикселях экрана, рисуя в логических координатах 420×700 */
  ctx.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
@@ -170,28 +222,24 @@ function draw(){
  ctx.strokeStyle="rgba(46,230,200,.05)";ctx.lineWidth=1;
  for(var gx=0;gx<=W;gx+=42){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
  /* HUD is drawn last, over enemies and projectiles. */
- /* купол базы */
- var grd=ctx.createRadialGradient(W/2,BASEY+16,8,W/2,BASEY+16,120);
- grd.addColorStop(0,"rgba(46,230,200,.35)");grd.addColorStop(1,"rgba(46,230,200,0)");
- ctx.fillStyle=grd;ctx.beginPath();ctx.arc(W/2,BASEY+16,120,0,6.29);ctx.fill();
- ctx.strokeStyle="rgba(46,230,200,.55)";ctx.beginPath();ctx.arc(W/2,BASEY+22,104,Math.PI,6.29);ctx.stroke();
+ /* Visual-only atmosphere: a wide low ellipse, translucent over the fortress. */
+ var tint=B.elite?[188,142,227]:({classic:[46,230,200],arctic:[144,213,255],ember:[255,153,94]}[META.livery]||[46,230,200]);
+ var domeColor=B.baseFlashT>0?[255,84,112]:tint;
+ function rgba(c,a){return "rgba("+c.join(",")+","+a+")";}
+ ctx.save();
+ var dg=ctx.createLinearGradient(0,BASEY-48,0,BASEY+14);
+ dg.addColorStop(0,rgba(domeColor,B.baseFlashT>0?.11:.06));
+ dg.addColorStop(1,rgba(domeColor,B.baseFlashT>0?.18:.14));
+ ctx.beginPath();ctx.moveTo(W/2-205,BASEY+14);ctx.ellipse(W/2,BASEY+14,205,62,0,Math.PI,Math.PI*2);ctx.closePath();
+ ctx.fillStyle=dg;ctx.fill();
+ ctx.strokeStyle=rgba(domeColor,B.baseFlashT>0?.65:.35);ctx.lineWidth=1.5;ctx.shadowColor=rgba(domeColor,.35);ctx.shadowBlur=8;
+ ctx.beginPath();ctx.ellipse(W/2,BASEY+14,205,62,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
  /* палуба базы: турели и солдат СТОЯТ на ней, на одном уровне с базой */
  ctx.fillStyle="#101c2e";ctx.fillRect(0,BASEY+14,W,H-(BASEY+14));
  ctx.fillStyle="rgba(46,230,200,.4)";ctx.fillRect(0,BASEY+14,W,2);
  ctx.fillStyle="#16283e";ctx.fillRect(0,BASEY+14,W,8);
  ctx.font="26px serif";ctx.textAlign="center";ctx.fillText("🏰",W/2,BASEY+12);
- /* HP базы — одна дуга над куполом (тот же центр, что у купола: W/2, BASEY+22),
-    длина дуги ∝ доле HP, симметрично по центру вершины. Полный угол дуги — 120°
-    (±60° от вершины): концы при полном HP — на ~48px выше палубы, над рядом юнитов,
-    и не спускаются между стражем и турелями. Точное HP — числом над куполом. */
- function baseArc(r,frac,color,bg,width){
-   ctx.strokeStyle=bg;ctx.lineWidth=width;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-Math.PI/3,Math.PI*1.5+Math.PI/3);ctx.stroke();
-   if(frac>0){ctx.strokeStyle=color;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-(Math.PI/3)*frac,Math.PI*1.5+(Math.PI/3)*frac);ctx.stroke();}
- }
- baseArc(112,Math.max(0,B.baseHp/B.baseMax),B.elite?"#bc8ee3":({classic:"#2ee6c8",arctic:"#90d5ff",ember:"#ff995e"}[META.livery]||"#2ee6c8"),"rgba(46,230,200,.14)",5);
- ctx.font="800 10px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#e8f4f2";
- ctx.fillText(Math.ceil(B.baseHp),W/2,BASEY-106);
- ctx.lineWidth=1;
+ /* HP arc is drawn over the units; see drawBaseHp(). */
  /* пустые слоты турелей */
  TURRET_X.forEach(function(x,i){
    if(!B.turrets.some(function(t){return t.slot===i;})){
@@ -199,6 +247,7 @@ function draw(){
      ctx.font="8.5px 'Segoe UI',sans-serif";ctx.fillStyle="rgba(143,168,181,.8)";ctx.textAlign="center";ctx.fillText("СЛОТ",x,LINE_Y+26);
    }
  });
+ drawBattleFields();
  /* враги */
  B.enemies.forEach(function(e){
    ctx.save();ctx.translate(e.x,e.y);
@@ -263,20 +312,9 @@ function draw(){
    ctx.fillStyle="#fff7cc";ctx.beginPath();ctx.arc(5.2,0,1.7,0,6.29);ctx.fill();
    ctx.restore();
  });
- /* Persistent Firewheel and field effects. */
- B.fields.forEach(function(f){
-   ctx.save();ctx.globalAlpha=Math.max(0,Math.min(0.26,f.life/7));
-   var fieldColor=f.kind==="matrix"?"#a06bff":f.kind==="gravity"?"#7a8cff":f.kind==="firetrail"?"#ff8538":"#38c8ff";
-   ctx.fillStyle=fieldColor;ctx.strokeStyle=fieldColor;ctx.lineWidth=f.kind==="gravity"?2.7:2;
-   ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();ctx.stroke();
-   if(f.kind==="gravity"){
-     ctx.globalAlpha=0.72;ctx.strokeStyle="#d2d8ff";ctx.beginPath();
-     ctx.arc(f.x,f.y,f.r*(0.35+0.08*Math.sin(B.t*5)),B.t,B.t+Math.PI*1.6);ctx.stroke();
-   }
-   ctx.restore();
- });
  B.wheels.forEach(function(w){ctx.save();ctx.translate(w.x,w.y);ctx.rotate(B.t*12);ctx.shadowColor="#ff8a3c";ctx.shadowBlur=18;ctx.strokeStyle="#ffb03c";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,14,0,6.29);ctx.stroke();for(var i=0;i<3;i++){var a=i*2.094;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);ctx.stroke();}ctx.restore();});
  allFighters().forEach(drawUnit);
+ drawBaseHp();
  /* снаряды: у каждого типа турели свой силуэт и свечение */
  B.projs.forEach(function(p){
    var id=p.src.cfg.id,col=p.src.cfg.color;
