@@ -36,7 +36,7 @@ var WAVES=20, MAX_ENEMIES=58;
 /* Battle pacing parameters; values are test targets, not official Galaxy Defense numbers. */
 var BALANCE={
  draftFirst:2,draftGrowth:8,draftWaveGrowth:2,
- waveStart:6,waveGrowth:2.4,
+ waveStart:7,waveGrowth:2.4,
  spawnBase:0.86,spawnReduction:0.027,spawnMin:0.28,
  waveHpGrowth:0.165,bossHpGrowth:0.12,
  eliteHp:1.68,eliteSpeed:1.10,eliteContact:1.18,
@@ -54,7 +54,7 @@ function metaSecondary(lv){return 1+0.2*SECONDARY_LEVELS.filter(function(x){retu
 function secondaryName(id){return ({skyguard:"Радиус взрыва",laser:"Длительность луча",aeroblast:"Радиус удара",beam:"Длительность луча",firewheel:"Время жизни дрона",hive:"Атаки ос",railgun:"Пробитие",tesla:"Радиус разряда",disruption:"Площадь поля",thunder:"Количество цепных целей",soldier:"Выстрелы"})[id]||"Сила эффекта";}
 
 /* Placement order in a run: far left, far right, center left, center right. */
-var TURRET_X=[52,368,128,292], SOLDIER_X=210, LINE_Y=660, BASEY=660, W=420, H=700;
+var TURRET_X=[52,368,128,292], SOLDIER_X=210, LINE_Y=720, BASEY=720, W=420, H=760;
 /* Верх видимости турелей: чуть ниже строки состояния HUD (~24px). Враги выше этой
    линии не берутся в прицел; спавн (y=-30) не меняется — враг становится целью,
    как только опустится ниже линии. */

@@ -46,6 +46,7 @@ function genCards(allowSuper){
   if(u.cfg.id==="hive"&&u.hiveCount<5)pool.push({kind:"mod",u:u,mod:"hiveCount",w:3});
   if(u.cfg.id==="hive"&&u.runLv>=2&&u.hiveAttacks<16)pool.push({kind:"mod",u:u,mod:"hiveAttacks",w:3});
   if(u.cfg.id==="firewheel"&&u.runLv>=2&&(u.wheelDurationBonus||0)<6)pool.push({kind:"mod",u:u,mod:"wheelDuration",w:3});
+  if(u.cfg.id==="firewheel"&&u.runLv>=2&&(u.wheelMax||1)<2)pool.push({kind:"mod",u:u,mod:"wheelCount",w:3});
  });
  /* комбо-карточки пар турелей (механика Combo из Galaxy Defense) */
  var hasT=function(id){return B.turrets.some(function(u){return u.cfg.id===id;});};
@@ -86,7 +87,8 @@ function cardHTML(c){
    teslaChain:["Вторичная дуга","Ещё одна цель цепного разряда Tesla."],
    hiveCount:["Новые осы","+1 оса при каждом выпуске улья."],
    hiveAttacks:["Усиленные жала","+2 атаки каждой осы."],
-   wheelDuration:["Стабилизатор Firewheel","Время полёта огненного диска +2 секунды."]};
+   wheelDuration:["Стабилизатор Firewheel","Время полёта огненного диска +2 секунды."],
+   wheelCount:["Второй светлячок","Firewheel держит в поле два огненных диска вместо одного."]};
  var m=M[c.mod];return{cls:"rare",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+m[0],tag:"МОД · Lv. "+(c.u.runLv+1),desc:m[1]+" <b>+1 уровень юнита.</b>"+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Юбилейный уровень — в следующем драфте будет СУПЕР-карточка!</b>":"")};
 }
 var curCards=[];
@@ -171,6 +173,7 @@ function applyCard(c){
    if(c.mod==="hiveCount")t.hiveCount++;
    if(c.mod==="hiveAttacks")t.hiveAttacks+=2;
    if(c.mod==="wheelDuration")t.wheelDurationBonus=(t.wheelDurationBonus||0)+2;
+   if(c.mod==="wheelCount")t.wheelMax=2;
    t.mods.push(c.mod);
    gainLevel(t,false);
  }

@@ -78,7 +78,7 @@ button{font-family:inherit;cursor:pointer;border:none;color:var(--text)}
 /* Поле занимает всю доступную ширину экрана; физический размер канваса
    (canvas.width/height) JS подбирает под devicePixelRatio устройства —
    см. fitCanvas() ниже. CSS-размер при этом всегда 100% ширины. */
-canvas#cv{display:block;width:100%;height:auto;aspect-ratio:420/700;touch-action:none}
+canvas#cv{display:block;width:100%;height:auto;aspect-ratio:420/760;touch-action:none}
 @media (max-width:480px){
   /* На телефонах (Pixel 10a: CSS-ширина ~412 px) ужимаем боковые отступы,
      чтобы полю досталось максимум ширины экрана */
@@ -315,7 +315,7 @@ table.stats td:first-child{text-align:left;font-weight:700}
   <!-- ============ BATTLE ============ -->
   <section class="screen" id="scr-battle">
     <div id="cvwrap">
-      <canvas id="cv" width="420" height="700"></canvas>
+      <canvas id="cv" width="420" height="760"></canvas>
       <div class="field-ui">
         <button class="ibtn" id="btn-pause" aria-label="Пауза">⏸</button>
         <button class="ibtn" id="btn-speed">×1</button>

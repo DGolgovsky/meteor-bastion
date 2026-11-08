@@ -72,7 +72,9 @@ function update(dt){
     var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);
     dr.x+=Math.cos(a)*240*dt;dr.y+=Math.sin(a)*240*dt;
     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
-    if(dr.hitT<=0&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<19){
+    /* оса бьёт, находясь ПОД врагом: касание нижней кромки (дистанция до центра
+       меньше радиуса врага + 4), а не долёт до его центра */
+    if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
       dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*0.65*dr.boost,dr.src.hiveBurn?{burn:true}:{});
       dr.hits--;dr.hitT=0.26;
       dr.x+=Math.cos(a+Math.PI)*14;dr.y+=Math.sin(a+Math.PI)*14;
@@ -99,7 +101,7 @@ function update(dt){
    if(wheel.y<88||wheel.y>BASEY-38){wheel.y=Math.max(88,Math.min(BASEY-38,wheel.y));wheel.vy*=-1;wheel.bounces++;}
    var bonus=1+Math.min(0.6,wheel.bounces*0.1);
    B.enemies.forEach(function(e){
-    if(e.dead||e.hp<=0||sweptContact(wx0,wy0,wheel.x,wheel.y,e.x,e.y,e.r+9)===null)return;
+    if(e.dead||e.hp<=0||sweptContact(wx0,wy0,wheel.x,wheel.y,e.x,e.y,e.r+14)===null)return;
     var prev=wheel.last.has(e)?wheel.last.get(e):-99;
     if(B.t-prev<0.3)return;
     wheel.last.set(e,B.t);wheel.hits++;

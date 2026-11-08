@@ -9,8 +9,8 @@ var cv=$("cv"),ctx=cv.getContext("2d");
    и текст), поэтому достаточно рендерить её сразу в физических пикселях.
    fitCanvas() ставит canvas.width = CSS-ширина × DPR (DPR ограничен 3 ради
    производительности), а draw() масштабирует контекст так, что игровая логика
-   по-прежнему работает в координатах 420×700. Подбор автоматический — под
-   Pixel 10a даёт ~1050×1750, на других устройствах — их нативное разрешение. */
+   по-прежнему работает в координатах 420×760. Подбор автоматический — под
+   Pixel 10a даёт ~1050×1900, на других устройствах — их нативное разрешение. */
 var RENDER_SCALE=1;
 function fitCanvas(){
   var dpr=Math.min(window.devicePixelRatio||1,3);
@@ -28,7 +28,7 @@ window.addEventListener("orientationchange",function(){setTimeout(fitCanvas,80);
 var B=null, raf=null, lastTs=0;
 function mkUnit(cfg,x,slot,isSoldier){
  var lv=META.levels[cfg.id],secondary=metaSecondary(lv),area={rocket:32,charge:42,knockback:40,slow:34};
- return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,laserActive:0,laserTickT:0,angle:-Math.PI/2,recoil:0,
+ return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,laserActive:0,laserTickT:0,angle:-Math.PI/2,recoil:0,handAlt:false,
   metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:metaDamage(lv),haste:1,extraProj:0,
   pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?Math.floor((secondary-1)*5):0),
   chain:(cfg.effect==="chain"?2:0)+(cfg.id==="thunder"?Math.floor((secondary-1)*2):0),
@@ -36,7 +36,7 @@ function mkUnit(cfg,x,slot,isSoldier){
   beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:16,
   laserTicks:0,laserTickT:0,laserTarget:null,beamTicks:0,beamTickT:0,beamTarget:null,beamRamp:0,
   chargeT:0,hiveCount:3,hiveAttacks:Math.round(7*secondary),wheelHits:Math.round(50*secondary),
-  laserDeflect:0,laserSweep:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false};
+  laserDeflect:0,laserSweep:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false,wheelMax:1};
 }
 function newBattle(stage){
  return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:!!stage.elite,championsKilled:0,championsSpawned:0,guardianGoalX:SOLDIER_X,

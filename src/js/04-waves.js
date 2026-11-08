@@ -3,7 +3,8 @@ function startWave(n){
  B.wave=n;B.waveState="fighting";B.bossSpawned=false;
  B.waveTotal=B.waveQueue=BALANCE.waveStart+Math.round(n*BALANCE.waveGrowth)+(B.stage.n-1)*2+(B.elite?Math.ceil(BALANCE.eliteWaveBase+n*BALANCE.eliteWaveGrowth):0);
  B.waveKilled=0;B.spawnT=0.35;
- toast((B.elite?"⚠ ELITE · ":"")+"Волна "+n+" / "+WAVES+(n===WAVES?" — БОСС":"")+(B.elite&&n%5===0?" · ЭЛИТНЫЙ ШТУРМ":""));
+ /* тост «Волна N / 20» при старте волны убран (2026-11-08): уведомление под полем
+    мешало; предупреждение о боссе в spawnBoss оставлено — это отдельное событие */
 }
 function wavePickKind(){
  var w=B.wave,elite=B.elite,pool=[["meteor",elite?7:10]];

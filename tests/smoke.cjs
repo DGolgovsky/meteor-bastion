@@ -30,7 +30,7 @@ function harness(legacySave) {
     if (nodes.has(id)) return nodes.get(id);
     const classes = new Set();
     const value = {
-      id, style: {}, dataset: {}, clientWidth: 420, width: 420, height: 700,
+      id, style: {}, dataset: {}, clientWidth: 420, width: 420, height: 760,
       innerHTML: "", textContent: "", disabled: false,
       classList: {
         add(name) { classes.add(name); },
@@ -43,7 +43,7 @@ function harness(legacySave) {
           return on;
         }
       },
-      getBoundingClientRect() { return { top: 0, left: 0, width: 420, height: 700 }; },
+      getBoundingClientRect() { return { top: 0, left: 0, width: 420, height: 760 }; },
       getContext() { return canvasContext; },
       setPointerCapture() {},
       addEventListener() {},
@@ -148,12 +148,44 @@ test("Firewheel spawns airborne bouncing discs", () => {
   g.B.enemies = [sampleEnemy(g)];
   g.unitFire(u, 0.4);
   assert.ok(g.B.wheels.length > 0);
+  // «Светлячок»: один большой долгоживущий диск; повторные выстрелы не плодят
+  // новых, пока прежний жив. Карточка wheelCount поднимает лимит до двух.
+  assert.equal(g.B.wheels.length, 1);
+  assert.ok(g.B.wheels[0].life >= 9, "disc should live ~10s, got " + g.B.wheels[0].life);
+  for (let i = 0; i < 5; i++) g.unitFire(u, 0.8);
+  assert.equal(g.B.wheels.length, 1);
+  g.applyCard({ kind: "mod", u, mod: "wheelCount" });
+  g.unitFire(u, 0.8);
+  assert.equal(g.B.wheels.length, 2);
+});
+
+test("Guardian fires alternating hands in a checkerboard stream", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  const s = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  g.B.soldier = s;
+  g.B.turrets = [];
+  const e = sampleEnemy(g, 300);
+  e.x = 210;
+  g.B.enemies = [e];
+  const xs = [];
+  for (let i = 0; i < 6; i++) {
+    g.unitFire(s, 0.2);
+    const p = g.B.projs[g.B.projs.length - 1];
+    if (p) xs.push(p.x);
+  }
+  assert.ok(xs.length >= 4, "soldier should fire repeatedly, got " + xs.length);
+  for (let i = 1; i < xs.length; i++) {
+    assert.ok((xs[i] - 210) * (xs[i - 1] - 210) < 0, "consecutive shots must alternate hands");
+  }
 });
 
 test("Hive launches repeated-attack wasps", () => {
   const u = g.mkUnit(g.TURRETS.find(t => t.id === "hive"), 52, 0, false);
   g.B.turrets = [u];
   g.B.drones = [];
+  // тест был зависим от врага, оставшегося от прошлого теста; при taller-поле
+  // (BASEY 720) тот враг оказался вне радиуса улья — ставим своего, в радиусе
+  g.B.enemies = [sampleEnemy(g, 500)];
   g.unitFire(u, 0.5);
   assert.equal(g.B.drones.length, u.hiveCount);
   assert.ok(g.B.drones[0].hits > 1);
@@ -165,7 +197,7 @@ test("every specialist card renders and applies without exceptions", () => {
     beam: ["beamDuration", "beamFocus"],
     tesla: ["teslaMatrix", "teslaMatrixPlus", "teslaChain"],
     hive: ["hiveCount", "hiveAttacks"],
-    firewheel: ["wheelDuration"]
+    firewheel: ["wheelDuration", "wheelCount"]
   };
   for (const [id, names] of Object.entries(mods)) {
     for (const mod of names) {
@@ -278,7 +310,7 @@ test("Hive drops targets removed after they reach the fortress", () => {
   const hive=g.mkUnit(g.TURRETS.find(t=>t.id==="hive"),52,0,false);
   g.B.turrets=[hive];
   const close=sampleEnemy(g,550),far=sampleEnemy(g,40);
-  close.y=645;close.x=60;far.x=250;
+  close.y=g.BASEY-15;close.x=60;far.x=250;
   g.B.enemies=[close,far];
   g.unitFire(hive,0.4);
   g.update(0.05);

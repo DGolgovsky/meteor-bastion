@@ -109,7 +109,7 @@ function drawUnit(t){
  ctx.fillStyle="#0a1420";ctx.fillRect(t.x-14,t.y+16,28,5);
  ctx.fillStyle=t.cfg.color;ctx.fillRect(t.x-14,t.y+16,28*Math.min(1,t.runLv/10),5);
  ctx.font="700 9px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#cfe8e2";
- ctx.fillText((t.isSoldier?"СОЛДАТ ":"")+"Lv."+t.runLv,t.x,t.y+30);
+ ctx.fillText("Lv."+t.runLv,t.x,t.y+30);
 }
 /* Боевой HUD — одна строка на прозрачном фоне, без подложки и шкал.
    Слева направо: режим/этап, волна, средний DPS, убийства; таймер — справа.
@@ -173,10 +173,12 @@ function draw(){
  ctx.fillStyle="#16283e";ctx.fillRect(0,BASEY+14,W,8);
  ctx.font="26px serif";ctx.textAlign="center";ctx.fillText("🏰",W/2,BASEY+12);
  /* HP и щит базы — две дуги над куполом (тот же центр, что у купола: W/2, BASEY+22),
-    длина дуги ∝ доле HP/щита, симметрично по центру вершины. Точное HP — числом над куполом. */
+    длина дуги ∝ доле HP/щита, симметрично по центру вершины. Полный угол дуг — 120°
+    (±60° от вершины): концы при полном HP — на ~48px выше палубы, над рядом юнитов,
+    и не спускаются между стражем и турелями. Точное HP — числом над куполом. */
  function baseArc(r,frac,color,bg,width){
-   ctx.strokeStyle=bg;ctx.lineWidth=width;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI,6.29);ctx.stroke();
-   if(frac>0){ctx.strokeStyle=color;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-Math.PI*frac/2,Math.PI*1.5+Math.PI*frac/2);ctx.stroke();}
+   ctx.strokeStyle=bg;ctx.lineWidth=width;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-Math.PI/3,Math.PI*1.5+Math.PI/3);ctx.stroke();
+   if(frac>0){ctx.strokeStyle=color;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-(Math.PI/3)*frac,Math.PI*1.5+(Math.PI/3)*frac);ctx.stroke();}
  }
  baseArc(112,Math.max(0,B.baseHp/B.baseMax),B.elite?"#bc8ee3":"#2ee6c8","rgba(46,230,200,.14)",5);
  baseArc(121,Math.max(0,B.shield/B.shieldMax),"#38c8ff","rgba(56,200,255,.12)",3.5);
@@ -254,7 +256,7 @@ function draw(){
  });
  /* Persistent Firewheel and field effects. */
  B.fields.forEach(function(f){ctx.save();ctx.globalAlpha=Math.max(0,Math.min(0.28,f.life/7));ctx.fillStyle=f.kind==="matrix"?"#a06bff":"#38c8ff";ctx.strokeStyle=f.kind==="matrix"?"#d8b4fe":"#38c8ff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,6.29);ctx.fill();ctx.stroke();ctx.restore();});
- B.wheels.forEach(function(w){ctx.save();ctx.translate(w.x,w.y);ctx.rotate(B.t*12);ctx.shadowColor="#ff8a3c";ctx.shadowBlur=14;ctx.strokeStyle="#ffb03c";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,9,0,6.29);ctx.stroke();for(var i=0;i<3;i++){var a=i*2.094;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*8,Math.sin(a)*8);ctx.stroke();}ctx.restore();});
+ B.wheels.forEach(function(w){ctx.save();ctx.translate(w.x,w.y);ctx.rotate(B.t*12);ctx.shadowColor="#ff8a3c";ctx.shadowBlur=18;ctx.strokeStyle="#ffb03c";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,14,0,6.29);ctx.stroke();for(var i=0;i<3;i++){var a=i*2.094;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);ctx.stroke();}ctx.restore();});
  allFighters().forEach(drawUnit);
  /* снаряды: у каждого типа турели свой силуэт и свечение */
  B.projs.forEach(function(p){

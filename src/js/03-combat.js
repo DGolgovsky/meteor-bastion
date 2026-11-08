@@ -125,7 +125,7 @@ function fireLaser(t,dt){
    var initial=pickTarget(t);if(!initial)return;
    t.laserActive=1.65*t.durationMul*(t.laserDurationMul||1);
    t.laserTickT=0;
-   t.cd=5.2*t.metaCd/t.haste;
+   t.cd=7.8*t.metaCd/t.haste; /* перезарядка между импульсами увеличена в 1,5 раза (было 5,2) */
    SFX.laser();
  }
  t.laserActive=Math.max(0,t.laserActive-dt);
@@ -139,7 +139,14 @@ function fireLaser(t,dt){
    if(pr<=0)return;
    if(Math.abs(px*dy-py*dx)<=e.r+8){hits.push(e);far=Math.max(far,pr);}
  });
- var len=Math.max(350,far+28);
+ /* луч идёт от турели через цель до края поля в направлении выстрела —
+    урон не меняется (он считается по hits), меняется только длина визуала */
+ var edgeT=Infinity;
+ if(dx>1e-6)edgeT=Math.min(edgeT,(W-ox)/dx);
+ if(dx<-1e-6)edgeT=Math.min(edgeT,(0-ox)/dx);
+ if(dy>1e-6)edgeT=Math.min(edgeT,(H-oy)/dy);
+ if(dy<-1e-6)edgeT=Math.min(edgeT,(0-oy)/dy);
+ var len=isFinite(edgeT)?edgeT:Math.max(350,far+28);
  beamFx(ox,oy,ox+dx*len,oy+dy*len,"#4ade80",3+(t.laserWidth||0));
  t.laserTickT-=dt;
  var tickCount=0;
@@ -256,13 +263,19 @@ function unitFire(t,dt){
    SFX.shoot();return;
  }
  if(cfg.id==="firewheel"){
-   var speed=290,count=Math.min(3,1+t.extraProj);
-   for(var z=0;z<count&&B.wheels.length<20;z++){
+   /* «Светлячок»: в поле одновременно не больше одного диска (два — с карточкой
+      «Второй светлячок»); один, но большой (r=14) и долгоживущий (10 с). Пока диск
+      жив, турель не выпускает следующий — кулдаун тратится вхолостую, замена
+      вылетает, как только прежний сгорит. */
+   var speed=290,count=Math.min(3,1+t.extraProj),maxWheels=t.wheelMax||1,active=0,spawned=0;
+   B.wheels.forEach(function(w){if(w.src===t)active++;});
+   for(var z=0;z<count&&active+spawned<maxWheels&&B.wheels.length<20;z++){
      var ang=t.angle+(z-(count-1)/2)*0.2;
      B.wheels.push({x:t.x,y:t.y-13,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,
-       src:t,life:6.5*t.durationMul+(t.wheelDurationBonus||0),speed:speed,bounces:0,last:new Map(),hits:0});
+       src:t,life:10*t.durationMul+(t.wheelDurationBonus||0),speed:speed,bounces:0,last:new Map(),hits:0});
+     spawned++;
    }
-   SFX.shoot();return;
+   if(spawned)SFX.shoot();return;
  }
  var n=1+t.extraProj;
  t.recoil=5;
@@ -270,7 +283,10 @@ function unitFire(t,dt){
    var off=k-(n-1)/2;
    if(t.isSoldier){
      var px=-Math.sin(t.angle),py=Math.cos(t.angle);
-     B.projs.push({x:t.x+px*off*7,y:t.y-10+py*off*7,vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
+     /* страж стреляет из двух рук: каждый выстрел — из другой руки, ±6px поперёк
+        направления, поэтому поток идёт в шахматном порядке, а не единой полосой */
+     var hand=(t.handAlt?1:-1)*6;t.handAlt=!t.handAlt;
+     B.projs.push({x:t.x+px*(off*7+hand),y:t.y-10+py*(off*7+hand),vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
    }else{
      var a=t.angle+off*0.09;
      B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
