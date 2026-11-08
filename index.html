@@ -119,32 +119,164 @@ table.stats td:first-child{text-align:left;font-weight:700}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#0d2233;border:1px solid var(--teal);color:var(--text);padding:9px 16px;border-radius:999px;font-size:13.5px;font-weight:700;z-index:99;display:none;box-shadow:0 4px 18px rgba(0,0,0,.5);max-width:92vw;text-align:center}
 .toast.on{display:block}
 .note{font-size:12px;color:var(--muted);line-height:1.45}
+
+/* ==== Galaxy Defense-inspired compact stage lobby (all graphics are original CSS) ==== */
+.home-screen{--hq-accent:#45dfc8;--hq-aura:rgba(45,221,193,.22);gap:0;min-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 14px);background:radial-gradient(ellipse at 50% 40%,rgba(34,68,76,.14),transparent 68%);color:#e8f4f2}
+.home-screen.elite-mode{--hq-accent:#c895ff;--hq-aura:rgba(175,80,225,.25);background:radial-gradient(ellipse at 52% 46%,rgba(95,33,115,.19),transparent 72%)}
+.hq-top{padding:8px 7px 8px}
+.hq-profile-row{display:flex;align-items:center;gap:10px;min-height:43px}
+.hq-avatar{height:40px;width:40px;border-radius:50%;flex-shrink:0;border:2px solid #6bc8bc;background:radial-gradient(circle at 35% 25%,#324a5b,#0b1524 72%);font-size:20px;box-shadow:0 0 11px rgba(46,230,200,.2)}
+.hq-account{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.hq-account strong{font-size:13px;font-weight:900;letter-spacing:.085em}
+.hq-account span{font-size:11px;color:#91a9b6}
+.hq-info-btn{height:28px;width:28px;border:1px solid #365766;border-radius:7px;background:#10202b;color:var(--hq-accent);font-size:19px}
+.hq-resources{display:flex;gap:5px;flex-wrap:nowrap;margin:7px 0 0;justify-content:space-between}
+.hq-resources .resource-item{flex:1;min-width:0;justify-content:center;padding:6px 4px}
+.resource-item{display:inline-flex;gap:5px;align-items:center;background:linear-gradient(180deg,#152330,#09131f);border:1px solid #2d4456;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums}
+.resource-item b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resource-item .currency-icon{font-size:14px}
+.resource-item.gold .currency-icon{color:#efc75b}
+.resource-item.gem .currency-icon{color:#b4a2ff}
+.resource-item.energy .currency-icon{color:#7fe2bd}
+.resource-item.parts .currency-icon{color:#d9e6f2}
+.hq-stage-head{text-align:center;padding:5px 0 0}
+.hq-stage-caption{display:flex;align-items:center;justify-content:center;gap:9px;color:#657f8b;font-size:9px;letter-spacing:.15em;font-weight:750}
+.hq-stage-caption-line{width:24px;height:1px;background:#3a5861}
+.hq-stage-title{font-size:18px;font-weight:900;letter-spacing:.085em;text-transform:uppercase;background:linear-gradient(180deg,#78c6ba,#2b9f91);padding:5px 12px;min-width:200px;display:table;margin:8px auto 5px;color:#ecfff8;box-shadow:0 3px 0 #145d55}
+.elite-mode .hq-stage-title{background:linear-gradient(180deg,#81519c,#502868);box-shadow:0 3px 0 #2e1744}
+.hq-mode-tabs{display:flex;width:186px;align-items:center;justify-content:center;margin:7px auto 0;gap:0;background:#091720;border:1px solid #2e4348;padding:2px;border-radius:6px}
+.mode-tab{flex:1;border-radius:4px;padding:5px 7px;background:transparent;color:#738e96;font-size:11px;font-weight:800}
+.mode-tab.selected{color:#e6fff9;background:linear-gradient(180deg,#32786d,#145248)}
+.elite-mode .mode-tab.selected{background:linear-gradient(180deg,#7e4097,#4e246a);color:#fff0ff}
+.hq-scene{position:relative;flex:1;min-height:195px;margin:3px -4px 5px;overflow:hidden;background:radial-gradient(ellipse at 50% 54%,var(--hq-aura),transparent 57%)}
+.hq-starfield{position:absolute;inset:0;opacity:.62;background-image:radial-gradient(1px 1px at 11% 17%,#91c8c8,transparent),radial-gradient(1px 1px at 75% 24%,#a7d5ed,transparent),radial-gradient(1px 1px at 87% 63%,#c4bce2,transparent),radial-gradient(2px 2px at 29% 84%,#b3dacf,transparent),radial-gradient(1px 1px at 53% 11%,#edf9f9,transparent)}
+.hq-planet-orbit{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);width:min(60vw,246px);height:min(60vw,246px);max-height:240px}
+.hq-planet-halo{position:absolute;inset:-22%;border:1px solid rgba(91,157,174,.06);border-radius:50%;box-shadow:0 0 28px var(--hq-aura)}
+.hq-planet-ring{position:absolute;inset:-13%;border:13px solid rgba(85,106,114,.21);border-left-color:rgba(127,170,181,.28);border-top-color:transparent;border-radius:50%;transform:rotate(-32deg);box-shadow:inset 0 0 12px rgba(7,13,19,.9)}
+.hq-planet{position:absolute;inset:5%;overflow:hidden;border-radius:50%;background:radial-gradient(circle at 30% 22%,rgba(172,184,179,.25),transparent 18%),radial-gradient(circle at 62% 62%,rgba(13,18,26,.9),transparent 36%),radial-gradient(circle at 33% 36%,#65716f 0%,#2e3f45 38%,#121d29 73%,#081018 94%);border:1px solid #3d6068;box-shadow:inset -26px -32px 32px rgba(0,0,0,.65),inset 5px 7px 15px rgba(190,201,196,.11),0 0 40px var(--hq-aura);transform:rotate(-19deg)}
+.elite-mode .hq-planet{filter:hue-rotate(63deg) saturate(1.45)}
+.hq-crater{position:absolute;display:block;border-radius:50%;background:radial-gradient(ellipse at 38% 28%,#657472,#192831 66%,#111b25 83%);border:2px solid rgba(94,112,120,.35);box-shadow:inset -3px -5px 9px rgba(0,0,0,.6)}
+.hq-crater.a{width:24%;height:22%;top:11%;left:23%}.hq-crater.b{width:38%;height:34%;top:34%;left:48%}.hq-crater.c{width:18%;height:16%;top:66%;left:16%}.hq-crater.d{width:12%;height:14%;top:48%;left:24%}.hq-crater.e{width:13%;height:12%;top:14%;left:70%}
+.hq-planet-mark{position:absolute;left:41%;top:36%;width:14px;height:14px;border-radius:50%;background:#ee9865;box-shadow:0 0 6px #fca96a,0 0 14px rgba(250,124,60,.65);transform:rotate(28deg)}
+.hq-debris{position:absolute;background:linear-gradient(135deg,#52616e,#131d27);clip-path:polygon(20% 0,88% 5%,100% 70%,35% 100%,0 40%);border:1px solid #485762}
+.hq-debris.one{height:33px;width:30px;top:0;right:10%}.hq-debris.two{height:23px;width:22px;bottom:9%;left:0}.hq-debris.three{height:19px;width:17px;right:1%;top:49%}
+.hq-stage-arrow{position:absolute;top:46%;z-index:2;transform:translateY(-50%);width:42px;height:70px;border-radius:6px;background:linear-gradient(90deg,rgba(18,36,45,.55),transparent);border:0;color:var(--hq-accent);font-family:Arial,sans-serif;font-size:40px;font-weight:250}
+.hq-stage-arrow:disabled{opacity:.14;cursor:default}
+.hq-stage-arrow.prev{left:2px}.hq-stage-arrow.next{right:2px;background:linear-gradient(270deg,rgba(18,36,45,.55),transparent)}
+.hq-scene-footer{position:absolute;bottom:4px;left:9px;right:9px;display:flex;justify-content:space-between;color:#8da7b4;font-size:10px;letter-spacing:.08em;font-weight:800}
+.hq-scene-footer span:last-child{color:var(--hq-accent)}
+.hq-intel{padding:8px 10px;margin:0 3px 8px;background:rgba(12,24,33,.87);border-top:1px solid #34515a;border-bottom:1px solid #243741}
+.elite-mode .hq-intel{border-top-color:#7b478f}
+.hq-intel-title{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:800}
+.hq-intel-title span:last-child{color:var(--hq-accent)}
+.hq-intel-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:6px}
+.hq-metric{display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;color:#a8bec6;background:#13232b;border:1px solid rgba(90,131,145,.23);border-radius:5px;padding:4px 2px;white-space:nowrap}
+.hq-metric b{color:#e5f3f2;font-size:11px}
+.hq-actions{display:grid;grid-template-columns:1fr 2.1fr 1fr;align-items:end;gap:7px;margin:0 3px}
+.hq-side-action{height:62px;background:linear-gradient(180deg,#152632,#07131e);border:1px solid #31515d;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;padding:5px 2px;text-align:center;font-size:10px;font-weight:800;color:#9cb7bf}
+.hq-side-action:disabled{opacity:.55}
+.hq-action-ico{font-size:23px;line-height:26px;color:var(--hq-accent)}
+.hq-primary-action{display:flex;flex-direction:column;gap:5px;text-align:center}
+.hq-primary-action #btn-start{height:52px;border-radius:6px;font-size:19px;text-transform:uppercase;letter-spacing:.055em;background:linear-gradient(180deg,#43d6be,#218879);color:#061c1b;box-shadow:0 0 15px rgba(40,218,192,.26)}
+.elite-mode .hq-primary-action #btn-start{background:linear-gradient(180deg,#b581db,#7a3e9e);border-color:#dc9bff;color:#100916;box-shadow:0 0 18px rgba(199,111,240,.3)}
+.hq-primary-action #btn-start small{font-size:12px;opacity:.8;margin-left:4px}
+.hq-primary-action>span{font-size:10px;font-weight:700;color:#95aaa9}
+.hq-nav{margin:7px -3px 0;display:flex;gap:0;border-top:1px solid #1e3540;padding:0;flex-shrink:0}
+.hq-nav button{border-radius:0;border:0;border-right:1px solid #1e3540;display:flex;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:1px;padding:7px 4px 6px;background:#09151e;font-size:20px;color:#73909c;box-shadow:none!important}
+.hq-nav button.on{color:var(--hq-accent);background:#112b30}
+.hq-nav button small{font-size:10px;font-weight:700;line-height:1.1}
+.hq-stage-sheet .hq-stage-info-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.hq-stage-info-cell{padding:11px;background:#132735;border:1px solid #325460;border-radius:8px;font-size:12px}
+.hq-stage-info-cell b{display:block;color:#e7f9f7;margin:3px 0}
+.hq-stage-info-cell span{color:#9db6c3}
+#scr-battle .field-ui{left:7px;right:auto;top:6px}
+#scr-battle .field-ui .ibtn{height:30px;min-width:34px;background:rgba(9,20,31,.91);border-color:#315560;font-size:13px;border-radius:6px;padding:0 6px}
+@media (max-height:690px){
+ .hq-scene{min-height:155px}
+ .hq-planet-orbit{height:175px;width:175px}
+ .hq-intel{padding:5px 10px;margin-bottom:5px}
+ .hq-primary-action #btn-start{height:45px}
+ .hq-side-action{height:55px}
+ .hq-top{padding-top:4px;padding-bottom:3px}
+ .hq-stage-title{margin-top:4px}
+}
+@media (max-width:355px){
+ .hq-scene{min-height:164px}
+ .hq-resources .resource-item{font-size:10px;gap:2px}
+ .hq-account strong{font-size:11px}
+ .hq-primary-action #btn-start{font-size:16px}
+}
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ============ HOME ============ -->
-  <section class="screen on" id="scr-home">
-    <div class="topbar" id="home-cur"></div>
-    <div class="profile">
-      <div class="avatar">🪖</div>
-      <div><div class="nm">Командир Бастиона</div><div class="lv" id="prof-line">Уровень аккаунта 1 · Побед: 0</div></div>
+  <!-- ============ HOME · stage-centric lobby ============ -->
+  <section class="screen on home-screen" id="scr-home">
+    <header class="hq-top">
+      <div class="hq-profile-row">
+        <button class="hq-avatar" id="btn-profile" aria-label="Открыть прокачку">🪖</button>
+        <div class="hq-account">
+          <strong>METEOR BASTION</strong>
+          <span id="prof-line">Командир · Ур. 1</span>
+        </div>
+        <button class="hq-info-btn" id="btn-home-info" aria-label="Сведения об этапе">ⓘ</button>
+      </div>
+      <div class="topbar hq-resources" id="home-cur"></div>
+    </header>
+
+    <section class="hq-stage-head" aria-label="Выбор этапа">
+      <div class="hq-stage-caption">КАМПАНИЯ <span class="hq-stage-caption-line"></span> ОБОРОНА КРЕПОСТИ</div>
+      <div class="hq-stage-title" id="home-stage-title">NORMAL STAGE 1</div>
+      <div class="hq-mode-tabs" role="group" aria-label="Сложность">
+        <button id="btn-normal" class="mode-tab selected" aria-label="Обычный режим">Normal</button>
+        <button id="btn-elite" class="mode-tab" aria-label="Элитный режим">Elite</button>
+      </div>
+    </section>
+
+    <div class="hq-scene" id="hq-scene" role="img" aria-label="Схематичная космическая планета обороны">
+      <div class="hq-starfield" aria-hidden="true"></div>
+      <button id="stage-prev" class="hq-stage-arrow prev" aria-label="Предыдущий этап">‹</button>
+      <div class="hq-planet-orbit" aria-hidden="true">
+        <div class="hq-planet-halo"></div>
+        <div class="hq-planet-ring"></div>
+        <div class="hq-planet">
+          <i class="hq-crater a"></i><i class="hq-crater b"></i><i class="hq-crater c"></i>
+          <i class="hq-crater d"></i><i class="hq-crater e"></i>
+          <i class="hq-planet-mark"></i>
+        </div>
+        <span class="hq-debris one"></span><span class="hq-debris two"></span>
+        <span class="hq-debris three"></span>
+      </div>
+      <button id="stage-next" class="hq-stage-arrow next" aria-label="Следующий этап">›</button>
+      <div class="hq-scene-footer">
+        <span id="scene-stage-num">01 / 03</span>
+        <span id="scene-stage-status">ЭТАП ДОСТУПЕН</span>
+      </div>
     </div>
-    <div class="hero-art">
-      <div class="big">Солдат и четыре турели против шторма</div>
-      <div class="small">20 волн метеоритов. Карточки выдаются за очки боя: убийства копят очки, порог растёт (2, 10, 18, 26…) — первая карточка уже после второго монстра. Каждый уничтоженный враг даёт базе +2 HP. Каждые 5 уровней юнита — супер-карточка.</div>
+
+    <section class="hq-intel" aria-label="Параметры этапа">
+      <div class="hq-intel-title"><span id="stage-brief">Оборона системы</span><span id="stage-risk">NORMAL</span></div>
+      <div class="hq-intel-metrics" id="stage-metrics"></div>
+    </section>
+
+    <div class="hq-actions">
+      <button class="hq-side-action" id="btn-stage-chest" aria-label="Сундук и сведения об этапе">
+        <span class="hq-action-ico">▣</span><span>Сундук этапа</span>
+      </button>
+      <div class="hq-primary-action">
+        <button class="btn primary big" id="btn-start">BATTLE</button>
+        <span id="battle-energy-note">⚡ 5 за попытку</span>
+      </div>
+      <button class="hq-side-action" id="btn-patrol" aria-label="Собрать награды патруля">
+        <span class="hq-action-ico">◉</span><span>Автопатруль</span>
+      </button>
     </div>
-    <div class="stage-row" id="stage-row"></div>
-    <div class="stage-row" style="margin-bottom:10px">
-      <button class="btn" id="btn-elite" style="flex:1">Режим: Normal</button>
-      <button class="btn" id="btn-patrol" style="flex:1">🚁 Патруль: 0 🪙</button>
-    </div>
-    <button class="btn primary big" id="btn-start">▶ В бой — Этап 1 <span style="opacity:.75;font-size:13px">(⚡5 энергии)</span></button>
-    <nav class="nav">
-      <button class="on" data-nav="home">🏠 База</button>
-      <button data-nav="turrets">🗼 Прокачка</button>
-      <button data-nav="settings">⚙️ Настройки</button>
+
+    <nav class="nav hq-nav" aria-label="Разделы">
+      <button class="on" data-nav="home">⌂<small>База</small></button>
+      <button data-nav="turrets">♜<small>Турели</small></button>
+      <button data-nav="settings">⚙<small>Настройки</small></button>
     </nav>
   </section>
 
@@ -186,6 +318,16 @@ table.stats td:first-child{text-align:left;font-weight:700}
       </div>
     </div>
   </section>
+</div>
+
+<!-- Stage chest / information: local progress, no invented rewards or monetization. -->
+<div class="overlay" id="ov-stage-info">
+  <div class="sheet hq-stage-sheet">
+    <h2 id="stage-info-title">Normal Stage 1</h2>
+    <p class="csub" id="stage-info-sub"></p>
+    <div class="hq-stage-info-body" id="stage-info-body"></div>
+    <button class="btn primary" id="btn-close-stage-info" style="width:100%">Закрыть</button>
+  </div>
 </div>
 
 <!-- ============ DRAFT (по накоплению очков боя) ============ -->
@@ -350,10 +492,10 @@ function show(name){
  if(name==="battle")requestAnimationFrame(fitCanvas);
 }
 document.querySelectorAll("[data-nav]").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.nav);});});
-function curHTML(){return '<span class="pill">🪙 <b>'+fmt(META.coins)+'</b></span>'+
- '<span class="pill">💎 <span class="gem">'+META.gems+'</span></span>'+
- '<span class="pill">⚡ <span class="en">'+META.energy+'/30</span></span>'+
- '<span class="pill">🧩 <b>'+META.components+'</b></span>';}
+function curHTML(){return '<span class="resource-item gold"><span class="currency-icon">●</span><b>'+fmt(META.coins)+'</b></span>'+
+ '<span class="resource-item gem"><span class="currency-icon">◆</span><b>'+fmt(META.gems)+'</b></span>'+
+ '<span class="resource-item energy"><span class="currency-icon">ϟ</span><b>'+META.energy+'/30</b></span>'+
+ '<span class="resource-item parts"><span class="currency-icon">⬡</span><b>'+fmt(META.components)+'</b></span>';}
 function bindTop(){ /* Debug top-up buttons are deliberately removed from release UI. */ }
 function bindTops(){bindTop($("home-cur"));bindTop($("tur-cur"));}
 var INTEL=[
@@ -362,26 +504,60 @@ var INTEL=[
  "Разведка: элитки держат энергию, но слабы к силовому полю; босс устойчив к огню и физ. урону."
 ];
 function patrolAccrued(){var h=(Date.now()-META.lastPatrol)/3600000;return Math.floor(Math.min(8,h)*25*(1+META.unlocked*0.5));}
-function renderHome(){refillEnergy();
+function renderHome(){
+ refillEnergy();
  $("home-cur").innerHTML=curHTML();
- var pl=1+Math.floor(META.playerXp/100);
- $("prof-line").textContent="Уровень аккаунта "+pl+" · Побед: "+META.wins+" · Открыто этапов: "+META.unlocked;
- var row=$("stage-row");row.innerHTML="";
- STAGES.forEach(function(s){
-   var locked=s.n>META.unlocked;
-   var d=document.createElement("div");d.className="stage-card"+(META.selStage===s.n?" sel":"")+(locked?" lock":"");
-   d.innerHTML="<h3>"+(locked?"🔒 ":"")+s.name+"</h3><p>"+s.desc+"</p><p style='margin-top:5px;color:#7fb3a5'>"+INTEL[s.n-1]+"</p>";
-   if(!locked)d.addEventListener("click",function(){META.selStage=s.n;persist();renderHome();});
-   row.appendChild(d);
- });
- $("btn-elite").textContent="Режим: "+(META.elite?"Elite (враги ×1,6 HP, награды ×1,6)":"Normal");
- $("btn-elite").style.borderColor=META.elite?"var(--red)":"";
+ var accountLv=1+Math.floor(META.playerXp/100),stage=STAGES[META.selStage-1],elite=META.elite;
+ $("prof-line").textContent="Командир · Ур. "+accountLv+" · Побед "+META.wins;
+ $("home-stage-title").textContent=(elite?"ELITE":"NORMAL")+" STAGE "+stage.n;
+ $("scr-home").classList.toggle("elite-mode",elite);
+ $("hq-scene").classList.toggle("elite-mode",elite);
+ $("btn-normal").classList.toggle("selected",!elite);
+ $("btn-elite").classList.toggle("selected",elite);
+ $("stage-prev").disabled=META.selStage<=1;
+ $("stage-next").disabled=META.selStage>=META.unlocked;
+ $("scene-stage-num").textContent=("0"+stage.n).slice(-2)+" / "+("0"+STAGES.length).slice(-2);
+ var clearMap=elite?META.eliteCleared:META.normalCleared;
+ $("scene-stage-status").textContent=clearMap[stage.n]?"✓ ПРОЙДЕН":elite?"⚠ ЭЛИТНАЯ УГРОЗА":"ЭТАП ДОСТУПЕН";
+ $("stage-brief").textContent=elite?"Элитные враги • усиленные волны":"Метеоритный шторм • 20 волн";
+ $("stage-risk").textContent=elite?"ELITE ×1.85 HP":"NORMAL";
+ var waveCount=BALANCE.waveStart+Math.round(BALANCE.waveGrowth*1)+(stage.n-1)*2+(elite?4:0);
+ $("stage-metrics").innerHTML='<span class="hq-metric">⚔ <b>20</b> волн</span>'+
+ '<span class="hq-metric">▣ <b>'+waveCount+'</b> в первой</span>'+
+ '<span class="hq-metric">✦ <b>'+(elite?"×1.6":"×1.0")+'</b> награды</span>';
  var pa=patrolAccrued();
- $("btn-patrol").textContent="🚁 Патруль: "+pa+" 🪙"+(pa>0?" — забрать":" (копит до 8 ч)");
+ $("btn-patrol").innerHTML='<span class="hq-action-ico">◉</span><span>Автопатруль</span><span style="font-size:10px;color:#f6d078">'+pa+' ⬤</span>';
  $("btn-patrol").disabled=pa<=0;
- $("btn-start").innerHTML="▶ В бой — "+(META.elite?"Elite · ":"")+"Этап "+META.selStage+' <span style="opacity:.75;font-size:13px">(⚡5 энергии)</span>';
+ $("btn-start").innerHTML="BATTLE <small>ϟ5</small>";
+ $("battle-energy-note").textContent=elite?"⚠ Элитные враги · 5 энергии":"Обычный этап · 5 энергии";
 }
-$("btn-elite").addEventListener("click",function(){META.elite=!META.elite;persist();SFX.pick();renderHome();bindTops();});
+function setGameMode(elite){
+ if(META.elite===elite)return;
+ META.elite=elite;persist();SFX.pick();renderHome();
+}
+$("btn-normal").addEventListener("click",function(){setGameMode(false);});
+$("btn-elite").addEventListener("click",function(){setGameMode(true);});
+function stepStage(delta){
+ var next=Math.max(1,Math.min(META.unlocked,META.selStage+delta));
+ if(next===META.selStage)return;
+ META.selStage=next;persist();SFX.pick();renderHome();
+}
+$("stage-prev").addEventListener("click",function(){stepStage(-1);});
+$("stage-next").addEventListener("click",function(){stepStage(1);});
+$("btn-profile").addEventListener("click",function(){show("turrets");});
+function openStageInfo(){
+ var st=STAGES[META.selStage-1],mode=META.elite?"Elite":"Normal",clear=META.elite?META.eliteCleared:META.normalCleared;
+ $("stage-info-title").textContent=mode+" Stage "+st.n;
+ $("stage-info-sub").textContent=INTEL[st.n-1];
+ $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>ВОЛНЫ</span><b>20 · БОСС</b>Враг атакует крепость сверху</div>'+
+ '<div class="hq-stage-info-cell"><span>РЕЖИМ</span><b>'+mode.toUpperCase()+'</b>'+(META.elite?"Чемпионы, ускоряющие союзников":"Стандартные составы волн")+'</div>'+
+ '<div class="hq-stage-info-cell"><span>СТАТУС</span><b>'+(clear[st.n]?"ПРОЙДЕН":"НЕ ПРОЙДЕН")+'</b>Сохраняется на устройстве</div>'+
+ '<div class="hq-stage-info-cell"><span>НАГРАДЫ</span><b>'+(META.elite?"×1.6":"×1")+'</b>При победе или поражении</div>';
+ $("ov-stage-info").classList.add("on");
+}
+$("btn-stage-chest").addEventListener("click",openStageInfo);
+$("btn-home-info").addEventListener("click",openStageInfo);
+$("btn-close-stage-info").addEventListener("click",function(){$("ov-stage-info").classList.remove("on");});
 $("btn-patrol").addEventListener("click",function(){var pa=patrolAccrued();if(pa<=0)return;META.coins+=pa;META.lastPatrol=Date.now();persist();SFX.pick();toast("Авто-патруль привёз "+pa+" монет");renderHome();bindTops();});
 function renderTurrets(){refillEnergy();
  $("tur-cur").innerHTML=curHTML();
