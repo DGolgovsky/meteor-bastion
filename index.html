@@ -585,7 +585,7 @@ function aimPoint(t,e){
 }
 function dealDamage(src,e,baseDmg,opts){
  opts=opts||{}; if(e.hp<=0||e.dead)return 0;
- var crit=Math.random()<((src?src.cfg.crit+src.critBonus:0.05));
+ var crit=Math.random()<Math.min(0.95,Math.max(0,src?src.cfg.crit+src.critBonus:0.05));
  var cm=crit?(src?src.cfg.critMul:1.8)*(1+totalCritBonus()/100):1;
  /* сопротивление/уязвимость врага к типу урона атакующего (механика Galaxy Defense) */
  var rm=1;
@@ -778,7 +778,7 @@ function unitFire(t,dt){
    for(var z=0;z<count&&B.wheels.length<20;z++){
      var ang=t.angle+(z-(count-1)/2)*0.2;
      B.wheels.push({x:t.x,y:t.y-13,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,
-       src:t,life:6.5*t.durationMul,speed:speed,bounces:0,last:new Map(),hits:0});
+       src:t,life:6.5*t.durationMul+(t.wheelDurationBonus||0),speed:speed,bounces:0,last:new Map(),hits:0});
    }
    SFX.shoot();return;
  }
@@ -810,7 +810,7 @@ function applyHit(p,e){
    near.sort(function(a,b){return Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y);});
    near.slice(0,Math.max(0,p.src.multiCount-1)).forEach(function(o){arcFx(e.x,e.y,o.x,o.y,"#a06bff");dealDamage(p.src,o,p.dmg*0.7,{});});
    if(p.src.teslaMatrix&&B.fields.length<32){
-     B.fields.push({kind:"matrix",x:e.x,y:e.y,r:radius*1.6,life:2.6,src:p.src,tick:0.1});
+     B.fields.push({kind:"matrix",x:e.x,y:e.y,r:radius*1.6,life:p.src.teslaMatrixPlus?4.2:2.6,src:p.src,tick:0.1});
    }
    ringFx(e.x,e.y,"#a06bff",120);burst(e.x,e.y,8,"#a06bff");
    return;
@@ -957,7 +957,7 @@ function update(dt){
     B.enemies.forEach(function(e){
       if(e.dead||e.hp<=0||Math.hypot(e.x-field.x,e.y-field.y)>field.r)return;
       if(field.kind==="slow"){e.slowFactor=Math.min(e.slowFactor,1-(field.src.slowPow||0.35));e.slowT=0.65;}
-      else dealDamage(field.src,e,field.src.cfg.damage*0.65,{});
+      else dealDamage(field.src,e,field.src.cfg.damage*(field.src.teslaMatrixPlus?0.95:0.65),{});
     });
    }
    if(field.life<=0)B.fields.splice(fi,1);
@@ -1325,23 +1325,39 @@ var SUPERS={
  tesla:{name:"Сверхнапряжение",desc:"Разряды бьют по 6 целям, +60% урона.",apply:function(u){u.multiCount=6;u.dmgMul*=1.6;}},
  soldier:{name:"Легендарный стрелок",desc:"+100% урона, +25% шанса крита и +1 снаряд в очереди — на всё поле.",apply:function(u){u.dmgMul*=2;u.critBonus+=0.25;u.extraProj+=1;}}
 };
-function genCards(){
+function genCards(allowSuper){
  var picks=[];
- if(B.pendingSuper.length){var su=B.pendingSuper.shift();if(!su.mods.includes("super"))picks.push({kind:"super",u:su});}
+ if(allowSuper!==false&&B.pendingSuper.length){var su=B.pendingSuper.shift();if(!su.mods.includes("super"))picks.push({kind:"super",u:su});}
  var pool=[];
- if(freeSlot()>=0)TURRETS.forEach(function(cfg){if(!B.usedTypes[cfg.id])pool.push({kind:"new",cfg:cfg,w:cfg.rarity==="legend"?2:cfg.rarity==="epic"?3:5});});
+ if(freeSlot()>=0)TURRETS.forEach(function(cfg){
+   if(!B.usedTypes[cfg.id]){
+     var factor=B.turrets.length<2?3.4:2.2;
+     pool.push({kind:"new",cfg:cfg,w:(cfg.rarity==="legend"?2:cfg.rarity==="epic"?3:5)*factor});
+   }
+ });
  allFighters().forEach(function(u){pool.push({kind:"up",u:u,w:u.isSoldier?7:6});});
  allFighters().forEach(function(u){
    pool.push({kind:"mod",u:u,mod:"dmg",w:4});
    pool.push({kind:"mod",u:u,mod:"crit",w:3});
    pool.push({kind:"mod",u:u,mod:"haste",w:3});
-   if(u.extraProj<2)pool.push({kind:"mod",u:u,mod:"proj",w:2});
+   if(u.extraProj<2&&["soldier","skyguard","disruption","aeroblast","railgun","tesla"].includes(u.cfg.id))pool.push({kind:"mod",u:u,mod:"proj",w:2});
    if(u.cfg.effect==="chain"&&u.chain<5)pool.push({kind:"mod",u:u,mod:"chain",w:2});
    if(u.cfg.effect==="pierce"&&u.pierce<7&&u.pierce<90)pool.push({kind:"mod",u:u,mod:"pierce",w:2});
-   if(u.splash<40)pool.push({kind:"mod",u:u,mod:"splash",w:2});
+   if(["skyguard","disruption","aeroblast","tesla"].includes(u.cfg.id)&&u.splash<100)pool.push({kind:"mod",u:u,mod:"splash",w:2});
    if(u.cfg.effect==="slow"&&u.slowPow<0.6)pool.push({kind:"mod",u:u,mod:"slowpow",w:2});
    if(u.cfg.id==="laser"&&!u.refract)pool.push({kind:"mod",u:u,mod:"refract",w:2});
    if(u.cfg.id==="laser"&&(u.reflect||0)<3)pool.push({kind:"mod",u:u,mod:"reflect",w:2});
+  if(u.cfg.id==="laser"&&u.runLv>=2&&!u.laserSweep)pool.push({kind:"mod",u:u,mod:"laserSweep",w:3});
+  if(u.cfg.id==="laser"&&u.runLv>=2&&!u.laserDeflect)pool.push({kind:"mod",u:u,mod:"laserDeflect",w:2});
+  if(u.cfg.id==="laser"&&u.runLv>=2&&(u.laserDurationMul||1)<1.8)pool.push({kind:"mod",u:u,mod:"laserDuration",w:3});
+  if(u.cfg.id==="beam"&&u.runLv>=2&&(u.beamDurationMul||1)<1.8)pool.push({kind:"mod",u:u,mod:"beamDuration",w:3});
+  if(u.cfg.id==="beam"&&u.runLv>=3&&!u.beamFocusCap)pool.push({kind:"mod",u:u,mod:"beamFocus",w:2});
+  if(u.cfg.id==="tesla"&&u.runLv>=2&&!u.teslaMatrix)pool.push({kind:"mod",u:u,mod:"teslaMatrix",w:3});
+  if(u.cfg.id==="tesla"&&u.teslaMatrix&&!u.teslaMatrixPlus)pool.push({kind:"mod",u:u,mod:"teslaMatrixPlus",w:2});
+  if(u.cfg.id==="tesla"&&u.multiCount<6)pool.push({kind:"mod",u:u,mod:"teslaChain",w:2});
+  if(u.cfg.id==="hive"&&u.hiveCount<5)pool.push({kind:"mod",u:u,mod:"hiveCount",w:3});
+  if(u.cfg.id==="hive"&&u.runLv>=2&&u.hiveAttacks<16)pool.push({kind:"mod",u:u,mod:"hiveAttacks",w:3});
+  if(u.cfg.id==="firewheel"&&u.runLv>=2&&(u.wheelDurationBonus||0)<6)pool.push({kind:"mod",u:u,mod:"wheelDuration",w:3});
  });
  /* комбо-карточки пар турелей (механика Combo из Galaxy Defense) */
  var hasT=function(id){return B.turrets.some(function(u){return u.cfg.id===id;});};
@@ -1371,7 +1387,18 @@ function cardHTML(c){
   return{cls:"epic",icon:"🔗",name:"Комбо: "+CM[0],tag:"КОМБО · Lv. "+(c.u.runLv+1),desc:CM[1]+" <b>+1 уровень: "+c.u.cfg.name+"</b>."};}
  if(c.kind==="module"){var MD={boost:["Усиление поля боя","Все юниты наносят +12% урона до конца боя."],shieldm:["Щит крепости","Немедленно +250 к щиту базы и к его максимуму."],regenm:["Цикл регенерации","Немедленно восстановить 300 HP базы."],jam:["Глушилка волн","Все враги на 15% медленнее до конца боя."]}[c.modId];
   return{cls:"rare",icon:"🧩",name:"Модуль: "+MD[0],tag:"МОДУЛЬ КРЕПОСТИ",desc:MD[1]};}
- var M={dmg:["Силовой модуль","+30% к урону юнита."],crit:["Прицел крита","+10% шанс крита."],haste:["Ускоритель","+18% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."]};
+ var M={dmg:["Силовой модуль","+30% к урону юнита."],crit:["Прицел крита","+10% шанс крита."],haste:["Ускоритель","+18% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."],
+   laserSweep:["Сканирующий луч","Луч может поражать дополнительную случайную цель."],
+   laserDeflect:["Дефлектор","Дополнительный луч бьёт вторую цель при работе лазера."],
+   laserDuration:["Усиленный конденсатор","Длительность лазерного импульса +30%."],
+   beamDuration:["Резонанс Beam","Продолжительность серии Beam +35%."],
+   beamFocus:["Фокусировка Beam","Повторные попадания по одной цели наращивают урон до +80%."],
+   teslaMatrix:["Электрическая матрица","После разряда остаётся поле периодического урона."],
+   teslaMatrixPlus:["Усиленная матрица","Увеличены длительность и урон поля Tesla."],
+   teslaChain:["Вторичная дуга","Ещё одна цель цепного разряда Tesla."],
+   hiveCount:["Новые осы","+1 оса при каждом выпуске улья."],
+   hiveAttacks:["Усиленные жала","+2 атаки каждой осы."],
+   wheelDuration:["Стабилизатор Firewheel","Время полёта огненного диска +2 секунды."]};
  var m=M[c.mod];return{cls:"rare",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+m[0],tag:"МОД · Lv. "+(c.u.runLv+1),desc:m[1]+" <b>+1 уровень юнита.</b>"+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Юбилейный уровень — в следующем драфте будет СУПЕР-карточка!</b>":"")};
 }
 var curCards=[];
@@ -1399,7 +1426,7 @@ function renderCards(){
 $("btn-reroll").addEventListener("click",function(){if(!B.reroll)return;B.reroll=false;
  // супер-карточку при реролле не теряем
  var sup=curCards.filter(function(c){return c.kind==="super";});
- curCards=genCards();sup.forEach(function(s){if(!curCards.some(function(c){return c.kind==="super";}))curCards[0]=s;});
+ curCards=genCards(sup.length===0);sup.forEach(function(s){if(!curCards.some(function(c){return c.kind==="super";}))curCards[0]=s;});
  renderCards();$("btn-reroll").style.display="none";SFX.pick();});
 /* ЛЮБАЯ карточка по существующему юниту (усиление, мод, супер) = +1 к его уровню.
    Каждый 5-й уровень ставит супер-карточку в очередь на следующий драфт. */
@@ -1445,6 +1472,17 @@ function applyCard(c){
    if(c.mod==="slowpow")t.slowPow=Math.min(0.75,t.slowPow+0.12);
    if(c.mod==="refract")t.refract=true;
    if(c.mod==="reflect")t.reflect=(t.reflect||0)+1;
+   if(c.mod==="laserSweep")t.laserSweep=1;
+   if(c.mod==="laserDeflect")t.laserDeflect=1;
+   if(c.mod==="laserDuration")t.laserDurationMul=(t.laserDurationMul||1)+0.3;
+   if(c.mod==="beamDuration")t.beamDurationMul=(t.beamDurationMul||1)+0.35;
+   if(c.mod==="beamFocus")t.beamFocusCap=0.8;
+   if(c.mod==="teslaMatrix")t.teslaMatrix=true;
+   if(c.mod==="teslaMatrixPlus")t.teslaMatrixPlus=true;
+   if(c.mod==="teslaChain")t.multiCount++;
+   if(c.mod==="hiveCount")t.hiveCount++;
+   if(c.mod==="hiveAttacks")t.hiveAttacks+=2;
+   if(c.mod==="wheelDuration")t.wheelDurationBonus=(t.wheelDurationBonus||0)+2;
    t.mods.push(c.mod);
    gainLevel(t,false);
  }
