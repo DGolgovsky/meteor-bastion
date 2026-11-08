@@ -228,4 +228,73 @@ test("smoke combat loops do not crash during spawning and drawing", () => {
   assert.ok(g.B.kills >= 2);
 });
 
+test("Elite changes composition, champion strength and first-wave pressure", () => {
+  const { game: n } = harness(), { game: elite } = harness();
+  n.startBattle();elite.setGameMode(true);elite.startBattle();
+  n.startWave(1);elite.startWave(1);
+  assert.equal(n.B.elite,false);
+  assert.equal(elite.B.elite,true);
+  assert.ok(elite.B.stage.hpMul > n.B.stage.hpMul);
+  assert.ok(elite.B.waveTotal > n.B.waveTotal);
+  assert.ok(n.spawnEnemy("meteor"));
+  assert.ok(elite.spawnEnemy("meteor"));
+  const standard=n.B.enemies[0],champion=elite.B.enemies[0];
+  assert.ok(champion.champion, "first elite-wave enemy should be a champion");
+  assert.ok(champion.hp > standard.hp);
+  assert.ok(champion.dmg > standard.dmg);
+  assert.ok(champion.armor > standard.armor);
+});
+
+test("Hive uses range only for launch; deployed wasps hunt remote targets", () => {
+  g.B=g.newBattle(g.STAGES[0]);g.B.soldier=g.mkUnit(g.SOLDIER_CFG,210,-1,true);
+  g.B.wave=3;g.B.waveState="fighting";g.B.waveQueue=1;g.B.spawnT=999;
+  const hive=g.mkUnit(g.TURRETS.find(t=>t.id==="hive"),52,0,false);
+  g.B.turrets=[hive];
+  const close=sampleEnemy(g,560),far=sampleEnemy(g,35);
+  close.x=60;far.x=250;
+  g.B.enemies=[close,far];
+  assert.equal(g.inRange(hive,close),true);
+  assert.equal(g.inRange(hive,far),false);
+  g.unitFire(hive,0.4);
+  assert.ok(g.B.drones.length>0);
+  close.dead=true;close.hp=0;
+  g.update(0.05);
+  assert.ok(g.B.drones.every(dr=>dr.tgt===far),"wasps should follow the distant target outside Hive range");
+});
+
+test("Hive drops targets removed after they reach the fortress", () => {
+  g.B=g.newBattle(g.STAGES[0]);g.B.soldier=g.mkUnit(g.SOLDIER_CFG,210,-1,true);
+  g.B.wave=3;g.B.waveState="fighting";g.B.waveQueue=1;g.B.spawnT=999;
+  const hive=g.mkUnit(g.TURRETS.find(t=>t.id==="hive"),52,0,false);
+  g.B.turrets=[hive];
+  const close=sampleEnemy(g,550),far=sampleEnemy(g,40);
+  close.y=645;close.x=60;far.x=250;
+  g.B.enemies=[close,far];
+  g.unitFire(hive,0.4);
+  g.update(0.05);
+  assert.ok(close.dead && !g.B.enemies.includes(close));
+  assert.ok(g.B.drones.every(dr=>dr.tgt===far));
+});
+
+test("Elite clears persist without changing the v1 save format", () => {
+  const {game:elite,store}=harness();
+  elite.setGameMode(true);
+  elite.startBattle();
+  elite.B.wave=20;
+  elite.endBattle(true);
+  assert.equal(elite.META.eliteCleared[1],true);
+  const saved=JSON.parse(store.get("meteor-bastion-save-v1"));
+  assert.equal(saved.v,1);
+  assert.equal(saved.eliteCleared[1],true);
+});
+
+test("stage-focused lobby contains all live controls", () => {
+  for(const id of ["home-stage-title","btn-normal","btn-elite","stage-prev","stage-next","hq-scene",
+    "btn-stage-chest","btn-home-info","btn-patrol","btn-start","stage-info-body","ov-stage-info",
+    "battle-energy-note","home-cur","stage-metrics"]){
+    assert.ok(html.includes('id="'+id+'"'),"missing lobby element: "+id);
+  }
+  g.renderHome(); // DOM shim ensures the mode, stage and metrics can be updated.
+});
+
 console.log("\n" + tests.length + " smoke tests passed.");
