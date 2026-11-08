@@ -29,7 +29,7 @@ var B=null, raf=null, lastTs=0;
 function mkUnit(cfg,x,slot,isSoldier){
  var lv=META.levels[cfg.id],secondary=metaSecondary(lv),area={rocket:32,charge:42,knockback:40,slow:34};
  return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,laserActive:0,laserTickT:0,angle:-Math.PI/2,recoil:0,handAlt:false,
-  metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:metaDamage(lv),haste:1,extraProj:0,
+  metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:metaDamage(lv)*(isSoldier?1:BALANCE.turretBasePower),haste:1,extraProj:0,
   pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?Math.floor((secondary-1)*5):0),
   chain:(cfg.effect==="chain"?2:0)+(cfg.id==="thunder"?Math.floor((secondary-1)*2):0),
   splash:(area[cfg.effect]||0)*secondary,critBonus:0,slowPow:0.35,totalDmg:0,mods:[],

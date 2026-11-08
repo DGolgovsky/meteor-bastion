@@ -87,7 +87,10 @@ function addDraftScore(pts){
  B.scoreTotal+=pts;B.score+=pts;
  while(B.score>=B.draftNeed){
    B.score-=B.draftNeed;B.draftsEarned++;B.pendingDrafts++;
-   B.draftNeed=BALANCE.draftFirst+B.draftsEarned*BALANCE.draftGrowth+Math.max(0,B.wave-1)*BALANCE.draftWaveGrowth;
+   var n=B.draftsEarned;
+    B.draftNeed=n<BALANCE.draftOpeningCosts.length?BALANCE.draftOpeningCosts[n]:
+      BALANCE.draftLateBase+(n-BALANCE.draftOpeningCosts.length)*BALANCE.draftGrowth+
+      Math.max(0,B.wave-1)*BALANCE.draftWaveGrowth;
  }
 }
 function killEnemy(e){

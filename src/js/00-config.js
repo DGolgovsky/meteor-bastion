@@ -14,21 +14,21 @@ var TURRETS=[
  {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Электричество",damage:15,attackSpeed:0.88,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"Заряд наносит взрывной урон и выпускает цепные молнии."},
  {id:"gravity",name:"Gravity Vortex Gun",icon:"🕳️",dmgType:"Гравитация",damage:9,attackSpeed:0.48,range:390,projSpeed:0,crit:0.04,critMul:1.65,target:"closestBase",effect:"gravity",rarity:"epic",color:"#8cb5ff",desc:"Создаёт гравитационную область, которая притягивает врагов и наносит периодический урон."}
 ];
-var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:11,attackSpeed:2.8,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
+var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:13,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
 /* res — множители входящего урона по типам (как ±50% сопротивлений в Galaxy Defense):
    <1 — сопротивление, >1 — уязвимость */
 var ENEMIES=[
- {id:"meteor",name:"Метеорит",hp:84,speed:94,dmg:36,armor:0,xp:1,r:13,color:"#8a6a55",kind:"meteor",res:{fire:0.65,phys:1.22}},
- {id:"fast",name:"Быстрый метеорит",hp:58,speed:146,dmg:34,armor:0,xp:1,r:9,color:"#a87a52",kind:"meteor",res:{electric:1.30}},
- {id:"armored",name:"Бронированный",hp:245,speed:71,dmg:78,armor:0.35,xp:3,r:16,color:"#6b7686",kind:"meteor",res:{phys:0.55,fire:0.82,electric:1.4}},
- {id:"flyer",name:"Летун",hp:94,speed:115,dmg:49,armor:0,xp:2,r:12,color:"#7c5cbf",kind:"flyer",res:{electric:1.35,energy:0.8}},
- {id:"splitter",name:"Голем-матка",hp:330,speed:60,dmg:82,armor:0.12,xp:5,r:19,color:"#4f7a52",kind:"splitter",res:{force:0.7,phys:1.25}},
- {id:"mini",name:"Осколок голема",hp:76,speed:135,dmg:27,armor:0,xp:1,r:9,color:"#5d8a60",kind:"meteor",res:{force:0.7,phys:1.2}},
- {id:"healer",name:"Звезда регенерации",hp:285,speed:76,dmg:53,armor:0.12,xp:6,r:15,color:"#3fae6a",kind:"healer",res:{energy:1.35,electric:0.75}},
- {id:"elite",name:"Элитный",hp:550,speed:81,dmg:135,armor:0.26,xp:8,r:20,color:"#b03a5b",kind:"elite",res:{energy:0.75,force:1.25}},
- {id:"phase",name:"Призрачный разведчик",hp:135,speed:130,dmg:58,armor:0.08,xp:3,r:11,color:"#83a4d9",kind:"phase",res:{energy:1.3,electric:0.85}},
- {id:"charger",name:"Штурмовой метеорит",hp:170,speed:91,dmg:80,armor:0.12,xp:3,r:13,color:"#e38554",kind:"charger",res:{fire:0.8,force:1.3}},
- {id:"boss",name:"БОСС «Голиаф»",hp:4600,speed:35,dmg:410,armor:0.25,xp:60,r:34,color:"#5b1f2e",kind:"boss",res:{fire:0.75,phys:0.85}}
+ {id:"meteor",name:"Метеорит",hp:65,speed:82,dmg:36,armor:0,xp:1,r:13,color:"#8a6a55",kind:"meteor",res:{fire:0.65,phys:1.22}},
+ {id:"fast",name:"Быстрый метеорит",hp:46,speed:132,dmg:34,armor:0,xp:1,r:9,color:"#a87a52",kind:"meteor",res:{electric:1.30}},
+ {id:"armored",name:"Бронированный",hp:190,speed:70,dmg:78,armor:0.35,xp:3,r:16,color:"#6b7686",kind:"meteor",res:{phys:0.55,fire:0.82,electric:1.4}},
+ {id:"flyer",name:"Летун",hp:74,speed:110,dmg:49,armor:0,xp:2,r:12,color:"#7c5cbf",kind:"flyer",res:{electric:1.35,energy:0.8}},
+ {id:"splitter",name:"Голем-матка",hp:245,speed:62,dmg:82,armor:0.12,xp:5,r:19,color:"#4f7a52",kind:"splitter",res:{force:0.7,phys:1.25}},
+ {id:"mini",name:"Осколок голема",hp:52,speed:125,dmg:27,armor:0,xp:1,r:9,color:"#5d8a60",kind:"meteor",res:{force:0.7,phys:1.2}},
+ {id:"healer",name:"Звезда регенерации",hp:230,speed:78,dmg:53,armor:0.12,xp:6,r:15,color:"#3fae6a",kind:"healer",res:{energy:1.35,electric:0.75}},
+ {id:"elite",name:"Элитный",hp:430,speed:82,dmg:135,armor:0.26,xp:8,r:20,color:"#b03a5b",kind:"elite",res:{energy:0.75,force:1.25}},
+ {id:"phase",name:"Призрачный разведчик",hp:105,speed:125,dmg:58,armor:0.08,xp:3,r:11,color:"#83a4d9",kind:"phase",res:{energy:1.3,electric:0.85}},
+ {id:"charger",name:"Штурмовой метеорит",hp:135,speed:104,dmg:80,armor:0.12,xp:3,r:13,color:"#e38554",kind:"charger",res:{fire:0.8,force:1.3}},
+ {id:"boss",name:"БОСС «Голиаф»",hp:2200,speed:30,dmg:410,armor:0.25,xp:60,r:34,color:"#5b1f2e",kind:"boss",res:{fire:0.75,phys:0.85}}
 ];
 /* Campaign progression: early stages have 20 waves, sectors II/III have longer runs. */
 var STAGES=[
@@ -50,10 +50,10 @@ function stageWaves(stage){return stage&&stage.waves||WAVES;}
 function finalWave(){return stageWaves(B&&B.stage);}
 /* Battle pacing parameters; values are test targets, not official Galaxy Defense numbers. */
 var BALANCE={
- draftFirst:2,draftGrowth:10,draftWaveGrowth:3,
- waveStart:9,waveGrowth:2.9,
- spawnBase:0.70,spawnReduction:0.015,spawnMin:0.25,
- waveHpGrowth:0.19,bossHpGrowth:0.13,
+ draftFirst:2,draftOpeningCosts:[2,4,6,9],draftLateBase:14,draftGrowth:8,draftWaveGrowth:2,
+ waveStart:4,waveGrowth:1.7,
+ spawnBase:1.05,spawnReduction:0.008,spawnMin:0.28,
+ waveHpGrowth:0.09,bossHpGrowth:0.085,turretBasePower:1.6,
  eliteHp:1.68,eliteSpeed:1.10,eliteContact:1.18,
  eliteWaveBase:2,eliteWaveGrowth:0.28,
  eliteChampionBaseChance:0.095,eliteChampionWaveChance:0.004,eliteChampionMaxChance:0.21,
