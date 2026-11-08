@@ -133,12 +133,15 @@ function fireLaser(t,dt){
    t.laserActive=1.65*t.durationMul*(t.laserDurationMul||1);
    t.laserTickT=0;
    t.cd=7.8*t.metaCd/t.haste; /* перезарядка между импульсами увеличена в 1,5 раза (было 5,2) */
+   /* луч НЕ ведёт цель: направление и точка прицела фиксируются в момент выстрела
+      (позиция цели при старте канала) и не двигаются за ней до конца канала */
+   t.laserAngle=Math.atan2(initial.y-(t.y-14),initial.x-t.x);
+   t.laserAimX=initial.x;t.laserAimY=initial.y;
    SFX.laser();
  }
  t.laserActive=Math.max(0,t.laserActive-dt);
- var target=pickTarget(t);if(!target)return;
  var ox=t.x,oy=t.y-14;
- t.angle=Math.atan2(target.y-oy,target.x-ox);
+ t.angle=t.laserAngle;
  var dx=Math.cos(t.angle),dy=Math.sin(t.angle),hits=[],far=0;
  B.enemies.forEach(function(e){
    if(!inRange(t,e))return;
@@ -164,10 +167,10 @@ function fireLaser(t,dt){
  if(t.refract&&hits.length){
   [-0.34,0.34].forEach(function(a){
    var ang=t.angle+a,vx=Math.cos(ang),vy=Math.sin(ang);
-   beamFx(target.x,target.y,target.x+vx*160,target.y+vy*160,"#86efac",2);
+   beamFx(t.laserAimX,t.laserAimY,t.laserAimX+vx*160,t.laserAimY+vy*160,"#86efac",2);
    B.enemies.forEach(function(e){
     if(!inRange(t,e)||hits.indexOf(e)>=0)return;
-    var px=e.x-target.x,py=e.y-target.y,pr=px*vx+py*vy;
+    var px=e.x-t.laserAimX,py=e.y-t.laserAimY,pr=px*vx+py*vy;
     if(pr>0&&pr<160&&Math.abs(px*vy-py*vx)<e.r+8){
       hits.push(e);dealDamage(t,e,t.cfg.damage*0.5*(t.laserPower||1),opts);
     }

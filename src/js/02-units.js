@@ -40,7 +40,7 @@ function mkUnit(cfg,x,slot,isSoldier){
 }
 function newBattle(stage){
  return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:!!stage.elite,championsKilled:0,championsSpawned:0,guardianGoalX:SOLDIER_X,
-  baseHp:1000,baseMax:1000,shield:150+40*META.chips.fort,shieldMax:150+40*META.chips.fort,
+  baseHp:1000+40*META.chips.fort,baseMax:1000+40*META.chips.fort,
   wave:0,waveQueue:0,waveTotal:0,waveKilled:0,spawnT:0,bossSpawned:false,
   kills:0,reroll:true,turrets:[],soldier:null,usedTypes:{},
   /* Очки боя: убийства копят очки, карточка выдаётся при достижении порога.
@@ -53,7 +53,7 @@ function newBattle(stage){
   allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }
 function startBattle(){refillEnergy();
- if(META.energy<5){toast("Недостаточно энергии: +1 каждые 12 минут.");return;}
+ if(META.energy<5)return;
  META.energy-=5;if(META.energy===25)META.lastEnergyAt=Date.now();persist();
  var st=STAGES[META.selStage-1];
  var eff={n:st.n,name:(META.elite?"Elite":"Normal")+" Stage "+st.n,
@@ -65,7 +65,6 @@ function startBattle(){refillEnergy();
  lastTs=performance.now();
  if(raf)cancelAnimationFrame(raf);
  raf=requestAnimationFrame(loop);
- toast("Веди Guardian свайпом по нижней части поля. Убийства дают карточки и +2 HP.");
 }
 $("btn-start").addEventListener("click",startBattle);
 /* Guardian moves horizontally on the fortress deck. Touch/mouse controls are relative to canvas pixels. */

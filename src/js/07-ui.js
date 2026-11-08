@@ -137,7 +137,7 @@ function genCards(allowSuper){
  if(hasT("gravity")&&hasT("hive")&&META.levels.gravity>=22&&!B.combos.binaryStars)pool.push({kind:"combo",modId:"binaryStars",u:fuT("gravity"),w:3});
  if(hasT("railgun")&&hasT("tesla")&&META.levels.railgun>=22&&!B.combos.surgePierce)pool.push({kind:"combo",modId:"surgePierce",u:fuT("railgun"),w:3});
  /* модули крепости — глобальные усиления боя, каждый один раз за бой */
- ["boost","shieldm","regenm","jam"].forEach(function(mid){if(!B.modulesUsed[mid])pool.push({kind:"module",modId:mid,w:3});});
+ ["boost","healm","regenm","jam"].forEach(function(mid){if(!B.modulesUsed[mid])pool.push({kind:"module",modId:mid,w:3});});
  var guard=0;
  while(picks.length<3&&pool.length&&guard++<60){
    var tot=0;pool.forEach(function(x){tot+=x.w;});
@@ -156,7 +156,7 @@ function cardHTML(c){
  if(c.kind==="up")return{cls:c.u.cfg.rarity,icon:c.u.cfg.icon,name:c.u.cfg.name,tag:"Lv. "+(c.u.runLv+1),desc:"<b>+18% урона</b>, +4% скорострельности."+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Условие Super Mode: R&D турели и уровень боя</b>":"")+" Урон за бой: <b>"+fmt(c.u.totalDmg)+"</b>."};
  if(c.kind==="combo"){var CM={spin:["Вращающийся лазер","Laser + Tesla Coil: дополнительный луч и +20% урона Laser."],det:["Детонационная молния","Sky Guard + Thunderbolt: ракеты поражают соседей током."],blaze:["Пылающий рой","Firewheel + Hive: осы поджигают противников."],disr:["Разрушающий луч","Beam + Disruption Drone: луч замедляет цель."],vortexWheel:["Вихревой диск","Firewheel + Gravity: диск получает +25% урона и срок жизни +2 с."],binaryStars:["Двойная сингулярность","Gravity + Hive: сильнее притяжение, радиус поля +30%."],surgePierce:["Электрорельса","Railgun + Tesla: пробитие +2, урон +25%."]}[c.modId];
   return{cls:"epic",icon:"🔗",name:"Комбо: "+CM[0],tag:"КОМБО · Lv. "+(c.u.runLv+1),desc:CM[1]+" <b>+1 уровень: "+c.u.cfg.name+"</b>."};}
- if(c.kind==="module"){var MD={boost:["Усиление поля боя","Все юниты наносят +12% урона до конца боя."],shieldm:["Щит крепости","Немедленно +250 к щиту базы и к его максимуму."],regenm:["Цикл регенерации","Немедленно восстановить 300 HP базы."],jam:["Глушилка волн","Все враги на 15% медленнее до конца боя."]}[c.modId];
+ if(c.kind==="module"){var MD={boost:["Усиление поля боя","Все юниты наносят +12% урона до конца боя."],healm:["Лечение крепости","Немедленно восстановить 250 HP базы."],regenm:["Цикл регенерации","Немедленно восстановить 300 HP базы."],jam:["Глушилка волн","Все враги на 15% медленнее до конца боя."]}[c.modId];
   return{cls:"rare",icon:"🧩",name:"Модуль: "+MD[0],tag:"МОДУЛЬ КРЕПОСТИ",desc:MD[1]};}
  var M={dmg:["Силовой модуль","+15% к урону юнита."],crit:["Прицел крита","+6% шанс крита."],haste:["Ускоритель","+10% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."],
    laserSweep:["Сканирующий луч","Луч может поражать дополнительную случайную цель."],
@@ -206,11 +206,11 @@ function gainLevel(u,statBoost){
  u.runLv++;
  if(statBoost){u.dmgMul*=1.18;u.haste*=1.04;}
  burst(u.x,u.y,12,u.cfg.color);
- if(u.runLv>=5&&u.runLv%5===0&&META.levels[u.cfg.id]>=rdTierUnlock(u.cfg.id)&&!u.mods.includes("super")&&!B.pendingSuper.includes(u)){B.pendingSuper.push(u);toast("⭐ "+u.cfg.name+" достиг "+u.runLv+" уровня — супер-карточка в следующем драфте!");}
+ if(u.runLv>=5&&u.runLv%5===0&&META.levels[u.cfg.id]>=rdTierUnlock(u.cfg.id)&&!u.mods.includes("super")&&!B.pendingSuper.includes(u))B.pendingSuper.push(u);
 }
 function applyCard(c){
  if(c.kind==="new"){
-   var s=freeSlot();if(s<0){toast("Все 4 слота турелей заняты");return;}
+   var s=freeSlot();if(s<0)return;
    var nt=mkUnit(c.cfg,TURRET_X[s],s,false);B.turrets.push(nt);B.usedTypes[c.cfg.id]=1;burst(nt.x,nt.y,16,c.cfg.color);
   }else if(c.kind==="chain"){
    if(META.levels[c.u.cfg.id]<c.def.rd||(c.tier>1&&!c.u.mods.includes(CARD_CHAINS[c.u.cfg.id][c.tier-2].id)))return;
@@ -235,7 +235,7 @@ function applyCard(c){
  }else if(c.kind==="module"){
    B.modulesUsed[c.modId]=1;
    if(c.modId==="boost")B.allDmgMul*=1.12;
-   if(c.modId==="shieldm"){B.shieldMax+=150;B.shield+=150;}
+   if(c.modId==="healm")B.baseHp=Math.min(B.baseMax,B.baseHp+250);
    if(c.modId==="regenm")B.baseHp=Math.min(B.baseMax,B.baseHp+200);
    if(c.modId==="jam"){B.enemySpdMul*=0.85;B.enemies.forEach(function(e){e.speed*=0.85;});}
    burst(W/2,BASEY-46,18,"#2ee6c8");

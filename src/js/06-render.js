@@ -180,8 +180,8 @@ function draw(){
  ctx.fillStyle="rgba(46,230,200,.4)";ctx.fillRect(0,BASEY+14,W,2);
  ctx.fillStyle="#16283e";ctx.fillRect(0,BASEY+14,W,8);
  ctx.font="26px serif";ctx.textAlign="center";ctx.fillText("🏰",W/2,BASEY+12);
- /* HP и щит базы — две дуги над куполом (тот же центр, что у купола: W/2, BASEY+22),
-    длина дуги ∝ доле HP/щита, симметрично по центру вершины. Полный угол дуг — 120°
+ /* HP базы — одна дуга над куполом (тот же центр, что у купола: W/2, BASEY+22),
+    длина дуги ∝ доле HP, симметрично по центру вершины. Полный угол дуги — 120°
     (±60° от вершины): концы при полном HP — на ~48px выше палубы, над рядом юнитов,
     и не спускаются между стражем и турелями. Точное HP — числом над куполом. */
  function baseArc(r,frac,color,bg,width){
@@ -189,7 +189,6 @@ function draw(){
    if(frac>0){ctx.strokeStyle=color;ctx.beginPath();ctx.arc(W/2,BASEY+22,r,Math.PI*1.5-(Math.PI/3)*frac,Math.PI*1.5+(Math.PI/3)*frac);ctx.stroke();}
  }
  baseArc(112,Math.max(0,B.baseHp/B.baseMax),B.elite?"#bc8ee3":({classic:"#2ee6c8",arctic:"#90d5ff",ember:"#ff995e"}[META.livery]||"#2ee6c8"),"rgba(46,230,200,.14)",5);
- baseArc(121,Math.max(0,B.shield/B.shieldMax),"#38c8ff","rgba(56,200,255,.12)",3.5);
  ctx.font="800 10px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#e8f4f2";
  ctx.fillText(Math.ceil(B.baseHp),W/2,BASEY-106);
  ctx.lineWidth=1;

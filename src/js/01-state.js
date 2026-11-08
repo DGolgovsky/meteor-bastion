@@ -28,7 +28,7 @@ function upCost(t){var lv=META.levels[t.id];return{mats:14+lv*9,coins:70+lv*30};
 var CHIP_DEFS=[
  {id:"core",name:"Усилитель турелей",icon:"◆",desc:"Урон турелей +3% за уровень",max:5},
  {id:"speed",name:"Хрономодуль",icon:"✧",desc:"Скорострельность +2% за уровень",max:5},
- {id:"fort",name:"Резерв щита",icon:"⬡",desc:"+40 к щиту за уровень",max:5}
+ {id:"fort",name:"Резерв крепости",icon:"⬡",desc:"+40 к максимуму HP базы за уровень",max:5}
 ];
 function chipCost(id){return 4+(META.chips[id]||0)*4;}
 function purchaseChip(id){
@@ -60,7 +60,6 @@ function refillEnergy(){var now=Date.now();if(!META.lastEnergyAt)META.lastEnergy
 }
 function fmt(n){n=Math.floor(n);if(n>=1e6)return(n/1e6).toFixed(2)+"m";if(n>=1e4)return(n/1e3).toFixed(1)+"k";return ""+n;}
 function $(id){return document.getElementById(id);}
-function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("on");},2400);}
 
 /* ==================== AUDIO ==================== */
 var AC=null;
@@ -157,7 +156,7 @@ function openStageInfo(){
 $("btn-stage-chest").addEventListener("click",openStageInfo);
 $("btn-home-info").addEventListener("click",openStageInfo);
 $("btn-close-stage-info").addEventListener("click",function(){$("ov-stage-info").classList.remove("on");});
-$("btn-patrol").addEventListener("click",function(){var pa=patrolAccrued();if(pa<=0)return;META.coins+=pa;META.lastPatrol=Date.now();persist();SFX.pick();toast("Авто-патруль привёз "+pa+" монет");renderHome();bindTops();});
+$("btn-patrol").addEventListener("click",function(){var pa=patrolAccrued();if(pa<=0)return;META.coins+=pa;META.lastPatrol=Date.now();persist();SFX.pick();renderHome();bindTops();});
 function renderTurrets(){refillEnergy();
  $("tur-cur").innerHTML=curHTML();renderChips();
  $("bonus-bar").innerHTML='<div class="upgrade-stat"><span>ПОСТОЯННЫЕ УСИЛЕНИЯ</span><b>CRIT DMG +'+totalCritBonus()+'%</b><small>Урон +8% / уровень · CD и эффекты по этапам</small></div>';
@@ -175,7 +174,7 @@ function renderTurrets(){refillEnergy();
    if(!can)btn.disabled=true;
    btn.addEventListener("click",function(){
      if(META.levels[t.id]>=45||META.mats[t.id]<c.mats||META.coins<c.coins)return;
-     META.mats[t.id]-=c.mats;META.coins-=c.coins;META.levels[t.id]++;persist();SFX.pick();toast(t.name+" → Lv. "+META.levels[t.id]);renderTurrets();bindTops();
+     META.mats[t.id]-=c.mats;META.coins-=c.coins;META.levels[t.id]++;persist();SFX.pick();renderTurrets();bindTops();
    });
    g.appendChild(d);
  });
@@ -190,6 +189,6 @@ $("tgl-sfx").addEventListener("click",function(){META.sfx=!META.sfx;persist();sy
 var resetArm=false;
 $("btn-reset").addEventListener("click",function(){
  if(!resetArm){resetArm=true;$("btn-reset").textContent="Точно сбросить?";setTimeout(function(){resetArm=false;$("btn-reset").textContent="Сброс";},3000);return;}
- META=freshMeta();persist();resetArm=false;$("btn-reset").textContent="Сброс";syncToggles();toast("Прогресс сброшен");show("home");
+ META=freshMeta();persist();resetArm=false;$("btn-reset").textContent="Сброс";syncToggles();show("home");
 });
 

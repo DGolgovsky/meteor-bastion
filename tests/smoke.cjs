@@ -453,13 +453,14 @@ test("Cloaked scouts and charging attackers have distinct behavior", () => {
   assert.ok(runner.chargeMul>1);
 });
 
-test("enemy breach reduces fortress defenses and increments leak counter", () => {
+test("enemy breach damages base HP directly and increments leak counter", () => {
   g.B=g.newBattle(g.STAGES[0]);g.B.soldier=g.mkUnit(g.SOLDIER_CFG,210,-1,true);
   g.B.wave=1;g.B.waveState="fighting";g.B.waveQueue=1;g.B.spawnT=999;
   const enemy=sampleEnemy(g,g.BASEY-18);enemy.speed=110;enemy.hp=10000;
-  g.B.enemies=[enemy];const shield=g.B.shield;
+  g.B.enemies=[enemy];const hp=g.B.baseHp;
+  assert.equal(g.B.shield,undefined,"base has no shield");
   g.update(.05);assert.equal(g.B.leaks,1);
-  assert.ok(g.B.shield<shield);
+  assert.equal(g.B.baseHp,hp-enemy.dmg,"breach must damage HP in full, no shield absorption");
 });
 
 test("Fortress chips spend components and modify the next battle", () => {
@@ -477,7 +478,9 @@ test("Fortress chips spend components and modify the next battle", () => {
   assert.equal(chip.purchaseChip("missing"),false);
   assert.equal(chip.META.components,oldComponents);
   chip.startBattle();
-  assert.equal(chip.B.shieldMax,190);
+  assert.equal(chip.B.baseMax,1040,"fort chip must add +40 max HP");
+  assert.equal(chip.B.baseHp,1040,"fort chip must add +40 HP at battle start");
+  assert.equal(chip.B.shield,undefined,"base has no shield");
   const saved=JSON.parse(store.get("meteor-bastion-save-v1"));
   assert.equal(saved.v,1);
   assert.equal(saved.chips.core,1);
@@ -486,6 +489,43 @@ test("Fortress chips spend components and modify the next battle", () => {
   for(let i=0;i<4;i++)chip.purchaseChip("core");
   assert.equal(chip.META.chips.core,5);
   assert.equal(chip.purchaseChip("core"),false);
+});
+
+test("Laser beam is fixed at the moment of firing and does not track the target", () => {
+  g.B=g.newBattle(g.STAGES[0]);g.B.soldier=g.mkUnit(g.SOLDIER_CFG,210,-1,true);
+  const laser=g.mkUnit(g.TURRETS.find(t=>t.id==="laser"),52,0,false);
+  g.B.turrets=[laser];
+  const enemy=sampleEnemy(g,400);enemy.x=180;enemy.speed=0;
+  g.B.enemies=[enemy];
+  g.unitFire(laser,0.3); /* первый выстрел: канал стартует (cd ≤ 0,2) */
+  assert.ok(g.B.beams.length>0,"laser should emit a beam");
+  const first=g.B.beams[g.B.beams.length-1];
+  const a1=Math.atan2(first.y2-first.y1,first.x2-first.x1);
+  assert.ok(Number.isFinite(laser.laserAngle),"laser must store its firing angle");
+  assert.equal(laser.laserAngle,Math.atan2(400-(laser.y-14),180-laser.x),"angle must come from the target position at firing time");
+  enemy.x=320;enemy.y=250; /* цель резко уходит в сторону */
+  g.unitFire(laser,0.05); /* канал ещё активен */
+  const second=g.B.beams[g.B.beams.length-1];
+  const a2=Math.atan2(second.y2-second.y1,second.x2-second.x1);
+  assert.ok(Math.abs(a2-a1)<1e-9,"beam must not follow the target after firing: "+a1+" vs "+a2);
+});
+
+test("no popup toasts exist anywhere in the game", () => {
+  assert.equal(typeof g.toast,"undefined","toast function must be removed");
+  assert.ok(!shell.includes('id="toast"'),"toast element must be removed from shell");
+  assert.ok(!shell.includes(".toast"),"toast CSS must be removed from shell");
+  assert.ok(!source.includes("toast("),"no toast calls may remain in the game code");
+});
+
+test("fortress heal module restores HP and no shield module exists", () => {
+  g.B=g.newBattle(g.STAGES[0]);g.B.soldier=g.mkUnit(g.SOLDIER_CFG,210,-1,true);
+  g.B.baseHp=500;
+  assert.equal(g.B.shield,undefined);
+  g.applyCard({kind:"module",modId:"healm"});
+  assert.equal(g.B.baseHp,750,"heal module must restore 250 HP");
+  assert.equal(g.B.modulesUsed.healm,1);
+  assert.ok(g.cardHTML({kind:"module",modId:"healm"}).desc.includes("250 HP"));
+  assert.ok(!source.includes("shieldm"),"no shield module id may remain in the game code");
 });
 
 test("Cosmetic liveries persist in v1 without combat modifiers", () => {

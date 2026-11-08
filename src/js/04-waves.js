@@ -43,7 +43,7 @@ function spawnEnemy(kind){
   r:cfg.r+(champion?2:0),color:champion?"#cc65ef":cfg.color,champion:champion,eliteMode:B.elite,
   phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,
   healT:Math.random()*2,auraT:2+Math.random()*1.5,hasteT:0,cloakT:kind==="phase"?2.0:0,chargeT:kind==="charger"?3:0,chargeMul:1.0,revealedT:0});
- if(champion){B.championsSpawned++;if(scripted)toast("⚠ ELITE · Мутировавший противник!");}
+ if(champion)B.championsSpawned++;
  return true;
 }
 function spawnBoss(){
@@ -54,6 +54,6 @@ function spawnBoss(){
   speed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1),dmg:cfg.dmg*(B.stage.contactMul||1)*(B.elite?BALANCE.eliteBossContact:1),
   armor:cfg.armor+(B.elite?0.10:0),xp:cfg.xp,r:cfg.r+(B.elite?6:0),color:B.elite?"#df4d9c":cfg.color,
   champion:!!B.elite,eliteMode:B.elite,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,hasteT:0,auraT:2});
- B.bossSpawns++;toast(B.elite?"⚠ ELITE BOSS «Голиаф»!":"⚠ БОСС «Голиаф»!");SFX.boom();return true;
+ B.bossSpawns++;SFX.boom();return true;
 }
 

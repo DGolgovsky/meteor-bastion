@@ -58,9 +58,7 @@ function update(dt){
    if(e.cfg.id==="meteor"||e.cfg.id==="fast"||e.cfg.id==="armored"||e.cfg.id==="mini"){if(Math.random()<dt*22)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
    if(e.y>=BASEY-16){
      e.dead=true;B.enemies.splice(i,1);B.waveKilled++;B.leaks++;
-     var d=e.dmg;
-     if(B.shield>0){var ab=Math.min(B.shield,d);B.shield-=ab;d-=ab;}
-     B.baseHp-=d;B.shake=Math.min(12,B.shake+5);burst(e.x,BASEY,14,"#ff5470");SFX.boom();
+     B.baseHp-=e.dmg;B.shake=Math.min(12,B.shake+5);burst(e.x,BASEY,14,"#ff5470");SFX.boom();
      if(B.baseHp<=0){B.baseHp=0;endBattle(false);return;}
    }
  }
