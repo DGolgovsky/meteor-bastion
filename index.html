@@ -460,7 +460,7 @@ function newBattle(stage){
   allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{}};
 }
 function startBattle(){refillEnergy();
- if(META.energy<5){toast("Не хватает энергии — пополни кнопкой + ⚡");return;}
+ if(META.energy<5){toast("Недостаточно энергии. +1 каждые 12 минут.");return;}
  META.energy-=5;if(META.energy===25)META.lastEnergyAt=Date.now();persist();
  var st=STAGES[META.selStage-1];
  var eff={n:st.n,name:(META.elite?"Elite · ":"")+st.name,hpMul:st.hpMul*(META.elite?1.6:1),spdMul:st.spdMul*(META.elite?1.05:1),desc:st.desc};
@@ -697,7 +697,7 @@ function unitFire(t,dt){
  var target=pickTarget(t); if(!target)return;
  var ap=aimPoint(t,target); /* упреждение: снаряд летит в точку перехвата движущейся цели */
  t.angle=Math.atan2(ap.y-(t.y-10),ap.x-t.x);
- t.cd=1/cfg.attackSpeed/t.haste;
+ t.cd=(t.metaCd||1)/cfg.attackSpeed/t.haste;
  if(cfg.effect==="chain"){
    var hit=[target],cur=target;arcFx(t.x,t.y-8,target.x,target.y,t.cfg.color);dealDamage(t,target,cfg.damage,{});
    for(var c=0;c<t.chain;c++){
@@ -714,8 +714,8 @@ function unitFire(t,dt){
    SFX.zap();return;
  }
  if(cfg.effect==="hive"){
-   B.drones.push({x:t.x,y:t.y-10,src:t,life:4,tgt:target});
-   if(t.hiveDouble)B.drones.push({x:t.x-8,y:t.y-6,src:t,life:4,tgt:target});
+   var count=t.hiveCount*(t.hiveDouble?2:1);
+   for(var h=0;h<count;h++)B.drones.push({x:t.x+(h%3-1)*7,y:t.y-10-Math.floor(h/3)*5,src:t,life:7*t.durationMul,tgt:target,attacks:t.hiveAttacks,cd:0});
    SFX.shoot();return;
  }
  var n=1+t.extraProj;
@@ -744,6 +744,7 @@ function applyHit(p,e){
    near.sort(function(a,b){return Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y);});
    near.slice(0,Math.max(0,p.src.multiCount-1)).forEach(function(o){arcFx(e.x,e.y,o.x,o.y,"#a06bff");dealDamage(p.src,o,p.dmg*0.7,{});});
    ringFx(e.x,e.y,"#a06bff",120);burst(e.x,e.y,8,"#a06bff");
+   if(p.src.teslaMatrix){B.fields=B.fields||[];B.fields.push({x:e.x,y:e.y,r:p.src.splash||42,life:p.src.teslaMatrixPlus?4:2.5,src:p.src,tick:0});}
    return;
  }
  if(cfg.effect==="slow")opts={slow:true,slowPow:p.src.slowPow};
@@ -777,7 +778,7 @@ function update(dt){
    B.spawnT-=dt;
    var interval=Math.max(0.28,0.86-B.wave*0.027);
    if(B.spawnT<=0){if(spawnEnemy(wavePickKind()))B.waveQueue--;B.spawnT=interval*(0.7+Math.random()*0.6);
-     if(B.wave===WAVES&&!B.bossSpawned&&B.waveQueue<=Math.floor(B.waveTotal/2)){if(spawnBoss())B.bossSpawned=true;}}
+     }
  }
  /* enemies */
  for(var i=B.enemies.length-1;i>=0;i--){
@@ -810,16 +811,22 @@ function update(dt){
  if(B.soldier&&B.guardianGoalX!==undefined){var delta=B.guardianGoalX-B.soldier.x;B.soldier.x+=Math.max(-480*dt,Math.min(480*dt,delta));}
  /* units */
  allFighters().forEach(function(t){unitFire(t,dt);});
- /* hive drones */
+ /* Hive: each wasp attacks multiple times. */
  for(var j=B.drones.length-1;j>=0;j--){
-   var dr=B.drones[j];dr.life-=dt;
+   var dr=B.drones[j];dr.life-=dt;dr.cd=Math.max(0,(dr.cd||0)-dt);
    if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead)dr.tgt=pickTarget(dr.src);
    if(dr.tgt){var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);dr.x+=Math.cos(a)*230*dt;dr.y+=Math.sin(a)*230*dt;
      if(Math.random()<dt*10)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:14,life:0.22,t:0,color:"rgba(250,204,21,.7)",r:1.4});
-     if(Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<16){dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*1.6,dr.src.hiveBurn?{burn:true}:{});burst(dr.x,dr.y,7,"#facc15");B.drones.splice(j,1);continue;}}
-   else dr.y-=40*dt;
+     if(Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<16&&dr.cd<=0){
+       dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*0.55,dr.src.hiveBurn?{burn:true}:{});
+       burst(dr.x,dr.y,3,"#facc15");dr.attacks--;dr.cd=0.25;
+       if(dr.attacks<=0){B.drones.splice(j,1);continue;}dr.tgt=null;
+     }
+   }else dr.y-=40*dt;
    if(dr.life<=0)B.drones.splice(j,1);
  }
+ /* Persistent Tesla field. */
+ if(B.fields)for(var fi=B.fields.length-1;fi>=0;fi--){var fld=B.fields[fi];fld.life-=dt;fld.tick-=dt;if(fld.tick<=0){fld.tick=0.35;B.enemies.forEach(function(en){if(en.hp>0&&!en.dead&&Math.hypot(en.x-fld.x,en.y-fld.y)<fld.r)dealDamage(fld.src,en,fld.src.cfg.damage*0.16,{});});ringFx(fld.x,fld.y,"#a06bff",50);}if(fld.life<=0)B.fields.splice(fi,1);}
  /* projectiles */
  for(var q=B.projs.length-1;q>=0;q--){
    var pr=B.projs[q];pr.life-=dt;
@@ -1176,7 +1183,7 @@ var SUPERS={
 };
 function genCards(){
  var picks=[];
- if(B.pendingSuper.length){var su=B.pendingSuper.shift();picks.push({kind:"super",u:su});}
+ if(B.pendingSuper.length){var su=B.pendingSuper.shift();if(!su.mods.includes("super"))picks.push({kind:"super",u:su});}
  var pool=[];
  if(freeSlot()>=0)TURRETS.forEach(function(cfg){if(!B.usedTypes[cfg.id])pool.push({kind:"new",cfg:cfg,w:cfg.rarity==="legend"?2:cfg.rarity==="epic"?3:5});});
  allFighters().forEach(function(u){pool.push({kind:"up",u:u,w:u.isSoldier?7:6});});
@@ -1184,12 +1191,18 @@ function genCards(){
    pool.push({kind:"mod",u:u,mod:"dmg",w:4});
    pool.push({kind:"mod",u:u,mod:"crit",w:3});
    pool.push({kind:"mod",u:u,mod:"haste",w:3});
-   if(u.extraProj<2)pool.push({kind:"mod",u:u,mod:"proj",w:2});
+   if(u.extraProj<2&&["soldier","skyguard","beam","railgun","disruption","aeroblast"].includes(u.cfg.id))pool.push({kind:"mod",u:u,mod:"proj",w:2});
    if(u.cfg.effect==="chain"&&u.chain<5)pool.push({kind:"mod",u:u,mod:"chain",w:2});
    if(u.cfg.effect==="pierce"&&u.pierce<7&&u.pierce<90)pool.push({kind:"mod",u:u,mod:"pierce",w:2});
-   if(u.splash<40)pool.push({kind:"mod",u:u,mod:"splash",w:2});
+   if(["skyguard","disruption","aeroblast","tesla","beam"].includes(u.cfg.id)&&u.splash<100)pool.push({kind:"mod",u:u,mod:"splash",w:2});
    if(u.cfg.effect==="slow"&&u.slowPow<0.6)pool.push({kind:"mod",u:u,mod:"slowpow",w:2});
    if(u.cfg.id==="laser"&&!u.refract)pool.push({kind:"mod",u:u,mod:"refract",w:2});
+  if(u.cfg.id==="laser"&&!u.laserSweep)pool.push({kind:"mod",u:u,mod:"laserSweep",w:2});
+  if(u.cfg.id==="laser"&&!u.laserDeflect)pool.push({kind:"mod",u:u,mod:"laserDeflect",w:2});
+  if(u.cfg.id==="tesla"&&!u.teslaMatrix)pool.push({kind:"mod",u:u,mod:"teslaMatrix",w:2});
+  if(u.cfg.id==="tesla"&&u.teslaMatrix&&!u.teslaMatrixPlus)pool.push({kind:"mod",u:u,mod:"teslaMatrixPlus",w:1});
+  if(u.cfg.id==="hive"&&u.hiveCount<6)pool.push({kind:"mod",u:u,mod:"hiveCount",w:2});
+  if(u.cfg.id==="hive"&&u.hiveAttacks<24)pool.push({kind:"mod",u:u,mod:"hiveAttacks",w:2});
    if(u.cfg.id==="laser"&&(u.reflect||0)<3)pool.push({kind:"mod",u:u,mod:"reflect",w:2});
  });
  /* комбо-карточки пар турелей (механика Combo из Galaxy Defense) */
@@ -1220,7 +1233,7 @@ function cardHTML(c){
   return{cls:"epic",icon:"🔗",name:"Комбо: "+CM[0],tag:"КОМБО · Lv. "+(c.u.runLv+1),desc:CM[1]+" <b>+1 уровень: "+c.u.cfg.name+"</b>."};}
  if(c.kind==="module"){var MD={boost:["Усиление поля боя","Все юниты наносят +12% урона до конца боя."],shieldm:["Щит крепости","Немедленно +250 к щиту базы и к его максимуму."],regenm:["Цикл регенерации","Немедленно восстановить 300 HP базы."],jam:["Глушилка волн","Все враги на 15% медленнее до конца боя."]}[c.modId];
   return{cls:"rare",icon:"🧩",name:"Модуль: "+MD[0],tag:"МОДУЛЬ КРЕПОСТИ",desc:MD[1]};}
- var M={dmg:["Силовой модуль","+30% к урону юнита."],crit:["Прицел крита","+10% шанс крита."],haste:["Ускоритель","+18% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."]};
+ var M={dmg:["Силовой модуль","+30% к урону юнита."],crit:["Прицел крита","+10% шанс крита."],haste:["Ускоритель","+18% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."],laserSweep:["Сканирующий луч","Луч автоматически проходит по соседним целям."],laserDeflect:["Дефлектор","Луч поражает дополнительную цель."],teslaMatrix:["Электрическая матрица","Взрыв Tesla оставляет электрическое поле."],teslaMatrixPlus:["Усиленная матрица","Увеличивает длительность и урон электрического поля."],hiveCount:["Расширение улья","+1 оса за выпуск."],hiveAttacks:["Жало роя","+3 атаки каждой осы."]};
  var m=M[c.mod];return{cls:"rare",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+m[0],tag:"МОД · Lv. "+(c.u.runLv+1),desc:m[1]+" <b>+1 уровень юнита.</b>"+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Юбилейный уровень — в следующем драфте будет СУПЕР-карточка!</b>":"")};
 }
 var curCards=[];
@@ -1256,7 +1269,7 @@ function gainLevel(u,statBoost){
  u.runLv++;
  if(statBoost){u.dmgMul*=1.25;u.haste*=1.06;}
  burst(u.x,u.y,12,u.cfg.color);
- if(u.runLv%5===0){B.pendingSuper.push(u);toast("⭐ "+u.cfg.name+" достиг "+u.runLv+" уровня — супер-карточка в следующем драфте!");}
+ if(u.runLv%5===0&&!u.mods.includes("super")&&!B.pendingSuper.includes(u)){B.pendingSuper.push(u);toast("⭐ "+u.cfg.name+" достиг "+u.runLv+" уровня — супер-карточка в следующем драфте!");}
 }
 function applyCard(c){
  if(c.kind==="new"){
@@ -1294,6 +1307,12 @@ function applyCard(c){
    if(c.mod==="slowpow")t.slowPow=Math.min(0.75,t.slowPow+0.12);
    if(c.mod==="refract")t.refract=true;
    if(c.mod==="reflect")t.reflect=(t.reflect||0)+1;
+   if(c.mod==="laserSweep")t.laserSweep=1;
+   if(c.mod==="laserDeflect")t.laserDeflect=1;
+   if(c.mod==="teslaMatrix")t.teslaMatrix=true;
+   if(c.mod==="teslaMatrixPlus")t.teslaMatrixPlus=true;
+   if(c.mod==="hiveCount")t.hiveCount++;
+   if(c.mod==="hiveAttacks")t.hiveAttacks+=3;
    t.mods.push(c.mod);
    gainLevel(t,false);
  }
