@@ -203,7 +203,7 @@ test("every specialist card renders and applies without exceptions", () => {
   const mods = {
     laser: ["laserSweep", "laserDeflect", "laserDuration"],
     beam: ["beamDuration", "beamFocus"],
-    tesla: ["teslaMatrix", "teslaMatrixPlus", "teslaChain"],
+    tesla: ["teslaMatrix", "teslaMatrixPlus", "teslaBounce"],
     hive: ["hiveCount", "hiveAttacks"],
     firewheel: ["wheelDuration", "wheelCount"]
   };
@@ -546,6 +546,128 @@ test("Cosmetic liveries persist in v1 without combat modifiers", () => {
   assert.equal(saved.livery,"ember");
   const {game:restored}=harness(saved);
   assert.equal(restored.META.livery,"ember");
+});
+
+test("Aeroblast is a close-range shotgun: pellet fan, no fire beyond range", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  const aero = g.mkUnit(g.TURRETS.find(t => t.id === "aeroblast"), 52, 0, false);
+  g.B.turrets = [aero];
+  assert.equal(aero.cfg.range, 200, "shotgun range stays short");
+  const e = sampleEnemy(g, 600); e.x = 52; e.speed = 0;
+  g.B.enemies = [e];
+  g.unitFire(aero, 0.4);
+  const pellets = g.B.projs.filter(p => p.src === aero);
+  assert.equal(pellets.length, 5, "one shotgun volley is 5 pellets, got " + pellets.length);
+  const vxs = pellets.map(p => p.vx);
+  assert.ok(Math.max(...vxs) - Math.min(...vxs) > 50, "pellets must fan out");
+  assert.ok(pellets.every(p => p.dmg === aero.cfg.damage), "each pellet deals the turret damage");
+  g.B.projs = [];
+  const far = sampleEnemy(g, 300); far.x = 52;
+  g.B.enemies = [far];
+  for (let i = 0; i < 10; i++) g.unitFire(aero, 0.3);
+  assert.equal(g.B.projs.length, 0, "shotgun must not fire beyond its short range");
+});
+
+test("wasps live longer and spread across targets, max 2 per target", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  g.B.wave = 3; g.B.waveState = "fighting"; g.B.waveQueue = 1; g.B.spawnT = 999;
+  const hive = g.mkUnit(g.TURRETS.find(t => t.id === "hive"), 52, 0, false);
+  g.B.turrets = [hive];
+  const targets = [60, 210, 360].map(x => { const e = sampleEnemy(g, 500); e.x = x; return e; });
+  g.B.enemies = targets;
+  g.unitFire(hive, 0.5);
+  assert.equal(g.B.drones.length, hive.hiveCount, "volley size unchanged");
+  assert.ok(g.B.drones.every(dr => dr.life >= 8), "wasps must live ~8.5s, got " + g.B.drones[0].life);
+  const perTarget = new Map();
+  g.B.drones.forEach(dr => { if (dr.tgt) perTarget.set(dr.tgt, (perTarget.get(dr.tgt) || 0) + 1); });
+  assert.ok([...perTarget.values()].every(n => n <= 2), "no more than 2 wasps per target: " + JSON.stringify([...perTarget.values()]));
+  assert.ok(perTarget.size >= 2, "wasps must spread across at least 2 targets, got " + perTarget.size);
+});
+
+test("Guardian triple volley is a tight group on one side", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  const s = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  s.extraProj = 2;
+  g.B.soldier = s;
+  g.B.turrets = [];
+  const e = sampleEnemy(g, 300); e.x = 210;
+  g.B.enemies = [e];
+  let volley = null;
+  for (let i = 0; i < 20 && !volley; i++) {
+    const before = g.B.projs.length;
+    g.unitFire(s, 0.3);
+    if (g.B.projs.length - before === 3) volley = g.B.projs.slice(before);
+  }
+  assert.ok(volley, "soldier should fire a 3-shot volley");
+  const xs = volley.map(p => p.x);
+  assert.ok(Math.max(...xs) - Math.min(...xs) <= 7, "volley span must be tight, got " + (Math.max(...xs) - Math.min(...xs)));
+  assert.ok(xs.every(x => (x - 210) * (xs[0] - 210) > 0), "all three shots must be on the same side of the soldier");
+});
+
+test("Tesla discharge bounces sequentially to the nearest enemy with decaying damage", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  const tesla = g.mkUnit(g.TURRETS.find(t => t.id === "tesla"), 52, 0, false);
+  tesla.critBonus = -1; /* deterministic: no crits in this measurement */
+  g.B.turrets = [tesla];
+  const e1 = sampleEnemy(g, 500); e1.x = 200;
+  const e2 = sampleEnemy(g, 500); e2.x = 260;
+  const e3 = sampleEnemy(g, 500); e3.x = 320;
+  g.B.enemies = [e1, e2, e3];
+  const hp1 = e1.hp, hp2 = e2.hp, hp3 = e3.hp;
+  g.applyHit({ src: tesla, dmg: 100 }, e1);
+  const d1 = hp1 - e1.hp, d2 = hp2 - e2.hp, d3 = hp3 - e3.hp;
+  assert.ok(d1 > 0, "main target must take the direct hit");
+  assert.ok(d2 > 0 && d3 > 0, "bounce must reach the 2nd and 3rd enemies");
+  assert.ok(d2 > d3, "bounce damage must decay: 2nd " + d2 + " vs 3rd " + d3);
+  const arcs = g.B.beams.filter(b => b.arc);
+  assert.ok(arcs.some(a => Math.abs(a.x1 - 200) < 1 && Math.abs(a.x2 - 260) < 1), "first bounce must arc from target 1 to target 2");
+  assert.ok(arcs.some(a => Math.abs(a.x1 - 260) < 1 && Math.abs(a.x2 - 320) < 1), "second bounce must arc from target 2 to target 3");
+  assert.ok(!arcs.some(a => Math.abs(a.x1 - 200) < 1 && Math.abs(a.x2 - 320) < 1), "no simultaneous arc from target 1 to target 3");
+});
+
+test("laser sweep hits the strongest remaining target, never a random one", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 52, 0, false);
+  laser.laserSweep = 1;
+  g.B.turrets = [laser];
+  const strong = sampleEnemy(g, 400); strong.x = 180; strong.maxHp = 1000; strong.hp = 5000;
+  const mid = sampleEnemy(g, 400); mid.x = 100; mid.maxHp = 800; mid.hp = 800;
+  const weak = sampleEnemy(g, 400); weak.x = 300; weak.maxHp = 500; weak.hp = 500;
+  g.B.enemies = [strong, mid, weak];
+  let swept = null;
+  for (let ch = 0; ch < 5 && !swept; ch++) {
+    laser.cd = 0; laser.laserActive = 0;
+    for (let i = 0; i < 60 && !swept; i++) {
+      g.unitFire(laser, 0.05);
+      const sw = g.B.beams.find(b => b.color === "#a7f3d0");
+      if (sw) swept = sw;
+    }
+  }
+  assert.ok(swept, "a sweep beam should appear within a few channels");
+  assert.ok(Math.abs(swept.x2 - 100) < 1 && Math.abs(swept.y2 - 400) < 1,
+    "sweep must hit the strongest remaining target (mid, 800 HP), got endpoint (" + swept.x2 + "," + swept.y2 + ")");
+  assert.equal(weak.hp, 500, "sweep must never hit the weaker target");
+});
+
+test("extra projectiles fly parallel to the main shot, not in a fan", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  const sg = g.mkUnit(g.TURRETS.find(t => t.id === "skyguard"), 52, 0, false);
+  sg.extraProj = 1;
+  g.B.turrets = [sg];
+  const e = sampleEnemy(g, 400); e.x = 52; e.speed = 0;
+  g.B.enemies = [e];
+  const before = g.B.projs.length;
+  g.unitFire(sg, 0.4);
+  const shots = g.B.projs.slice(before);
+  assert.equal(shots.length, 2, "two parallel rockets, got " + shots.length);
+  assert.ok(Math.abs(shots[0].vx - shots[1].vx) < 1e-9 && Math.abs(shots[0].vy - shots[1].vy) < 1e-9,
+    "extra projectile must share the main shot direction");
+  assert.ok(Math.abs(Math.abs(shots[0].x - shots[1].x) - 7) < 1e-9, "parallel offset must be 7px");
 });
 
 console.log("\n" + tests.length + " smoke tests passed.");

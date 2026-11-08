@@ -93,7 +93,7 @@ function update(dt){
       if(dr.tgt.dead&&dr.src.hiveEcho&&!dr.isEcho&&!dr.echoed&&B.drones.length<90){
         dr.echoed=true;
         var power=dr.src.hiveEcho===1?0.5:dr.src.hiveEcho===2?0.75:1;
-        B.drones.push({x:dr.x,y:dr.y,src:dr.src,life:4.3,tgt:null,
+        B.drones.push({x:dr.x,y:dr.y,src:dr.src,life:6.5,tgt:null,
           hitT:0,hits:Math.max(2,Math.ceil(dr.src.hiveAttacks*0.65)),boost:power,
           isEcho:true,echoed:true,launchT:0});
       }

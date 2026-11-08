@@ -33,7 +33,7 @@ function mkUnit(cfg,x,slot,isSoldier){
   pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?Math.floor((secondary-1)*5):0),
   chain:(cfg.effect==="chain"?2:0)+(cfg.id==="thunder"?Math.floor((secondary-1)*2):0),
   splash:(area[cfg.effect]||0)*secondary,critBonus:0,slowPow:0.35,totalDmg:0,mods:[],
-  beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:16,
+  beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:12,aeroPellets:5,
   laserTicks:0,laserTickT:0,laserTarget:null,beamTicks:0,beamTickT:0,beamTarget:null,beamRamp:0,
   chargeT:0,hiveCount:3,hiveAttacks:Math.round(7*secondary),wheelHits:Math.round(50*secondary),gravityRadius:Math.round(70*secondary),gravityPull:65,gravityDuration:3.5,gravityPower:1.0,
   laserDeflect:0,laserSweep:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false,wheelMax:1};

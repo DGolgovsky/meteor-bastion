@@ -8,18 +8,29 @@ function inRange(t,e){
  if(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0)&&!["laser","disruption","firewheel","gravity"].includes(t.cfg.id))return false;
  return (t.y-e.y)<=t.cfg.range && e.y<=BASEY+12;
 }
-/* Hive launches within turret range, but deployed wasps hunt across the WHOLE field. */
+/* Hive launches within turret range, but deployed wasps hunt across the WHOLE field.
+   Осы распределяются по целям: не больше 2 ос на одну цель — толпа не летит
+   в центр одного врага. Если все живые цели уже заняты, оса берёт наименее
+   загруженную из них. */
 function pickDroneTarget(dr){
  var alive=B.enemies.filter(function(e){return !e.dead&&e.hp>0&&e.y<=BASEY+12&&!(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0));});
  if(!alive.length)return null;
+ function assigned(e){var n=0;B.drones.forEach(function(o){if(o.tgt===e)n++;});return n;}
  var best=null,bestScore=Infinity;
  alive.forEach(function(e){
+  if(assigned(e)>=2)return;
   var dist=Math.hypot(e.x-dr.x,e.y-dr.y);
   var urgency=Math.max(0,e.y/BASEY)*32;
   var score=dist-urgency;
   if(score<bestScore){bestScore=score;best=e;}
  });
- return best;
+ if(best)return best;
+ var least=null,leastScore=Infinity;
+ alive.forEach(function(e){
+  var score=assigned(e)*1000+Math.hypot(e.x-dr.x,e.y-dr.y);
+  if(score<leastScore){leastScore=score;least=e;}
+ });
+ return least;
 }
 function pickTarget(t){
  var inR=B.enemies.filter(function(e){return inRange(t,e);});
@@ -197,8 +208,10 @@ function fireLaser(t,dt){
   if(def){beamFx(ox,oy,def.x,def.y,"#4ade80",1.8);dealDamage(t,def,t.cfg.damage*0.5,opts);}
  }
  if(t.laserSweep>0&&Math.random()<0.25){
+  /* сканирующий луч бьёт вторую цель ДЕТЕРМИНИРОВАННО — самую прочную
+     из оставшихся, а не случайную: стрельба не превращается в разнобой */
   var candidate=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
-  if(candidate.length){var sw=candidate[Math.floor(Math.random()*candidate.length)];beamFx(ox,oy,sw.x,sw.y,"#a7f3d0",2);dealDamage(t,sw,t.cfg.damage*0.8,opts);}
+  if(candidate.length){var sw=candidate.reduce(function(a,b){return b.maxHp>a.maxHp?b:a;});beamFx(ox,oy,sw.x,sw.y,"#a7f3d0",2);dealDamage(t,sw,t.cfg.damage*0.8,opts);}
  }
 }
 function fireFocusedBeam(t,dt){
@@ -277,7 +290,11 @@ function unitFire(t,dt){
         в её точке: короткая фаза вылета (~0,25 с) наружу, затем самонаведение (см. update). */
      var la=-Math.PI/2+(Math.random()*1.1-0.55);
      var lr=10+Math.random()*4;
-     B.drones.push({x:t.x+Math.cos(la)*lr,y:t.y-10+Math.sin(la)*lr,src:t,life:5.5*t.durationMul,tgt:target,hitT:0,hits:t.hiveAttacks,boost:1,echoed:false,isEcho:false,launchT:0.25,vx:Math.cos(la)*120,vy:Math.sin(la)*120});
+     /* оса сначала попадает в рой, а цель выбирает уже с учётом занятых целей —
+        иначе весь залп летит в одну точку (см. pickDroneTarget, макс. 2 на цель) */
+     var dr={x:t.x+Math.cos(la)*lr,y:t.y-10+Math.sin(la)*lr,src:t,life:8.5*t.durationMul,tgt:null,hitT:0,hits:t.hiveAttacks,boost:1,echoed:false,isEcho:false,launchT:0.25,vx:Math.cos(la)*120,vy:Math.sin(la)*120};
+     B.drones.push(dr);
+     dr.tgt=pickDroneTarget(dr)||target;
    }
    SFX.shoot();return;
  }
@@ -296,19 +313,39 @@ function unitFire(t,dt){
    }
    if(spawned)SFX.shoot();return;
  }
+ if(cfg.id==="aeroblast"){
+   /* ДРОБОВИК: один выстрел — веер дробинок на близкой дистанции. Дробинки
+      расходятся веером от точки прицеливания; вблизи все попадают в цель,
+      вдали разлетаются. Дополнительные снаряды (карты) = ещё дробинки в веере. */
+   var pellets=(t.aeroPellets||5)+t.extraProj;
+   for(var k=0;k<pellets;k++){
+     var a=t.angle+(k-(pellets-1)/2)*0.14;
+     B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:0,hitSet:[],life:2.6,tgt:target});
+   }
+   t.recoil=5;
+   B.parts.push({x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:0.12,t:0,color:cfg.color,r:2.2});
+   SFX.shoot();return;
+ }
  var n=1+t.extraProj;
  t.recoil=5;
- for(var k=0;k<n;k++){
-   var off=k-(n-1)/2;
-   if(t.isSoldier){
-     var px=-Math.sin(t.angle),py=Math.cos(t.angle);
-     /* страж стреляет из двух рук: каждый выстрел — из другой руки, ±6px поперёк
-        направления, поэтому поток идёт в шахматном порядке, а не единой полосой */
-     var hand=(t.handAlt?1:-1)*6;t.handAlt=!t.handAlt;
-     B.projs.push({x:t.x+px*(off*7+hand),y:t.y-10+py*(off*7+hand),vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
-   }else{
-     var a=t.angle+off*0.09;
-     B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
+ if(t.isSoldier){
+   var px=-Math.sin(t.angle),py=Math.cos(t.angle);
+   /* страж стреляет из двух рук: ОДНА рука на весь залп — все три выстрела
+      идут плотной группой (шаг 3px) с одной стороны, следующий залп — с другой.
+      Раньше рука менялась на каждом выстреле залпа, и третий выстрел уходил
+      далеко от первых двух. */
+   var hand=(t.handAlt?1:-1)*6;t.handAlt=!t.handAlt;
+   for(var k=0;k<n;k++){
+     var off=k-(n-1)/2;
+     B.projs.push({x:t.x+px*(off*3+hand),y:t.y-10+py*(off*3+hand),vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
+   }
+ }else{
+   var px2=-Math.sin(t.angle),py2=Math.cos(t.angle);
+   for(var k2=0;k2<n;k2++){
+     var off2=k2-(n-1)/2;
+     /* дополнительные снаряды турелей летят ПАРАЛЛЕЛЬНО основному (боковое
+        смещение 7px), а не веером — карточки не превращают стрельбу в разнобой */
+     B.projs.push({x:t.x+px2*off2*7,y:t.y-10+py2*off2*7,vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
    }
  }
  B.parts.push({x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:0.12,t:0,color:cfg.color,r:2.2});
@@ -317,15 +354,30 @@ function unitFire(t,dt){
 function applyHit(p,e){
  var cfg=p.src.cfg,opts={};
  if(cfg.effect==="charge"){
-   /* Direct burst, overlapping AoE and nearby chain are separate hits. */
+   /* Прямой разряд + взрыв по площади, а затем ОТСКОК: разряд перескакивает
+      от поражённой цели к ближайшему непобитому врагу, и так по цепочке —
+      каждый следующий отскок слабее. Старый «двойной заряд» (одновременное
+      поражение нескольких целей вокруг первой) убран полностью. */
    dealDamage(p.src,e,p.dmg*0.8,{});
    var radius=Math.max(55,p.src.splash||60);
    B.enemies.forEach(function(o){
      if(o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=radius)dealDamage(p.src,o,p.dmg*0.65,{});
    });
-   var near=B.enemies.filter(function(o){return o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=125;});
-   near.sort(function(a,b){return Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y);});
-   near.slice(0,Math.max(0,p.src.multiCount-1)).forEach(function(o){arcFx(e.x,e.y,o.x,o.y,"#a06bff");dealDamage(p.src,o,p.dmg*0.7,{});});
+   var bounces=Math.max(0,p.src.multiCount-1);
+   var bounceMul=[0.7,0.5,0.35,0.25,0.2];
+   var cur=e,bounced=[e];
+   for(var bi=0;bi<bounces;bi++){
+     var nx=null,bd=150;
+     B.enemies.forEach(function(o){
+       if(o.hp<=0||o.dead||bounced.indexOf(o)>=0)return;
+       var d=Math.hypot(o.x-cur.x,o.y-cur.y);
+       if(d<bd){bd=d;nx=o;}
+     });
+     if(!nx)break;
+     arcFx(cur.x,cur.y,nx.x,nx.y,"#a06bff");
+     dealDamage(p.src,nx,p.dmg*bounceMul[Math.min(bi,bounceMul.length-1)],{});
+     bounced.push(nx);cur=nx;
+   }
    if(p.src.teslaMatrix&&B.fields.length<32){
      B.fields.push({kind:"matrix",x:e.x,y:e.y,r:radius*1.6,life:p.src.teslaMatrixPlus?4.2:2.6,src:p.src,tick:0.1});
    }

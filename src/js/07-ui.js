@@ -4,13 +4,13 @@ var SUPERS={
  skyguard:{name:"Ракетный залп",desc:"+2 ракеты в залпе и +40% к скорострельности.",apply:function(u){u.extraProj+=2;u.haste*=1.4;}},
  laser:{name:"Зеркальный резонатор",desc:"Луч получает отражение и преломление сразу, +60% урона.",apply:function(u){u.beamSplit=true;u.reflect=Math.max(u.reflect||0,2);u.refract=true;u.dmgMul*=1.6;}},
  disruption:{name:"Стазис-поле",desc:"Замедление усилено до 70%, импульсы получают сплеш с замедлением.",apply:function(u){u.slowPow=0.7;u.splash=Math.max(u.splash,50);}},
- aeroblast:{name:"Ураган",desc:"Отброс втрое сильнее, заряды получают большой сплеш.",apply:function(u){u.knock=44;u.splash=Math.max(u.splash,60);}},
+ aeroblast:{name:"Ураган",desc:"Отброс втрое сильнее, заряды получают большой сплеш.",apply:function(u){u.knock=36;u.splash=Math.max(u.splash,60);}},
  thunder:{name:"Гроза",desc:"+3 цели цепной молнии и +50% урона.",apply:function(u){u.chain+=3;u.dmgMul*=1.5;}},
  beam:{name:"Аннигилятор",desc:"+150% урона и +20% шанса крита.",apply:function(u){u.dmgMul*=2.5;u.critBonus+=0.2;}},
  firewheel:{name:"Инферно",desc:"Горение в 3 раза сильнее, поджог получает сплеш.",apply:function(u){u.burnMul=3;u.splash=Math.max(u.splash,40);}},
  hive:{name:"Рой-мать",desc:"Дроны выпускаются парами и наносят двойной урон.",apply:function(u){u.hiveDouble=true;u.dmgMul*=1.35;}},
  railgun:{name:"Сквозной залп",desc:"Снаряд пробивает ВСЕХ врагов на линии, +80% урона.",apply:function(u){u.pierce=99;u.dmgMul*=1.8;}},
- tesla:{name:"Сверхнапряжение",desc:"Разряды бьют по 6 целям, +60% урона.",apply:function(u){u.multiCount=6;u.dmgMul*=1.6;}},
+ tesla:{name:"Сверхнапряжение",desc:"Разряд отскакивает по 6 целям, +60% урона.",apply:function(u){u.multiCount=6;u.dmgMul*=1.6;}},
  gravity:{name:"Чёрная сингулярность",desc:"Радиус поля +50%, притяжение +35%, +40% урона поля.",apply:function(u){u.gravityRadius*=1.5;u.gravityPull*=1.35;u.gravityPower*=1.4;}},
  soldier:{name:"Легендарный стрелок",desc:"+100% урона, +25% шанса крита и +1 снаряд в очереди — на всё поле.",apply:function(u){u.dmgMul*=2;u.critBonus+=0.25;u.extraProj+=1;}}
 };
@@ -119,7 +119,7 @@ function genCards(allowSuper){
   if(u.cfg.id==="beam"&&META.levels.beam>=2&&u.runLv>=3&&!u.beamFocusCap)pool.push({kind:"mod",u:u,mod:"beamFocus",w:2});
   if(u.cfg.id==="tesla"&&META.levels.tesla>=2&&u.runLv>=2&&!u.teslaMatrix)pool.push({kind:"mod",u:u,mod:"teslaMatrix",w:3});
   if(u.cfg.id==="tesla"&&META.levels.tesla>=6&&u.teslaMatrix&&!u.teslaMatrixPlus)pool.push({kind:"mod",u:u,mod:"teslaMatrixPlus",w:2});
-  if(u.cfg.id==="tesla"&&u.multiCount<6)pool.push({kind:"mod",u:u,mod:"teslaChain",w:2});
+  if(u.cfg.id==="tesla"&&u.multiCount<6)pool.push({kind:"mod",u:u,mod:"teslaBounce",w:2});
   if(u.cfg.id==="hive"&&u.hiveCount<5)pool.push({kind:"mod",u:u,mod:"hiveCount",w:3});
   if(u.cfg.id==="hive"&&u.runLv>=2&&u.hiveAttacks<16)pool.push({kind:"mod",u:u,mod:"hiveAttacks",w:3});
   if(u.cfg.id==="firewheel"&&u.runLv>=2&&(u.wheelDurationBonus||0)<6)pool.push({kind:"mod",u:u,mod:"wheelDuration",w:3});
@@ -159,14 +159,14 @@ function cardHTML(c){
  if(c.kind==="module"){var MD={boost:["Усиление поля боя","Все юниты наносят +12% урона до конца боя."],healm:["Лечение крепости","Немедленно восстановить 250 HP базы."],regenm:["Цикл регенерации","Немедленно восстановить 300 HP базы."],jam:["Глушилка волн","Все враги на 15% медленнее до конца боя."]}[c.modId];
   return{cls:"rare",icon:"🧩",name:"Модуль: "+MD[0],tag:"МОДУЛЬ КРЕПОСТИ",desc:MD[1]};}
  var M={dmg:["Силовой модуль","+15% к урону юнита."],crit:["Прицел крита","+6% шанс крита."],haste:["Ускоритель","+10% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."],
-   laserSweep:["Сканирующий луч","Луч может поражать дополнительную случайную цель."],
+   laserSweep:["Сканирующий луч","Луч поражает дополнительную цель — самую прочную из оставшихся."],
    laserDeflect:["Дефлектор","Дополнительный луч бьёт вторую цель при работе лазера."],
    laserDuration:["Усиленный конденсатор","Длительность лазерного импульса +30%."],
    beamDuration:["Резонанс Beam","Продолжительность серии Beam +35%."],
    beamFocus:["Фокусировка Beam","Повторные попадания по одной цели наращивают урон до +80%."],
    teslaMatrix:["Электрическая матрица","После разряда остаётся поле периодического урона."],
    teslaMatrixPlus:["Усиленная матрица","Увеличены длительность и урон поля Tesla."],
-   teslaChain:["Вторичная дуга","Ещё одна цель цепного разряда Tesla."],
+   teslaBounce:["Отскок разряда","Разряд после попадания отскакивает ещё к одному ближайшему врагу."],
    hiveCount:["Новые осы","+1 оса при каждом выпуске улья."],
    hiveAttacks:["Усиленные жала","+2 атаки каждой осы."],
    wheelDuration:["Стабилизатор Firewheel","Время полёта огненного диска +2 секунды."],
@@ -258,7 +258,7 @@ function applyCard(c){
    if(c.mod==="beamFocus")t.beamFocusCap=0.8;
    if(c.mod==="teslaMatrix")t.teslaMatrix=true;
    if(c.mod==="teslaMatrixPlus")t.teslaMatrixPlus=true;
-   if(c.mod==="teslaChain")t.multiCount++;
+   if(c.mod==="teslaBounce")t.multiCount++;
    if(c.mod==="hiveCount")t.hiveCount++;
    if(c.mod==="hiveAttacks")t.hiveAttacks+=2;
    if(c.mod==="wheelDuration")t.wheelDurationBonus=(t.wheelDurationBonus||0)+2;

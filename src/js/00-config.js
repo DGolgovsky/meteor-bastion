@@ -5,7 +5,7 @@ var TURRETS=[
  {id:"skyguard",name:"Sky Guard",icon:"🚀",dmgType:"Ракеты",damage:17,attackSpeed:1.5,range:640,projSpeed:400,crit:0.08,critMul:1.8,target:"closestBase",effect:"rocket",rarity:"common",color:"#ffd34d",desc:"Ракетная установка: выпускает самонаводящиеся ракеты с уроном по площади. Дальность — почти вся карта."},
  {id:"laser",name:"Laser",icon:"🔆",dmgType:"Энергия",damage:26,attackSpeed:1,range:1200,projSpeed:0,crit:0.05,critMul:1.8,target:"strongest",effect:"beam",rarity:"common",color:"#4ade80",desc:"Луч на всю карту: наносит урон ВСЕМ врагам, попавшим в луч. Улучшениями получает отражение и преломление луча."},
  {id:"disruption",name:"Disruption Drone",icon:"🛸",dmgType:"Силовое поле",damage:7,attackSpeed:1.1,range:180,projSpeed:340,crit:0.05,critMul:1.7,target:"closestBase",effect:"slow",rarity:"rare",color:"#38c8ff",desc:"Импульсы силового поля замедляют врагов на 35%."},
- {id:"aeroblast",name:"Aeroblast",icon:"🌀",dmgType:"Воздух",damage:12,attackSpeed:0.9,range:170,projSpeed:380,crit:0.06,critMul:1.8,target:"nearest",effect:"knockback",rarity:"common",color:"#7dd7ff",desc:"Воздушные заряды отбрасывают врагов назад."},
+ {id:"aeroblast",name:"Aeroblast",icon:"🌀",dmgType:"Воздух",damage:10,attackSpeed:0.8,range:200,projSpeed:380,crit:0.06,critMul:1.8,target:"nearest",effect:"knockback",rarity:"common",color:"#7dd7ff",desc:"Дробовик: веер из 5 воздушных дробинок на близкой дистанции — мощный урон вблизи, отбрасывает врагов назад."},
  {id:"thunder",name:"Thunderbolt",icon:"⚡",dmgType:"Электричество",damage:16,attackSpeed:0.8,range:180,projSpeed:0,crit:0.12,critMul:2.0,target:"nearest",effect:"chain",rarity:"rare",color:"#c084fc",desc:"Молния перескакивает на соседних врагов."},
  {id:"beam",name:"Beam",icon:"🔷",dmgType:"Энергия",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"strongest",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Тяжёлые энергозаряды по самым прочным целям."},
  {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Огонь",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Поджигает врагов: урон продолжает тикать."},
@@ -14,7 +14,7 @@ var TURRETS=[
  {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Электричество",damage:15,attackSpeed:0.88,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"Заряд наносит взрывной урон и выпускает цепные молнии."},
  {id:"gravity",name:"Gravity Vortex Gun",icon:"🕳️",dmgType:"Гравитация",damage:9,attackSpeed:0.48,range:390,projSpeed:0,crit:0.04,critMul:1.65,target:"closestBase",effect:"gravity",rarity:"epic",color:"#8cb5ff",desc:"Создаёт гравитационную область, которая притягивает врагов и наносит периодический урон."}
 ];
-var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:13,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
+var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:12,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
 /* res — множители входящего урона по типам (как ±50% сопротивлений в Galaxy Defense):
    <1 — сопротивление, >1 — уязвимость */
 var ENEMIES=[
@@ -51,8 +51,8 @@ function finalWave(){return stageWaves(B&&B.stage);}
 /* Battle pacing parameters; values are test targets, not official Galaxy Defense numbers. */
 var BALANCE={
  draftFirst:2,draftOpeningCosts:[2,4,6,9],draftLateBase:14,draftGrowth:8,draftWaveGrowth:2,
- waveStart:4,waveGrowth:1.7,
- spawnBase:1.05,spawnReduction:0.008,spawnMin:0.28,
+ waveStart:5,waveGrowth:2.0,
+ spawnBase:0.95,spawnReduction:0.008,spawnMin:0.28,
  waveHpGrowth:0.09,bossHpGrowth:0.085,turretBasePower:1.6,
  eliteHp:1.68,eliteSpeed:1.10,eliteContact:1.18,
  eliteWaveBase:2,eliteWaveGrowth:0.28,
