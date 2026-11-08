@@ -14,15 +14,18 @@ function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;va
  if(typeof d.music==="boolean")META.music=d.music; if(typeof d.sfx==="boolean")META.sfx=d.sfx;
  if(typeof d.elite==="boolean")META.elite=d.elite; if(typeof d.lastPatrol==="number"&&isFinite(d.lastPatrol)&&d.lastPatrol>0)META.lastPatrol=d.lastPatrol;
  if(typeof d.lastEnergyAt==="number"&&isFinite(d.lastEnergyAt)&&d.lastEnergyAt>0)META.lastEnergyAt=d.lastEnergyAt;
- if(d.eliteCleared&&typeof d.eliteCleared==="object")for(var ck in d.eliteCleared){if(/^[123]$/.test(ck)&&d.eliteCleared[ck]===true)META.eliteCleared[ck]=true;}
- if(d.normalCleared&&typeof d.normalCleared==="object")for(var nk in d.normalCleared){if(/^[123]$/.test(nk)&&d.normalCleared[nk]===true)META.normalCleared[nk]=true;}
- META.energy=Math.max(0,Math.min(30,META.energy));META.unlocked=Math.max(1,Math.min(3,META.unlocked));META.selStage=Math.max(1,Math.min(3,META.selStage));
+ if(d.eliteCleared&&typeof d.eliteCleared==="object")for(var ck in d.eliteCleared){if(+ck>=1&&+ck<=STAGES.length&&d.eliteCleared[ck]===true)META.eliteCleared[ck]=true;}
+ if(d.normalCleared&&typeof d.normalCleared==="object")for(var nk in d.normalCleared){if(+nk>=1&&+nk<=STAGES.length&&d.normalCleared[nk]===true)META.normalCleared[nk]=true;}
+ META.energy=Math.max(0,Math.min(30,META.energy));META.unlocked=Math.max(1,Math.min(STAGES.length,META.unlocked));META.selStage=Math.max(1,Math.min(META.unlocked,META.selStage));
  if(d.levels)allUnitsCfg().forEach(function(t){var v=d.levels[t.id];if(typeof v==="number"&&v>=1)META.levels[t.id]=Math.min(45,Math.floor(v));});
  if(d.mats)allUnitsCfg().forEach(function(t){var v=d.mats[t.id];if(typeof v==="number"&&v>=0)META.mats[t.id]=Math.floor(v);});
 }catch(e){}}
 loadSave();
-function totalCritBonus(){var s=0;allUnitsCfg().forEach(function(t){s+=(Math.min(45,META.levels[t.id])-1)*3;});return Math.min(180,s);}
+function totalCritBonus(){var s=0;allUnitsCfg().forEach(function(t){s+=(Math.min(45,META.levels[t.id])-1)*3;});return Math.min(100,s);}
 function upCost(t){var lv=META.levels[t.id];return{mats:14+lv*9,coins:70+lv*30};}
+function rdTierUnlock(id){return {skyguard:14,laser:18,disruption:18,aeroblast:14,thunder:18,beam:18,firewheel:10,hive:18,railgun:14,tesla:18,gravity:10,soldier:18}[id]||18;}
+function rdTierName(level){return level>=22?"T3/Combo":level>=14?"Breakthrough":level>=10?"T3":level>=6?"T2":level>=2?"T1":"БАЗОВЫЙ";}
+
 function refillEnergy(){var now=Date.now();if(!META.lastEnergyAt)META.lastEnergyAt=now;
  if(META.energy>=30){META.energy=30;META.lastEnergyAt=now;return;}
  var ticks=Math.floor(Math.max(0,now-META.lastEnergyAt)/720000);
@@ -88,10 +91,10 @@ function renderHome(){
  $("scene-stage-num").textContent=("0"+stage.n).slice(-2)+" / "+("0"+STAGES.length).slice(-2);
  var clearMap=elite?META.eliteCleared:META.normalCleared;
  $("scene-stage-status").textContent=clearMap[stage.n]?"✓ ПРОЙДЕН":elite?"⚠ ЭЛИТНАЯ УГРОЗА":"ЭТАП ДОСТУПЕН";
- $("stage-brief").textContent=elite?"Элитные враги • усиленные волны":"Метеоритный шторм • 20 волн";
+ $("stage-brief").textContent=elite?"Элитные враги • усиленные волны":stage.desc;
  $("stage-risk").textContent=elite?"ELITE ×"+BALANCE.eliteHp+" HP":"NORMAL";
  var waveCount=BALANCE.waveStart+Math.round(BALANCE.waveGrowth*1)+(stage.n-1)*2+(elite?Math.ceil(BALANCE.eliteWaveBase+BALANCE.eliteWaveGrowth):0);
- $("stage-metrics").innerHTML='<span class="hq-metric">⚔ <b>20</b> волн</span>'+
+ $("stage-metrics").innerHTML='<span class="hq-metric">⚔ <b>'+stageWaves(stage)+'</b> волн</span>'+
  '<span class="hq-metric">▣ <b>'+waveCount+'</b> в первой</span>'+
  '<span class="hq-metric">✦ <b>'+(elite?"×1.6":"×1.0")+'</b> награды</span>';
  var pa=patrolAccrued();
@@ -117,8 +120,8 @@ $("btn-profile").addEventListener("click",function(){show("turrets");});
 function openStageInfo(){
  var st=STAGES[META.selStage-1],mode=META.elite?"Elite":"Normal",clear=META.elite?META.eliteCleared:META.normalCleared;
  $("stage-info-title").textContent=mode+" Stage "+st.n;
- $("stage-info-sub").textContent=INTEL[st.n-1];
- $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>ВОЛНЫ</span><b>20 · БОСС</b>Враг атакует крепость сверху</div>'+
+ $("stage-info-sub").textContent=st.desc;
+ $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>ВОЛНЫ</span><b>'+stageWaves(st)+' · БОСС</b>Враг атакует крепость сверху</div>'+
  '<div class="hq-stage-info-cell"><span>РЕЖИМ</span><b>'+mode.toUpperCase()+'</b>'+(META.elite?"Чемпионы, ускоряющие союзников":"Стандартные составы волн")+'</div>'+
  '<div class="hq-stage-info-cell"><span>СТАТУС</span><b>'+(clear[st.n]?"ПРОЙДЕН":"НЕ ПРОЙДЕН")+'</b>Сохраняется на устройстве</div>'+
  '<div class="hq-stage-info-cell"><span>НАГРАДЫ</span><b>'+(META.elite?"×1.6":"×1")+'</b>При победе или поражении</div>';
@@ -136,7 +139,7 @@ function renderTurrets(){refillEnergy();
    var lv=META.levels[t.id],c=upCost(t),can=lv<45&&META.mats[t.id]>=c.mats&&META.coins>=c.coins;
    var d=document.createElement("div");d.className="tcard"+(t.id==="soldier"?" soldier":"");
    d.innerHTML=(can?'<span class="avail"></span>':"")+'<div class="tic">'+t.icon+'</div><div class="tn">'+t.name+'</div>'+
-    '<div class="tl">Lv. '+lv+'</div><div class="dmg">DMG '+Math.round(t.damage*metaDamage(lv))+' · '+t.dmgType+'</div>'+
+    '<div class="tl">R&D Lv. '+lv+' · '+rdTierName(lv)+'</div><div class="dmg">DMG '+Math.round(t.damage*metaDamage(lv))+' · '+t.dmgType+'</div>'+
     '<div class="dmg">CD −'+Math.round((1-metaCooldown(lv))*100)+'% · '+secondaryName(t.id)+' ×'+metaSecondary(lv).toFixed(1)+'</div>'+
      '<div class="prog"><i style="width:'+Math.min(100,META.mats[t.id]/c.mats*100)+'%"></i></div>'+
     '<div class="mats">🔩 '+META.mats[t.id]+' / '+c.mats+' · 🪙 '+c.coins+'</div>'+
