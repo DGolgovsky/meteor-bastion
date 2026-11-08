@@ -245,7 +245,7 @@ var TURRETS=[
  {id:"railgun",name:"Railgun",icon:"🎯",dmgType:"Рельса",damage:70,attackSpeed:0.45,range:230,projSpeed:900,crit:0.15,critMul:2.4,target:"closestBase",effect:"pierce",rarity:"legend",color:"#f472b6",desc:"Снаряд пробивает врагов насквозь по линии."},
  {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Электричество",damage:13,attackSpeed:1.0,range:200,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"Выпускает летящий заряд энергии: при попадании разряжается дугами по соседним врагам."}
 ];
-var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:13,attackSpeed:1.7,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
+var SOLDIER_CFG={id:"soldier",name:"Солдат «Бастион»",icon:"🪖",dmgType:"Винтовка",damage:13,attackSpeed:6.6667,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Твой боец в центре линии. Дальность — всё поле."};
 /* res — множители входящего урона по типам (как ±50% сопротивлений в Galaxy Defense):
    <1 — сопротивление, >1 — уязвимость */
 var ENEMIES=[
@@ -264,8 +264,17 @@ var STAGES=[
  {n:2,name:"Normal Stage 2",hpMul:1.45,spdMul:1.08,desc:"Крепче и плотнее. Открывается после победы на этапе 1."},
  {n:3,name:"Hard Stage 3",hpMul:2.0,spdMul:1.16,desc:"Шторм: элитки с 5-й волны и усиленный босс."}
 ];
-var WAVES=20;
-var TURRET_X=[52,128,292,368], SOLDIER_X=210, LINE_Y=660, BASEY=660, W=420, H=700;
+var WAVES=20, MAX_ENEMIES=58;
+/* 45-level long-term progression. Levels upgrade DMG every time, cooldown at four milestones,
+   and a turret-specific secondary stat at five other milestones. */
+var CD_LEVELS=[8,16,28,36], SECONDARY_LEVELS=[4,12,24,32,44];
+function metaDamage(lv){return 1+0.08*(Math.min(45,Math.max(1,lv))-1);}
+function metaCooldown(lv){return 1-0.075*CD_LEVELS.filter(function(x){return lv>=x;}).length;}
+function metaSecondary(lv){return 1+0.2*SECONDARY_LEVELS.filter(function(x){return lv>=x;}).length;}
+function secondaryName(id){return ({skyguard:"Радиус взрыва",laser:"Длительность луча",aeroblast:"Радиус удара",beam:"Длительность луча",firewheel:"Время жизни дрона",hive:"Атаки ос",railgun:"Пробитие",tesla:"Радиус разряда",disruption:"Площадь поля",thunder:"Количество цепных целей",soldier:"Выстрелы"})[id]||"Сила эффекта";}
+
+/* Placement order in a run: far left, far right, center left, center right. */
+var TURRET_X=[52,368,128,292], SOLDIER_X=210, LINE_Y=660, BASEY=660, W=420, H=700;
 /* типы урона по вики Galaxy Defense: Fire / Energy / Force-field / Physical / Electric */
 var DTYPES={skyguard:"fire",laser:"energy",disruption:"force",aeroblast:"phys",thunder:"electric",beam:"energy",firewheel:"fire",hive:"force",railgun:"phys",tesla:"electric",soldier:"phys"};
 TURRETS.concat([SOLDIER_CFG]).forEach(function(t){t.dtype=DTYPES[t.id];});
@@ -274,25 +283,31 @@ var DTYPE_RU={fire:"Огонь",energy:"Энергия",force:"Силовое п
 /* ==================== STATE + SAVE ==================== */
 function allUnitsCfg(){return TURRETS.concat([SOLDIER_CFG]);}
 function freshMeta(){
-  var m={coins:600,gems:12,energy:30,playerXp:0,wins:0,unlocked:1,selStage:1,music:true,sfx:true,levels:{},mats:{},components:0,elite:false,lastPatrol:Date.now()};
+  var m={coins:600,gems:12,energy:30,playerXp:0,wins:0,unlocked:1,selStage:1,music:true,sfx:true,levels:{},mats:{},components:0,elite:false,lastPatrol:Date.now(),lastEnergyAt:Date.now()};
   allUnitsCfg().forEach(function(t){m.levels[t.id]=1;m.mats[t.id]=0;});
   return m;
 }
 var META=freshMeta();
 /* ===== Сохранение прогресса: localStorage, схема v1 (явный запрос игрока: прогресс должен переживать перезагрузку) ===== */
 var SAVE_KEY="meteor-bastion-save-v1";
-function persist(){try{var d={v:1};["coins","gems","energy","components","playerXp","wins","unlocked","selStage","music","sfx","elite","lastPatrol"].forEach(function(k){d[k]=META[k];});d.levels=META.levels;d.mats=META.mats;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}}
+function persist(){try{var d={v:1};["coins","gems","energy","components","playerXp","wins","unlocked","selStage","music","sfx","elite","lastPatrol","lastEnergyAt"].forEach(function(k){d[k]=META[k];});d.levels=META.levels;d.mats=META.mats;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}}
 function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var d=JSON.parse(raw);if(!d||d.v!==1)return;
  ["coins","gems","energy","components","playerXp","wins","unlocked","selStage"].forEach(function(k){if(typeof d[k]==="number"&&isFinite(d[k]))META[k]=d[k];});
  if(typeof d.music==="boolean")META.music=d.music; if(typeof d.sfx==="boolean")META.sfx=d.sfx;
  if(typeof d.elite==="boolean")META.elite=d.elite; if(typeof d.lastPatrol==="number"&&isFinite(d.lastPatrol)&&d.lastPatrol>0)META.lastPatrol=d.lastPatrol;
+ if(typeof d.lastEnergyAt==="number"&&isFinite(d.lastEnergyAt)&&d.lastEnergyAt>0)META.lastEnergyAt=d.lastEnergyAt;
  META.energy=Math.max(0,Math.min(30,META.energy));META.unlocked=Math.max(1,Math.min(3,META.unlocked));META.selStage=Math.max(1,Math.min(3,META.selStage));
  if(d.levels)allUnitsCfg().forEach(function(t){var v=d.levels[t.id];if(typeof v==="number"&&v>=1)META.levels[t.id]=Math.floor(v);});
  if(d.mats)allUnitsCfg().forEach(function(t){var v=d.mats[t.id];if(typeof v==="number"&&v>=0)META.mats[t.id]=Math.floor(v);});
 }catch(e){}}
 loadSave();
 function totalCritBonus(){var s=0;allUnitsCfg().forEach(function(t){s+=(META.levels[t.id]-1)*3;});return s;}
-function upCost(t){var lv=META.levels[t.id];return{mats:20+lv*15,coins:60+lv*45};}
+function upCost(t){var lv=META.levels[t.id];return{mats:14+lv*9,coins:70+lv*30};}
+function refillEnergy(){var now=Date.now();if(!META.lastEnergyAt)META.lastEnergyAt=now;
+ if(META.energy>=30){META.energy=30;META.lastEnergyAt=now;return;}
+ var ticks=Math.floor(Math.max(0,now-META.lastEnergyAt)/720000);
+ if(ticks>0){META.energy=Math.min(30,META.energy+ticks);META.lastEnergyAt=META.energy===30?now:META.lastEnergyAt+ticks*720000;persist();}
+}
 function fmt(n){n=Math.floor(n);if(n>=1e6)return(n/1e6).toFixed(2)+"m";if(n>=1e4)return(n/1e3).toFixed(1)+"k";return ""+n;}
 function $(id){return document.getElementById(id);}
 function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("on");},2400);}
@@ -326,13 +341,11 @@ function show(name){
  if(name==="battle")requestAnimationFrame(fitCanvas);
 }
 document.querySelectorAll("[data-nav]").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.nav);});});
-function curHTML(){return '<span class="pill">🪙 <b>'+fmt(META.coins)+'</b><button class="ibtn" style="min-width:26px;height:24px;font-size:13px" data-top="coins">+</button></span>'+
- '<span class="pill">💎 <span class="gem">'+META.gems+'</span><button class="ibtn" style="min-width:26px;height:24px;font-size:13px" data-top="gems">+</button></span>'+
- '<span class="pill">⚡ <span class="en">'+META.energy+'/30</span><button class="ibtn" style="min-width:26px;height:24px;font-size:13px" data-top="energy">+</button></span>'+
+function curHTML(){return '<span class="pill">🪙 <b>'+fmt(META.coins)+'</b></span>'+
+ '<span class="pill">💎 <span class="gem">'+META.gems+'</span></span>'+
+ '<span class="pill">⚡ <span class="en">'+META.energy+'/30</span></span>'+
  '<span class="pill">🧩 <b>'+META.components+'</b></span>';}
-function bindTop(container){container.querySelectorAll("[data-top]").forEach(function(b){b.addEventListener("click",function(){
- var k=b.dataset.top; if(k==="coins")META.coins+=250; if(k==="gems")META.gems+=5; if(k==="energy")META.energy=Math.min(30,META.energy+10);
- persist(); toast("Тестовое пополнение: "+k); renderHome(); renderTurrets(); bindTops();});});}
+function bindTop(){ /* Debug top-up buttons are deliberately removed from release UI. */ }
 function bindTops(){bindTop($("home-cur"));bindTop($("tur-cur"));}
 var INTEL=[
  "Разведка: метеориты слабы к физ. урону и держат огонь; бронированные почти не берут физ. — бей электричеством.",
@@ -340,7 +353,7 @@ var INTEL=[
  "Разведка: элитки держат энергию, но слабы к силовому полю; босс устойчив к огню и физ. урону."
 ];
 function patrolAccrued(){var h=(Date.now()-META.lastPatrol)/3600000;return Math.floor(Math.min(8,h)*25*(1+META.unlocked*0.5));}
-function renderHome(){
+function renderHome(){refillEnergy();
  $("home-cur").innerHTML=curHTML();
  var pl=1+Math.floor(META.playerXp/100);
  $("prof-line").textContent="Уровень аккаунта "+pl+" · Побед: "+META.wins+" · Открыто этапов: "+META.unlocked;
@@ -361,22 +374,23 @@ function renderHome(){
 }
 $("btn-elite").addEventListener("click",function(){META.elite=!META.elite;persist();SFX.pick();renderHome();bindTops();});
 $("btn-patrol").addEventListener("click",function(){var pa=patrolAccrued();if(pa<=0)return;META.coins+=pa;META.lastPatrol=Date.now();persist();SFX.pick();toast("Авто-патруль привёз "+pa+" монет");renderHome();bindTops();});
-function renderTurrets(){
+function renderTurrets(){refillEnergy();
  $("tur-cur").innerHTML=curHTML();
- $("bonus-bar").innerHTML="⭐ Total Crit DMG Increase: <b>+"+totalCritBonus()+"%</b> · +8% урона за уровень юнита (турели и солдат)";
+ $("bonus-bar").innerHTML="⭐ Total Crit DMG Increase: <b>+"+totalCritBonus()+"%</b> · до 45 уровня: урон +8%/уровень; CD и спецэффекты по этапам";
  var g=$("tgrid");g.innerHTML="";
  allUnitsCfg().forEach(function(t){
-   var lv=META.levels[t.id],c=upCost(t),can=META.mats[t.id]>=c.mats&&META.coins>=c.coins;
+   var lv=META.levels[t.id],c=upCost(t),can=lv<45&&META.mats[t.id]>=c.mats&&META.coins>=c.coins;
    var d=document.createElement("div");d.className="tcard"+(t.id==="soldier"?" soldier":"");
    d.innerHTML=(can?'<span class="avail"></span>':"")+'<div class="tic">'+t.icon+'</div><div class="tn">'+t.name+'</div>'+
-    '<div class="tl">Lv. '+lv+'</div><div class="dmg">DMG '+Math.round(t.damage*(1+0.08*(lv-1)))+' · '+t.dmgType+'</div>'+
-    '<div class="prog"><i style="width:'+Math.min(100,META.mats[t.id]/c.mats*100)+'%"></i></div>'+
+    '<div class="tl">Lv. '+lv+'</div><div class="dmg">DMG '+Math.round(t.damage*metaDamage(lv))+' · '+t.dmgType+'</div>'+
+    '<div class="dmg">CD −'+Math.round((1-metaCooldown(lv))*100)+'% · '+secondaryName(t.id)+' ×'+metaSecondary(lv).toFixed(1)+'</div>'+
+     '<div class="prog"><i style="width:'+Math.min(100,META.mats[t.id]/c.mats*100)+'%"></i></div>'+
     '<div class="mats">🔩 '+META.mats[t.id]+' / '+c.mats+' · 🪙 '+c.coins+'</div>'+
-    '<button class="btn up">⬆ Улучшить</button>';
+    '<button class="btn up">'+(lv>=45?"MAX Lv.45":"⬆ Улучшить")+'</button>';
    var btn=d.querySelector(".up");
    if(!can)btn.disabled=true;
    btn.addEventListener("click",function(){
-     if(META.mats[t.id]<c.mats||META.coins<c.coins)return;
+     if(META.levels[t.id]>=45||META.mats[t.id]<c.mats||META.coins<c.coins)return;
      META.mats[t.id]-=c.mats;META.coins-=c.coins;META.levels[t.id]++;persist();SFX.pick();toast(t.name+" → Lv. "+META.levels[t.id]);renderTurrets();bindTops();
    });
    g.appendChild(d);
@@ -420,13 +434,19 @@ window.addEventListener("resize",function(){clearTimeout(fitT);fitT=setTimeout(f
 window.addEventListener("orientationchange",function(){setTimeout(fitCanvas,80);setTimeout(fitCanvas,320);});
 var B=null, raf=null, lastTs=0;
 function mkUnit(cfg,x,slot,isSoldier){
- var metaLv=META.levels[cfg.id];
- return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.3,angle:-Math.PI/2,recoil:0,
-  dmgMul:(1+0.08*(metaLv-1)),haste:1,extraProj:0,pierce:(cfg.effect==="pierce"?3:0),chain:(cfg.effect==="chain"?2:0),
-  splash:(cfg.effect==="rocket"?30:0),critBonus:0,slowPow:0.35,totalDmg:0,mods:[],beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:16};
+ var lv=META.levels[cfg.id],secondary=metaSecondary(lv),area={rocket:32,charge:42,knockback:40,slow:34};
+ return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,angle:-Math.PI/2,recoil:0,
+  metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:metaDamage(lv),haste:1,extraProj:0,
+  pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?Math.floor((secondary-1)*5):0),
+  chain:(cfg.effect==="chain"?2:0)+(cfg.id==="thunder"?Math.floor((secondary-1)*2):0),
+  splash:(area[cfg.effect]||0)*secondary,critBonus:0,slowPow:0.35,totalDmg:0,mods:[],
+  beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:16,
+  laserTicks:0,laserTickT:0,laserTarget:null,beamTicks:0,beamTickT:0,beamTarget:null,beamRamp:0,
+  chargeT:0,hiveCount:3,hiveAttacks:Math.round(7*secondary),wheelHits:Math.round(50*secondary),
+  laserDeflect:0,laserSweep:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false};
 }
 function newBattle(stage){
- return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:false,
+ return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:false,guardianGoalX:SOLDIER_X,
   baseHp:1000,baseMax:1000,shield:150,shieldMax:150,
   wave:0,waveQueue:0,waveTotal:0,waveKilled:0,spawnT:0,bossSpawned:false,
   kills:0,reroll:true,turrets:[],soldier:null,usedTypes:{},
@@ -435,13 +455,13 @@ function newBattle(stage){
      как в оригинале, первая карточка приходит уже после второго монстра
      (первые враги волны 1 — метеориты по 1 очку), дальше темп ровный. */
   score:0,scoreTotal:0,draftNeed:2,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
-  enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],
+  enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],
   shake:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,
   allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{}};
 }
-function startBattle(){
+function startBattle(){refillEnergy();
  if(META.energy<5){toast("Не хватает энергии — пополни кнопкой + ⚡");return;}
- META.energy-=5;persist();
+ META.energy-=5;if(META.energy===25)META.lastEnergyAt=Date.now();persist();
  var st=STAGES[META.selStage-1];
  var eff={n:st.n,name:(META.elite?"Elite · ":"")+st.name,hpMul:st.hpMul*(META.elite?1.6:1),spdMul:st.spdMul*(META.elite?1.05:1),desc:st.desc};
  B=newBattle(eff);B.elite=META.elite;
@@ -450,17 +470,34 @@ function startBattle(){
  lastTs=performance.now();
  if(raf)cancelAnimationFrame(raf);
  raf=requestAnimationFrame(loop);
- toast("Бой начинает один солдат! Убийства дают очки на карточки и +2 HP базе.");
+ toast("Веди Guardian свайпом по нижней части поля. Убийства дают карточки и +2 HP.");
 }
 $("btn-start").addEventListener("click",startBattle);
+/* Guardian moves horizontally on the fortress deck. Touch/mouse controls are relative to canvas pixels. */
+var guardianPointerId=null;
+function guardianPointerX(ev){var rc=cv.getBoundingClientRect();return Math.max(22,Math.min(W-22,(ev.clientX-rc.left)/rc.width*W));}
+cv.addEventListener("pointerdown",function(ev){
+ if(!B||B.over||B.paused||B.waveState==="draft")return;
+ var rc=cv.getBoundingClientRect();if((ev.clientY-rc.top)/rc.height<0.73)return;
+ guardianPointerId=ev.pointerId;B.guardianGoalX=guardianPointerX(ev);
+ if(cv.setPointerCapture)cv.setPointerCapture(ev.pointerId);ev.preventDefault();
+});
+cv.addEventListener("pointermove",function(ev){
+ if(!B||ev.pointerId!==guardianPointerId||B.paused||B.over)return;
+ B.guardianGoalX=guardianPointerX(ev);ev.preventDefault();
+});
+["pointerup","pointercancel","lostpointercapture"].forEach(function(name){
+ cv.addEventListener(name,function(ev){if(ev.pointerId===guardianPointerId)guardianPointerId=null;});
+});
+
 function allFighters(){return B.turrets.concat([B.soldier]);}
 
 /* ---------- waves ---------- */
 function startWave(n){
  B.wave=n;B.waveState="fighting";B.bossSpawned=false;
- B.waveTotal=B.waveQueue=5+n*3+(B.stage.n-1)*2;
- B.waveKilled=0;B.spawnT=0.6;
- toast("🌊 Волна "+n+" из "+WAVES+(n===WAVES?" — БОСС в конце волны!":""));
+ B.waveTotal=B.waveQueue=6+Math.round(n*2.4)+(B.stage.n-1)*2;
+ B.waveKilled=0;B.spawnT=0.35;
+ toast("Волна "+n+" / "+WAVES+(n===WAVES?" — БОСС":""));
 }
 function wavePickKind(){
  var w=B.wave,pool=[["meteor",10]];
@@ -480,19 +517,21 @@ function wavePickKind(){
  return "meteor";
 }
 function spawnEnemy(kind){
- if(B.enemies.length>=42)return;
+ if(B.enemies.length>=MAX_ENEMIES)return false;
  var cfg=ENEMIES.filter(function(e){return e.id===kind;})[0];
  /* рост HP врагов по волнам смягчён под забег из 20 волн: ×0,20 за волну
     (волна 20 ≈ ×4,8 вместо ×6,7) — силу игрок набирает карточками по очкам */
- var hpMul=B.stage.hpMul*(1+(B.wave-1)*0.20);
+ var hpMul=B.stage.hpMul*(1+(B.wave-1)*0.165);
  B.enemies.push({cfg:cfg,kind:cfg.kind,x:26+Math.random()*(W-52),y:-30,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
   speed:cfg.speed*B.stage.spdMul*B.enemySpdMul*(0.9+Math.random()*0.25),dmg:cfg.dmg,armor:cfg.armor,xp:cfg.xp,r:cfg.r,color:cfg.color,
   phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:Math.random()*2});
+ return true;
 }
 function spawnBoss(){
- var cfg=ENEMIES.filter(function(e){return e.id==="boss";})[0];var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*0.20);
- B.enemies.push({cfg:cfg,kind:"boss",x:W/2,y:-50,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,speed:cfg.speed,dmg:cfg.dmg,armor:cfg.armor,xp:cfg.xp,r:cfg.r,color:cfg.color,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false});
- toast("⚠ БОСС «Голиаф»!");SFX.boom();
+ if(B.enemies.length>=MAX_ENEMIES)return false;
+ var cfg=ENEMIES.filter(function(e){return e.id==="boss";})[0];var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*0.12);
+ B.enemies.push({cfg:cfg,kind:"boss",x:W/2,y:-50,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,speed:cfg.speed*B.stage.spdMul,dmg:cfg.dmg,armor:cfg.armor,xp:cfg.xp,r:cfg.r,color:cfg.color,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false});
+ toast("⚠ БОСС «Голиаф»!");SFX.boom();return true;
 }
 
 /* ---------- targeting & damage ---------- */
@@ -546,11 +585,11 @@ function dealDamage(src,e,baseDmg,opts){
  if(src&&src.cfg.dtype&&e.cfg.res&&e.cfg.res[src.cfg.dtype])rm=e.cfg.res[src.cfg.dtype];
  var dmg=baseDmg*(src?src.dmgMul:1)*(src&&B?B.allDmgMul:1)*cm*rm*(1-(e.armor||0));
  e.hp-=dmg; e.flash=0.08;
- if(src)src.totalDmg+=dmg;
+ if(src)src.totalDmg+=Math.max(0,Math.min(dmg,e.hp+dmg));
  if(dmg>=3||Math.random()<0.25)addNum(e.x+(Math.random()*16-8),e.y-e.r-4,Math.round(dmg),crit,rm);
  if(opts.slow){e.slowFactor=Math.min(e.slowFactor||1,1-(opts.slowPow||0.35));e.slowT=2.5;}
  if(opts.knock)e.y-=opts.knock;
- if(opts.burn){e.burnDps=Math.max(e.burnDps||0,baseDmg*0.5*(src?src.burnMul:1));e.burnT=3;}
+ if(opts.burn){var dot=baseDmg*0.5*(src?src.dmgMul*src.burnMul:1);if(dot>e.burnDps){e.burnDps=dot;e.burnSource=src;}e.burnT=3;}
  if(e.hp<=0)killEnemy(e);
  return dmg;
 }
@@ -579,7 +618,7 @@ function killEnemy(e){
  /* голем-матка при гибели делится на двух осколков (как Alien Golem в Galaxy Defense) */
  if(e.cfg.id==="splitter"){
    var mini=ENEMIES.filter(function(x){return x.id==="mini";})[0];
-   var hpMul=B.stage.hpMul*(1+(B.wave-1)*0.20);
+   var hpMul=B.stage.hpMul*(1+(B.wave-1)*0.165);
    [-16,16].forEach(function(off){
      B.enemies.push({cfg:mini,kind:mini.kind,x:Math.max(16,Math.min(W-16,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
       speed:mini.speed*B.stage.spdMul*B.enemySpdMul,dmg:mini.dmg,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
@@ -736,15 +775,15 @@ function update(dt){
  /* spawning */
  if(B.waveQueue>0){
    B.spawnT-=dt;
-   var interval=Math.max(0.4,1.25-B.wave*0.09);
-   if(B.spawnT<=0){spawnEnemy(wavePickKind());B.waveQueue--;B.spawnT=interval*(0.7+Math.random()*0.6);
-     if(B.wave===WAVES&&!B.bossSpawned&&B.waveQueue<=Math.floor(B.waveTotal/2)){B.bossSpawned=true;spawnBoss();}}
+   var interval=Math.max(0.28,0.86-B.wave*0.027);
+   if(B.spawnT<=0){if(spawnEnemy(wavePickKind()))B.waveQueue--;B.spawnT=interval*(0.7+Math.random()*0.6);
+     if(B.wave===WAVES&&!B.bossSpawned&&B.waveQueue<=Math.floor(B.waveTotal/2)){if(spawnBoss())B.bossSpawned=true;}}
  }
  /* enemies */
  for(var i=B.enemies.length-1;i>=0;i--){
    var e=B.enemies[i];
    if(e.dead){B.enemies.splice(i,1);continue;}
-   if(e.burnT>0){e.burnT-=dt;e.hp-=e.burnDps*dt;if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});if(e.hp<=0){killEnemy(e);B.enemies.splice(i,1);continue;}}
+   if(e.burnT>0){e.burnT-=dt;var burnHit=Math.min(e.hp,e.burnDps*dt);e.hp-=burnHit;if(e.burnSource)e.burnSource.totalDmg+=burnHit;if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});if(e.hp<=0){killEnemy(e);B.enemies.splice(i,1);continue;}}
    if(e.slowT>0){e.slowT-=dt;if(e.slowT<=0)e.slowFactor=1;}
    /* звезда регенерации лечит соседних врагов (поддержка, как Rejuvenation Star) */
    if(e.kind==="healer"&&!e.dead){
@@ -767,6 +806,8 @@ function update(dt){
      if(B.baseHp<=0){B.baseHp=0;endBattle(false);return;}
    }
  }
+ /* Guardian movement at a capped velocity, while auto-firing. */
+ if(B.soldier&&B.guardianGoalX!==undefined){var delta=B.guardianGoalX-B.soldier.x;B.soldier.x+=Math.max(-480*dt,Math.min(480*dt,delta));}
  /* units */
  allFighters().forEach(function(t){unitFire(t,dt);});
  /* hive drones */
@@ -818,7 +859,7 @@ function update(dt){
  /* wave clear? — волна сама по себе карточек больше НЕ даёт:
     следующая волна стартует сразу, а драфт открывается только по очкам */
  if(B.waveState==="fighting"&&B.waveQueue<=0&&B.enemies.length===0&&!B.over){
-   if(B.wave>=WAVES){endBattle(true);return;}
+   if(B.wave>=WAVES){if(!B.bossSpawned)return;endBattle(true);return;}
    if(B.pendingDrafts>0){B.waveState="draft";B.draftReturn="nextwave";openDraft();}
    else startWave(B.wave+1);
    syncHud();return;
@@ -974,7 +1015,7 @@ function draw(){
  ctx.fillText("⏱ "+mmss(B.elapsed)+"   ☠ "+B.kills+(B.elite?"   ⚔ ELITE":""),10,59);
  /* прогресс до следующей карточки — очки боя копятся с убийств, а не с волн */
  ctx.font="700 11.5px 'Segoe UI',sans-serif";ctx.fillStyle="rgba(216,180,254,.95)";
- ctx.fillText("🎴 "+B.score+" / "+B.draftNeed+" очк. до карточки",10,76);
+ ctx.fillText("🎴 "+B.score+" / "+B.draftNeed+" до карты · Guardian: свайп снизу",10,76);
  ctx.fillStyle="rgba(20,12,34,.75)";ctx.fillRect(10,81,120,4);
  ctx.fillStyle="#a06bff";ctx.fillRect(10,81,120*Math.min(1,B.score/B.draftNeed),4);
  /* купол базы */
