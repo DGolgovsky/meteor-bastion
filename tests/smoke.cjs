@@ -927,6 +927,24 @@ test("level rewards are cut tenfold, gems untouched", () => {
   assert.equal(w.lastRewards.gems,2,"gems must not be divided: 2 per win stays 2");
 });
 
+test("results show every material grant, biggest first", () => {
+  const {game:h,element}=harness();
+  h.lastRewards={win:true,coins:626,gems:2,comp:10,pxp:16,mats:{laser:44,hive:40,beam:30,soldier:13,skyguard:7},applied:false};
+  h.renderRewards();
+  var html=element("res-rewards").innerHTML;
+  ["Laser","Hive","Beam","Soldier","Sky Guard"].forEach(function(name){
+    assert.ok(html.includes("Materials: "+name),"rewards must show materials for "+name);
+  });
+  assert.ok(html.indexOf("Materials: Laser")<html.indexOf("Materials: Hive"),"biggest grant first");
+  assert.ok(html.indexOf("Materials: Hive")<html.indexOf("Materials: Beam"),"grants sorted by amount");
+  assert.ok(html.indexOf("Materials: Sky Guard")>html.indexOf("Materials: Soldier"),"smallest grant last");
+  h.lastRewards={win:false,coins:32,gems:0,comp:0,pxp:3,mats:{laser:5,hive:0},applied:false};
+  h.renderRewards();
+  html=element("res-rewards").innerHTML;
+  assert.ok(html.includes("Materials: Laser"),"non-zero grant must show");
+  assert.ok(!html.includes("Materials: Hive"),"zero grant must stay hidden");
+});
+
 /* ---------- model rendering ---------- */
 function drawScene(game,setup){
   game.B=game.newBattle(game.STAGES[0]);game.B.waveState="fighting";game.B.wave=3;game.B.t=1.7;

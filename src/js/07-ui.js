@@ -312,12 +312,15 @@ function endBattle(win){
 }
 function renderRewards(){
  var r=lastRewards,m=1;
- var top3=Object.keys(r.mats).slice(0,3);
+ /* Show every material grant, biggest first: the old first-3-in-line-order hid
+    grants — e.g. Hive's 40 never appeared on the results screen. Zero grants
+    (a fighter that dealt almost no damage) stay hidden. */
+ var mats=Object.keys(r.mats).filter(function(id){return r.mats[id]>0;}).sort(function(a,b){return r.mats[b]-r.mats[a];});
  var h='<div class="rwd"><div class="ric">⭐</div><div class="rv">'+(r.pxp*m)+'</div><div class="rn">Account XP</div></div>'+
  '<div class="rwd"><div class="ric">🪙</div><div class="rv">'+(r.coins*m)+'</div><div class="rn">Coins</div></div>'+
  '<div class="rwd"><div class="ric">💎</div><div class="rv">'+(r.gems*m)+'</div><div class="rn">Gems</div></div>'+
  '<div class="rwd"><div class="ric">🧩</div><div class="rv">'+(r.comp*m)+'</div><div class="rn">Components</div></div>';
- top3.forEach(function(id){var cfg=allUnitsCfg().filter(function(t){return t.id===id;})[0];h+='<div class="rwd"><div class="ric">'+cfg.icon+'</div><div class="rv">'+(r.mats[id]*m)+'</div><div class="rn">Materials: '+cfg.name+'</div></div>';});
+ mats.forEach(function(id){var cfg=allUnitsCfg().filter(function(t){return t.id===id;})[0];h+='<div class="rwd"><div class="ric">'+cfg.icon+'</div><div class="rv">'+(r.mats[id]*m)+'</div><div class="rn">Materials: '+cfg.name+'</div></div>';});
  $("res-rewards").innerHTML=h;
 }
 function applyRewards(){
