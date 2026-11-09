@@ -45,17 +45,20 @@ var STAGES=[
  {n:11,name:"Sector III · Stage 11",hpMul:7.70,spdMul:1.24,waves:30,desc:"A siege force and tricky resistance combinations."},
  {n:12,name:"Sector III · Stage 12",hpMul:9.10,spdMul:1.25,waves:30,desc:"Campaign finale: 30 waves, an empowered Goliath."}
 ];
-var WAVES=20, MAX_ENEMIES=110;
+var WAVES=20, MAX_ENEMIES=330;
 function stageWaves(stage){return stage&&stage.waves||WAVES;}
 function finalWave(){return stageWaves(B&&B.stage);}
 /* Battle pacing parameters; values are test targets, not official Galaxy Defense numbers. */
 var BALANCE={
  draftFirst:2,draftOpeningCosts:[2,4,6,9],draftLateBase:14,draftGrowth:10,draftWaveGrowth:2.5,
- waveStart:8,waveGrowth:2.8,
- spawnBase:0.60,spawnReduction:0.006,spawnMin:0.18,
+ /* x3 enemies (2026-11-09, owner order): totals, spawn rate and formation
+    pacing all tripled, so wave duration stays ~the same and the on-screen
+    count actually triples (tripling totals alone only stretches waves). */
+ waveStart:24,waveGrowth:8.4,
+ spawnBase:0.20,spawnReduction:0.002,spawnMin:0.06,formationCd:1.33,
  waveHpGrowth:0.06,bossHpGrowth:0.07,turretBasePower:1.6,
  eliteHp:1.68,eliteSpeed:1.10,eliteContact:1.18,
- eliteWaveBase:2,eliteWaveGrowth:0.28,
+ eliteWaveBase:6,eliteWaveGrowth:0.84,
  eliteChampionBaseChance:0.095,eliteChampionWaveChance:0.004,eliteChampionMaxChance:0.21,
  eliteChampionHp:1.37,eliteChampionSpeed:1.03,eliteChampionContact:1.14,eliteChampionArmor:0.07,
  eliteBossHp:1.32,eliteBossContact:1.20,eliteAuraSpeed:1.15

@@ -296,6 +296,22 @@ test("Elite changes composition, champion strength and first-wave pressure", () 
   assert.ok(champion.armor > standard.armor);
 });
 
+test("enemy counts are tripled: wave totals, spawn pacing and cap", () => {
+  assert.equal(g.MAX_ENEMIES, 330);
+  assert.equal(g.BALANCE.waveStart, 24);
+  assert.equal(g.BALANCE.waveGrowth, 8.4);
+  assert.equal(g.BALANCE.spawnBase, 0.20);
+  assert.equal(g.BALANCE.spawnMin, 0.06);
+  assert.equal(g.BALANCE.formationCd, 1.33);
+  assert.equal(g.BALANCE.eliteWaveBase, 6);
+  const { game: s } = harness();
+  s.startBattle();
+  [[1, 32], [10, 108], [20, 192]].forEach(function(pair) {
+    s.startWave(pair[0]);
+    assert.equal(s.B.waveTotal, pair[1], "Stage 1 wave " + pair[0] + " total");
+  });
+});
+
 test("Hive uses range only for launch; deployed wasps hunt remote targets", () => {
   g.B=g.newBattle(g.STAGES[0]);g.B.soldier=g.mkUnit(g.SOLDIER_CFG,210,-1,true);
   g.B.wave=3;g.B.waveState="fighting";g.B.waveQueue=1;g.B.spawnT=999;
@@ -892,6 +908,23 @@ test("Battle rewards are credited immediately, exactly once", () => {
   const after=h.META.coins;
   h.applyRewards();h.applyRewards();
   assert.equal(h.META.coins,after,"pressing back must not credit rewards a second time");
+});
+
+test("level rewards are cut tenfold, gems untouched", () => {
+  const {game:h}=harness();h.startBattle();
+  h.B.kills=40;h.B.wave=7;
+  h.endBattle(false);
+  /* old formula: coins 323, comp 3, pxp 31 — all divided by 10 now */
+  assert.equal(h.lastRewards.coins,32);
+  assert.equal(h.lastRewards.comp,0);
+  assert.equal(h.lastRewards.pxp,3);
+  assert.equal(h.lastRewards.gems,0);
+  const {game:w}=harness();w.startBattle();
+  w.B.kills=40;w.B.wave=7;
+  w.endBattle(true);
+  assert.equal(w.lastRewards.coins,48);
+  assert.equal(w.lastRewards.pxp,8);
+  assert.equal(w.lastRewards.gems,2,"gems must not be divided: 2 per win stays 2");
 });
 
 /* ---------- model rendering ---------- */

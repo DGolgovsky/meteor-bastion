@@ -43,7 +43,7 @@ function update(dt){
   var interval=Math.max(BALANCE.spawnMin,BALANCE.spawnBase-B.wave*BALANCE.spawnReduction);
   if(B.spawnT<=0){
    var n=0;
-   if(B.formationCd<=0&&B.waveQueue>=3){n=spawnWaveGroup();if(n>0)B.formationCd=4;}
+   if(B.formationCd<=0&&B.waveQueue>=3){n=spawnWaveGroup();if(n>0)B.formationCd=BALANCE.formationCd;}
    else if(spawnEnemy(wavePickKind()))n=1;
    if(n>0)B.waveQueue-=n;
    B.spawnT=n>0?interval*(.7+Math.random()*.6):.16;

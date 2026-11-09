@@ -1,7 +1,7 @@
 /* ---------- waves ---------- */
 function startWave(n){
  B.wave=n;B.waveState="fighting";B.bossSpawned=false;
- B.waveTotal=B.waveQueue=BALANCE.waveStart+Math.round(n*BALANCE.waveGrowth)+(B.stage.n-1)*2+(B.elite?Math.ceil(BALANCE.eliteWaveBase+n*BALANCE.eliteWaveGrowth):0);
+ B.waveTotal=B.waveQueue=BALANCE.waveStart+Math.round(n*BALANCE.waveGrowth)+(B.stage.n-1)*6+(B.elite?Math.ceil(BALANCE.eliteWaveBase+n*BALANCE.eliteWaveGrowth):0);
  B.waveKilled=0;B.spawnT=0.25;B.formationCd=0;B.waveKinds={};B.waveKindCount={};
  B.waveSpecials=0;
  /* the "Wave N / 20" toast at wave start was removed (2026-11-08): the notification under the field

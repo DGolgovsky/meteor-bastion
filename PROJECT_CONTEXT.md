@@ -15,7 +15,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **HTML5 + CSS + plain JavaScript, Canvas 2D.** The game release is **a single self-contained `index.html`**. No npm, Vite, webpack, Phaser, TS compilation, Unity/Godot/APK for this project without a separate decision by the user.
 - The code is now **modular**: `src/shell.html`, `src/js/*.js`, `src/order.txt`. The **`python3 build.py`** script assembles a single `index.html`.
 - The built `index.html` is **not stored in Git** (excluded via `.gitignore`). **Edit only `src/`**; don't try to fix the missing `index.html` through GitHub.
-- Running tests: **`node tests/smoke.cjs`** (53 tests) and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
+- Running tests: **`node tests/smoke.cjs`** (55 tests) and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
 - `BALANCE.md` holds the current numeric parameters, `README.md` the overview. In case of contradictions, **the source of truth is the current `src/js/00-config.js` and the other sources**, then the tests, then the documentation. Update the documents when things change.
 
 **Concatenation order from `src/order.txt`:** `00-config.js` → `01-state.js` → `02-units.js` → `04-waves.js` → `03-combat.js` → `05-update.js` → `06-render.js` → `07-ui.js` → `08-main.js`. **Do not sort** the modules by name.
@@ -37,7 +37,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **Hive is a critical invariant:** the hive's range limits **only the release of wasps**. Released wasps move and look for enemies **across the whole field**, even outside the turret's range, with correct retargeting. Don't bring back single-use kamikaze wasps.
 - **Laser:** a time-limited pulse, **the direction is locked at the moment of firing**; the beam visually reaches the edge of the field, but only damages along its line; the base CD is currently **7.8 s** (check the current code).
 - **Beam** differs from Laser: sequential focused ticks on a target, with damage stacking and upgrades; **Sky Guard** has separate impact and explosion; **Firewheel** is a long-lived bouncing disc, not a regular projectile; **Gravity** is a field that pulls enemies in and deals tick damage; **Disruption** is control/fields.
-- **Current parameters in `src/js/00-config.js` at the last check:** `waveStart:5`, `waveGrowth:2.0`, `spawnBase:0.95`, `spawnReduction:0.008`, `waveHpGrowth:0.09`, `turretBasePower:1.6`, `MAX_ENEMIES:72`; field `420×760`, bottom base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
+- **Current parameters in `src/js/00-config.js` at the last check (×3, 2026-11-09):** `waveStart:24`, `waveGrowth:8.4`, `spawnBase:0.20`, `spawnReduction:0.002`, `spawnMin:0.06`, `formationCd:1.33`, `waveHpGrowth:0.06`, `turretBasePower:1.6`, `MAX_ENEMIES:330`; field `420×760`, bottom base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
 - The latest `BALANCE.md` states that the base has **1000 HP and no separate shield until Chips** — this has changed compared with earlier versions. Always check the current values against `newBattle()`.
 
 ## 5. What was found about the original and how to use it
@@ -57,10 +57,11 @@ Gameplay reference points of the original discussed in the chat: the Guardian is
 ## Results of the screenshot plan, 2026-11-08
 
 - Implemented: a visual elliptical dome (atmosphere only, not a shield), base HP with a thick arc and flash, a full-width Disruption band (the slow still applies inside a circle), turret and shot rendering, enemy shapes, a dark city, aggregation of damage numbers.
-- Waves reworked: `MAX_ENEMIES=110`, clusters/wedges/scatters, 11/36/64 enemies on waves 1/10/20 of Stage 1 before the per-stage bonus; reduced HP and speed, movement with sideways drift and pauses, spontaneous upward flight removed. Base breaches are measured headless.
+- Waves reworked: `MAX_ENEMIES=330`, clusters/wedges/scatters, 32/108/192 enemies on waves 1/10/20 of Stage 1 before the per-stage bonus (×3 versus round 5); reduced HP and speed, movement with sideways drift and pauses, spontaneous upward flight removed. Base breaches are measured headless.
+- Level rewards cut tenfold (2026-11-09, owner decision): coins, components, account XP and materials in `endBattle` are divided by 10; gems are untouched.
 - The Aeroblast range of 540 and adaptive spread from round 5 are kept; Hive, Firewheel, Laser and the `meteor-bastion-save-v1` save format have no regressions.
-- CI: [GitHub Actions](https://github.com/DGolgovsky/meteor-bastion/actions) runs smoke 53, two sets of 12 headless runs and `build.py`. Observation over 12 seeds: the first victory for the sensible draft comes on attempt 3, for "first card" on attempt 4.
-- **Open balance issue:** the average number of visible enemies on waves 1/10/20 is ~4.3/9.2/11.6 (sensible strategy) versus targets of ≥8/≥28/≥40. Tune further density together with DPS and survivability, not by simply speeding up spawning. On the Pixel 10a phone, FPS checks and screenshot acceptance are still needed.
+- CI: [GitHub Actions](https://github.com/DGolgovsky/meteor-bastion/actions) runs smoke 55, two sets of 12 headless runs and `build.py`. Observation over 12 seeds (master 72766b32): the first victory for the sensible draft comes on attempt 3, for "first card" on attempt 4. With ×3 (2026-11-09): 0 victories out of 12 for either strategy.
+- **Open balance issue:** density ×3 meets the targets (14.0/29.6 visible on waves 1/10 versus ≥8/≥28), but Stage 1 is now unwinnable: 0 victories out of 24, the sensible strategy dies on waves 6–11. Scratch-copy compensations: a 2000 HP base does not help (0/12); +50% turret power (2.4) restores victories, first one on the 6th–7th attempt. The owner approved ×3 as-is. On the Pixel 10a phone, FPS checks and screenshot acceptance are still needed.
 - Don't start phase 6 (crab, mines, ×1.5 speed, active abilities) without separate agreement.
 
 ## Models in `06-render.js`

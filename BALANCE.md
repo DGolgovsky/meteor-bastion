@@ -91,7 +91,7 @@ Running the tests from a **clean checkout**:
 node tests/smoke.cjs
 ```
 
-The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **53 tests**, including regressions from rounds 4–5: Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
+The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **55 tests**, including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
 
 ## Known limitations and next iterations
 
@@ -104,7 +104,7 @@ The tests concatenate the source JS by `src/order.txt` without `index.html`. The
 
 Rollout plan: phases 1–5 from the document "Screenshot plan for Meteor Bastion.md". The decorative dome has no HP and does not absorb damage; Disruption still slows inside a circle of radius `splash`, but is displayed as a full-width band (56–96px high). The visual models of turrets, enemies and projectiles, the atmospheric background, and the base HP indicator were updated.
 
-Preliminary density tuning: `MAX_ENEMIES=110`, `waveStart=8`, `waveGrowth=2.8`, `spawnBase=0.60`, `spawnReduction=0.006`, `spawnMin=0.18`; enemy HP multiplier `0.78`, `waveHpGrowth=0.06`; boss `0.88`, `bossHpGrowth=0.07`; normal speed `0.85`, range `stage.spdMul=1.00..1.25`. Swarm small fry deal ×0.8 contact damage; `draftGrowth=10`, `draftWaveGrowth=2.5` compensate for the extra XP. Spawning in clusters/wedges/scatters and diagonal patterns with pauses, own `vy>=0`; Gravity can pull upward separately.
+Density tuning ×3 (2026-11-09, owner order): `MAX_ENEMIES=330`, `waveStart=24`, `waveGrowth=8.4`, `spawnBase=0.20`, `spawnReduction=0.002`, `spawnMin=0.06`, `formationCd=1.33`; enemy HP multiplier `0.78`, `waveHpGrowth=0.06`; boss `0.88`, `bossHpGrowth=0.07`; normal speed `0.85`, range `stage.spdMul=1.00..1.25`. Swarm small fry deal ×0.8 contact damage; `draftGrowth=10`, `draftWaveGrowth=2.5` compensate for the extra XP. Spawning in clusters/wedges/scatters and diagonal patterns with pauses, own `vy>=0`; Gravity can pull upward separately.
 
 Compatibility: `meteor-bastion-save-v1` and `v:1` are unchanged; the Aeroblast range of 540, pellet speed of 520 and adaptive spread from the new commit `264338c7` are kept. Phase 6 (crab, mines, active skills) was not done.
 
@@ -125,5 +125,13 @@ Check: [CI run 42515633650](https://github.com/DGolgovsky/meteor-bastion/actions
 | Wave 20: visible enemies, average / peak | 11.6 / 22.0 | 13.7 / 25.7 |
 
 **Acceptance criterion §2.5 for average density is not met:** the targets are 8, 28 and 40 simultaneously visible enemies on waves 1/10/20, and the actual averages are substantially lower. Even the peak values fall short of the late-wave targets. The plan's formulas raised enemy count and density versus the previous version, but not enough for the specified visual reference. An experimental reduction of the interval between swarms to 2.5 s gave the sensible strategy its first victory on the very 1st attempt; it was rejected to keep the "no earlier than the 3rd" goal. The next pass requires joint calibration of wave pace/HP/DPS and a visual check on a device.
+
+### ×3 measurement (local, 2026-11-09)
+
+`node tests/balance.cjs` + `balance-attempts.cjs` on the same profile (fresh R&D 1, Stage 1 Normal, 12 seeds): **0 victories out of 24** (sensible picks 0/12, first card 0/12), no first victory in 12 attempts for either strategy; the sensible strategy dies on waves 6–11 and nobody reaches wave 20. Average base HP after wave 10: 500 (sensible) / 0 (first card); average breaches 27.6 / 35.0; healing 395.2 / 263.7 HP.
+
+Density now meets the targets: visible enemies average **14.0 / 29.6** on waves 1/10 (sensible; peaks 27.2 / 62.5) against targets of 8 / 28. Wave 20 was not measured — nobody got there.
+
+Compensations tested on scratch copies (not in the tree): base 1000 → 2000 HP — still 0/12; turret power 1.6 → 2.4 (+50%) — victories return (1/12 and 2/12), first victory on the 6th–7th attempt, ~31 visible on wave 20. The owner approved the ×3 build as-is ("Нормально", 2026-11-09) and ordered level rewards cut tenfold: coins, components, account XP and materials in `endBattle` are divided by 10; gems are untouched (only 0–3 per battle — dividing would zero them).
 
 **Not verified on a real phone:** Pixel 10a performance with 50 enemies, a minimum fps ≥45, an exact match with the screenshots, working without scrolling. GitHub CI checks code execution and the build, but not mobile rendering.

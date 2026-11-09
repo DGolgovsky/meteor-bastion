@@ -284,12 +284,14 @@ function endBattle(win){
  var time=Math.max(1,B.elapsed);
  var stats=allFighters().slice().sort(function(a,b){return b.totalDmg-a.totalDmg;}).map(function(t){return{t:t,dmg:t.totalDmg,dps:t.totalDmg/time};});
  var rw=B.elite?1.6:1; /* Elite: tougher enemies, more generous rewards */
- var coins=Math.floor((B.kills*2.2+(win?220:60)+B.wave*25)*(1+(B.stage.n-1)*0.23)*rw);
- var comp=Math.floor((2+Math.floor(B.kills/25)+(win?3:0))*rw);
+ /* Level rewards cut tenfold (2026-11-09, owner decision); gems untouched —
+    there are only 0–3 of them per battle, dividing would zero them entirely. */
+ var coins=Math.floor((B.kills*2.2+(win?220:60)+B.wave*25)*(1+(B.stage.n-1)*0.23)*rw/10);
+ var comp=Math.floor((2+Math.floor(B.kills/25)+(win?3:0))*rw/10);
  var gems=(win?2:(B.kills>60?1:0))+(B.elite&&win?1:0);
- var pxp=Math.floor((win?40+B.wave*6:10+B.wave*3)*rw*(1+(B.stage.n-1)*0.17));
+ var pxp=Math.floor((win?40+B.wave*6:10+B.wave*3)*rw*(1+(B.stage.n-1)*0.17)/10);
  var mats={};
- allFighters().forEach(function(t){mats[t.cfg.id]=Math.floor((8+Math.floor(t.totalDmg/260))*(1+(B.stage.n-1)*0.15)*rw);});
+ allFighters().forEach(function(t){mats[t.cfg.id]=Math.floor((8+Math.floor(t.totalDmg/260))*(1+(B.stage.n-1)*0.15)*rw/10);});
  lastRewards={win:win,coins:coins,gems:gems,comp:comp,pxp:pxp,mats:mats,applied:false};
  if(win){META.wins++;
    if(B.elite)META.eliteCleared[B.stage.n]=true;else META.normalCleared[B.stage.n]=true;
