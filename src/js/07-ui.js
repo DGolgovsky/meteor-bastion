@@ -310,6 +310,14 @@ function endBattle(win){
  $("ov-result").classList.add("on");
  if(win)SFX.win();else SFX.lose();
 }
+/* Game-loop error banner: shown when a frame throws (see loop in 05-update.js).
+   The game keeps running; tap the banner to dismiss it. */
+function showLoopError(msg){
+ var el=$("loop-error");if(!el)return;
+ el.textContent="Game loop error — the game kept running. Screenshot this: "+msg;
+ el.style.display="block";
+ el.onclick=function(){el.style.display="none";};
+}
 function renderRewards(){
  var r=lastRewards,m=1;
  /* Show every material grant, biggest first: the old first-3-in-line-order hid

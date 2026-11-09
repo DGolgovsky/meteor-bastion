@@ -268,8 +268,19 @@ function update(dt){
 function loop(ts){
  if(!B)return;
  var raw=Math.min(0.05,(ts-lastTs)/1000);lastTs=ts;
- if(!B.paused&&!B.over&&!$("ov-levelup").classList.contains("on"))update(raw*B.speed);
- draw();
+ try{
+  if(!B.paused&&!B.over&&!$("ov-levelup").classList.contains("on"))update(raw*B.speed);
+  draw();
+ }catch(err){
+  /* A single bad frame used to kill the loop forever: the next RAF was
+     scheduled only after update+draw returned, so the field froze on the
+     last good frame with no error visible (reported 2026-11-09; the HUD,
+     drawn last in draw(), was missing from the frozen frame). Keep the loop
+     alive and surface the error instead of dying silently. */
+  B.loopError=String(err&&err.stack||err);
+  try{console.error(err);}catch(e){}
+  try{showLoopError(B.loopError);}catch(e){}
+ }
  raf=requestAnimationFrame(loop);
 }
 
