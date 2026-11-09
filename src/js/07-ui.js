@@ -1,82 +1,82 @@
-/* ==================== DRAFT: 1 из 3 по очкам боя + СУПЕР-карточки ==================== */
+/* ==================== DRAFT: 1 of 3 for battle points + SUPER cards ==================== */
 function freeSlot(){for(var i=0;i<4;i++){if(!B.turrets.some(function(t){return t.slot===i;}))return i;}return -1;}
 var SUPERS={
- skyguard:{name:"Ракетный залп",desc:"+2 ракеты в залпе и +40% к скорострельности.",apply:function(u){u.extraProj+=2;u.haste*=1.4;}},
- laser:{name:"Зеркальный резонатор",desc:"Луч получает отражение и преломление сразу, +60% урона.",apply:function(u){u.beamSplit=true;u.reflect=Math.max(u.reflect||0,2);u.refract=true;u.dmgMul*=1.6;}},
- disruption:{name:"Стазис-поле",desc:"Замедление усилено до 70%, импульсы получают сплеш с замедлением.",apply:function(u){u.slowPow=0.7;u.splash=Math.max(u.splash,50);}},
- aeroblast:{name:"Ураган",desc:"Отброс втрое сильнее, заряды получают большой сплеш.",apply:function(u){u.knock=36;u.splash=Math.max(u.splash,60);}},
- thunder:{name:"Гроза",desc:"+3 цели цепной молнии и +50% урона.",apply:function(u){u.chain+=3;u.dmgMul*=1.5;}},
- beam:{name:"Аннигилятор",desc:"+150% урона и +20% шанса крита.",apply:function(u){u.dmgMul*=2.5;u.critBonus+=0.2;}},
- firewheel:{name:"Инферно",desc:"Горение в 3 раза сильнее, поджог получает сплеш.",apply:function(u){u.burnMul=3;u.splash=Math.max(u.splash,40);}},
- hive:{name:"Рой-мать",desc:"Дроны выпускаются парами и наносят двойной урон.",apply:function(u){u.hiveDouble=true;u.dmgMul*=1.35;}},
- railgun:{name:"Сквозной залп",desc:"Снаряд пробивает ВСЕХ врагов на линии, +80% урона.",apply:function(u){u.pierce=99;u.dmgMul*=1.8;}},
- tesla:{name:"Сверхнапряжение",desc:"Разряд отскакивает по 6 целям, +60% урона.",apply:function(u){u.multiCount=6;u.dmgMul*=1.6;}},
- gravity:{name:"Чёрная сингулярность",desc:"Радиус поля +50%, притяжение +35%, +40% урона поля.",apply:function(u){u.gravityRadius*=1.5;u.gravityPull*=1.35;u.gravityPower*=1.4;}},
- soldier:{name:"Легендарный стрелок",desc:"+100% урона, +25% шанса крита и +1 снаряд в очереди — на всё поле.",apply:function(u){u.dmgMul*=2;u.critBonus+=0.25;u.extraProj+=1;}}
+ skyguard:{name:"Rocket Barrage",desc:"+2 rockets per volley and +40% fire rate.",apply:function(u){u.extraProj+=2;u.haste*=1.4;}},
+ laser:{name:"Mirror Resonator",desc:"The beam gains reflection and refraction at once, +60% damage.",apply:function(u){u.beamSplit=true;u.reflect=Math.max(u.reflect||0,2);u.refract=true;u.dmgMul*=1.6;}},
+ disruption:{name:"Stasis Field",desc:"Slow increased to 70%, pulses gain a slowing splash.",apply:function(u){u.slowPow=0.7;u.splash=Math.max(u.splash,50);}},
+ aeroblast:{name:"Hurricane",desc:"Knockback is three times stronger, blasts gain a large splash.",apply:function(u){u.knock=36;u.splash=Math.max(u.splash,60);}},
+ thunder:{name:"Thunderstorm",desc:"+3 chain lightning targets and +50% damage.",apply:function(u){u.chain+=3;u.dmgMul*=1.5;}},
+ beam:{name:"Annihilator",desc:"+150% damage and +20% crit chance.",apply:function(u){u.dmgMul*=2.5;u.critBonus+=0.2;}},
+ firewheel:{name:"Inferno",desc:"Burning is 3 times stronger, ignite gains a splash.",apply:function(u){u.burnMul=3;u.splash=Math.max(u.splash,40);}},
+ hive:{name:"Mother Swarm",desc:"Drones are released in pairs and deal double damage.",apply:function(u){u.hiveDouble=true;u.dmgMul*=1.35;}},
+ railgun:{name:"Piercing Volley",desc:"The projectile pierces ALL enemies on its line, +80% damage.",apply:function(u){u.pierce=99;u.dmgMul*=1.8;}},
+ tesla:{name:"Overvoltage",desc:"The discharge bounces across 6 targets, +60% damage.",apply:function(u){u.multiCount=6;u.dmgMul*=1.6;}},
+ gravity:{name:"Black Singularity",desc:"Field radius +50%, pull +35%, +40% field damage.",apply:function(u){u.gravityRadius*=1.5;u.gravityPull*=1.35;u.gravityPower*=1.4;}},
+ soldier:{name:"Legendary Marksman",desc:"+100% damage, +25% crit chance and +1 projectile per burst, across the whole field.",apply:function(u){u.dmgMul*=2;u.critBonus+=0.25;u.extraProj+=1;}}
 };
 
 /* Tier paths are tied to R&D upgrades, not to an arbitrary fifth battle level.
    The chains are original-inspired gameplay, not a claim that every numerical value matches the reference. */
 var CARD_CHAINS={
  skyguard:[
-  {id:"rocketPayload",name:"Усиленный заряд",desc:"T1 · взрыв ракеты +35%.",rd:2,apply:function(u){u.splash*=1.35;}},
-  {id:"rocketCluster",name:"Кассетный залп",desc:"T2 · +1 ракета, урон каждой −10%.",rd:6,apply:function(u){u.extraProj++;u.dmgMul*=0.90;}},
-  {id:"thermalWarhead",name:"Термобоевая часть",desc:"T3 · взрыв поджигает противников.",rd:14,apply:function(u){u.rocketBurn=true;}}
+  {id:"rocketPayload",name:"Heavy Payload",desc:"T1 · rocket explosion +35%.",rd:2,apply:function(u){u.splash*=1.35;}},
+  {id:"rocketCluster",name:"Cluster Salvo",desc:"T2 · +1 rocket, −10% damage each.",rd:6,apply:function(u){u.extraProj++;u.dmgMul*=0.90;}},
+  {id:"thermalWarhead",name:"Thermal Warhead",desc:"T3 · the explosion sets enemies on fire.",rd:14,apply:function(u){u.rocketBurn=true;}}
  ],
  laser:[
-  {id:"laserVulnerable",name:"Метка уязвимости",desc:"T1 · повторные попадания лучом увеличивают входящий урон до +30%.",rd:2,apply:function(u){u.laserVulnerable=true;}},
-  {id:"laserResonance",name:"Оптический резонанс",desc:"T2 · длительность +30% и второй луч.",rd:6,apply:function(u){u.laserDurationMul=(u.laserDurationMul||1)+0.3;u.laserDeflect=1;}},
-  {id:"laserStorm",name:"Сканирующая система",desc:"T3 · отражение +1 и сканирующий луч.",rd:14,apply:function(u){u.reflect=(u.reflect||0)+1;u.laserSweep=1;}}
+  {id:"laserVulnerable",name:"Vulnerability Mark",desc:"T1 · repeated beam hits increase incoming damage by up to +30%.",rd:2,apply:function(u){u.laserVulnerable=true;}},
+  {id:"laserResonance",name:"Optical Resonance",desc:"T2 · duration +30% and a second beam.",rd:6,apply:function(u){u.laserDurationMul=(u.laserDurationMul||1)+0.3;u.laserDeflect=1;}},
+  {id:"laserStorm",name:"Scanning System",desc:"T3 · +1 reflection and a sweeping beam.",rd:14,apply:function(u){u.reflect=(u.reflect||0)+1;u.laserSweep=1;}}
  ],
  disruption:[
-  {id:"fieldSaturation",name:"Насыщение поля",desc:"T1 · поле на 20% больше.",rd:2,apply:function(u){u.splash*=1.20;}},
-  {id:"fieldStasis",name:"Стазис помех",desc:"T2 · замедление +15 п.п.",rd:6,apply:function(u){u.slowPow=Math.min(0.75,u.slowPow+0.15);}},
-  {id:"fieldExpose",name:"Вскрытие защиты",desc:"T3 · импульсы поля накладывают уязвимость.",rd:14,apply:function(u){u.fieldExpose=true;}}
+  {id:"fieldSaturation",name:"Field Saturation",desc:"T1 · the field is 20% larger.",rd:2,apply:function(u){u.splash*=1.20;}},
+  {id:"fieldStasis",name:"Disruption Stasis",desc:"T2 · slow +15 pp.",rd:6,apply:function(u){u.slowPow=Math.min(0.75,u.slowPow+0.15);}},
+  {id:"fieldExpose",name:"Defense Breach",desc:"T3 · field pulses apply vulnerability.",rd:14,apply:function(u){u.fieldExpose=true;}}
  ],
  aeroblast:[
-  {id:"aeroPressure",name:"Компрессия",desc:"T1 · отброс и радиус +20%.",rd:2,apply:function(u){u.knock*=1.2;u.splash*=1.2;}},
-  {id:"aeroCascade",name:"Ударная волна",desc:"T2 · +1 воздушный снаряд.",rd:6,apply:function(u){u.extraProj++;}},
-  {id:"aeroStorm",name:"Воздушный шторм",desc:"T3 · область удара +50%, урон +20%.",rd:14,apply:function(u){u.splash*=1.5;u.dmgMul*=1.2;}}
+  {id:"aeroPressure",name:"Compression",desc:"T1 · knockback and radius +20%.",rd:2,apply:function(u){u.knock*=1.2;u.splash*=1.2;}},
+  {id:"aeroCascade",name:"Shockwave",desc:"T2 · +1 air projectile.",rd:6,apply:function(u){u.extraProj++;}},
+  {id:"aeroStorm",name:"Air Storm",desc:"T3 · impact area +50%, damage +20%.",rd:14,apply:function(u){u.splash*=1.5;u.dmgMul*=1.2;}}
  ],
  thunder:[
-  {id:"thunderLink",name:"Двойная цепь",desc:"T1 · +1 цель цепной молнии.",rd:2,apply:function(u){u.chain++;}},
-  {id:"thunderStun",name:"Парализующий разряд",desc:"T2 · молния замедляет врагов.",rd:6,apply:function(u){u.thunderParalyze=true;}},
-  {id:"thunderStorm",name:"Разрядный шторм",desc:"T3 · скорострельность +25%.",rd:14,apply:function(u){u.haste*=1.25;}}
+  {id:"thunderLink",name:"Double Chain",desc:"T1 · +1 chain lightning target.",rd:2,apply:function(u){u.chain++;}},
+  {id:"thunderStun",name:"Paralyzing Discharge",desc:"T2 · lightning slows enemies.",rd:6,apply:function(u){u.thunderParalyze=true;}},
+  {id:"thunderStorm",name:"Discharge Storm",desc:"T3 · fire rate +25%.",rd:14,apply:function(u){u.haste*=1.25;}}
  ],
  beam:[
-  {id:"beamConcentrate",name:"Фокусировка Beam",desc:"T1 · урон возрастает при повторном поражении цели.",rd:2,apply:function(u){u.beamFocusCap=Math.max(0.8,u.beamFocusCap||0);}},
-  {id:"beamStack",name:"Stacking Damage",desc:"T2 · накопленный бонус сохраняется при смене цели.",rd:6,apply:function(u){u.beamStacking=true;}},
-  {id:"beamOvercharge",name:"Концентрированный поток",desc:"T3 · предел фокусировки до +300%.",rd:14,apply:function(u){u.beamFocusCap=3.0;}}
+  {id:"beamConcentrate",name:"Beam Focus",desc:"T1 · damage grows with repeated hits on a target.",rd:2,apply:function(u){u.beamFocusCap=Math.max(0.8,u.beamFocusCap||0);}},
+  {id:"beamStack",name:"Stacking Damage",desc:"T2 · the accumulated bonus is kept when switching targets.",rd:6,apply:function(u){u.beamStacking=true;}},
+  {id:"beamOvercharge",name:"Concentrated Stream",desc:"T3 · focus cap raised to +300%.",rd:14,apply:function(u){u.beamFocusCap=3.0;}}
  ],
  firewheel:[
-  {id:"flameTrail",name:"Flame Trail",desc:"T1 · диск оставляет горящие области.",rd:2,apply:function(u){u.fireTrail=true;}},
-  {id:"blazingTrail",name:"Blazing Trail",desc:"T2 · горящий диск +25% урона.",rd:6,apply:function(u){u.dmgMul*=1.25;}},
-  {id:"extendedTrail",name:"Extended Trail",desc:"T3 · диск летает на 3 секунды дольше.",rd:14,apply:function(u){u.wheelDurationBonus=(u.wheelDurationBonus||0)+3;}}
+  {id:"flameTrail",name:"Flame Trail",desc:"T1 · the disc leaves burning areas.",rd:2,apply:function(u){u.fireTrail=true;}},
+  {id:"blazingTrail",name:"Blazing Trail",desc:"T2 · the burning disc deals +25% damage.",rd:6,apply:function(u){u.dmgMul*=1.25;}},
+  {id:"extendedTrail",name:"Extended Trail",desc:"T3 · the disc flies 3 seconds longer.",rd:14,apply:function(u){u.wheelDurationBonus=(u.wheelDurationBonus||0)+3;}}
  ],
  hive:[
-  {id:"swarmEcho",name:"Swarm Echo",desc:"T1 · осы выпускают один дополнительный эхорой с 50% уроном.",rd:2,apply:function(u){u.hiveEcho=1;}},
-  {id:"echoUpgrade2",name:"Echo Upgrade II",desc:"T2 · урон эхоос до 75%.",rd:6,apply:function(u){u.hiveEcho=2;}},
-  {id:"echoUpgrade3",name:"Echo Upgrade III",desc:"T3 · эхоосы получают полный урон.",rd:10,apply:function(u){u.hiveEcho=3;}}
+  {id:"swarmEcho",name:"Swarm Echo",desc:"T1 · wasps release one extra echo swarm with 50% damage.",rd:2,apply:function(u){u.hiveEcho=1;}},
+  {id:"echoUpgrade2",name:"Echo Upgrade II",desc:"T2 · echo wasp damage up to 75%.",rd:6,apply:function(u){u.hiveEcho=2;}},
+  {id:"echoUpgrade3",name:"Echo Upgrade III",desc:"T3 · echo wasps deal full damage.",rd:10,apply:function(u){u.hiveEcho=3;}}
  ],
  railgun:[
-  {id:"railExplosive",name:"Explosive Shells",desc:"T1 · пробивающие снаряды взрываются по небольшой области.",rd:2,apply:function(u){u.railExplosive=true;}},
-  {id:"railPiercing",name:"Piercing Impact",desc:"T2 · пробитие +2.",rd:6,apply:function(u){u.pierce=Math.min(15,u.pierce+2);}},
-  {id:"railShock",name:"Ударная рельса",desc:"T3 · урон +30%, дальность пробития +1.",rd:14,apply:function(u){u.dmgMul*=1.3;u.pierce=Math.min(15,u.pierce+1);}}
+  {id:"railExplosive",name:"Explosive Shells",desc:"T1 · piercing projectiles explode over a small area.",rd:2,apply:function(u){u.railExplosive=true;}},
+  {id:"railPiercing",name:"Piercing Impact",desc:"T2 · pierce +2.",rd:6,apply:function(u){u.pierce=Math.min(15,u.pierce+2);}},
+  {id:"railShock",name:"Shock Rail",desc:"T3 · damage +30%, pierce +1.",rd:14,apply:function(u){u.dmgMul*=1.3;u.pierce=Math.min(15,u.pierce+1);}}
  ],
  tesla:[
-  {id:"trapMatrix",name:"Trap Matrix",desc:"T1 · электрическая матрица после взрыва.",rd:2,apply:function(u){u.teslaMatrix=true;}},
-  {id:"enhancedMatrix",name:"Enhanced Matrix",desc:"T2 · матрица действует дольше и сильнее.",rd:6,apply:function(u){u.teslaMatrixPlus=true;}},
-  {id:"matrixThunder",name:"Matrix Thunderbolt",desc:"T3 · матрица периодически парализует врагов.",rd:10,apply:function(u){u.teslaThunder=true;}}
+  {id:"trapMatrix",name:"Trap Matrix",desc:"T1 · an electric matrix after the explosion.",rd:2,apply:function(u){u.teslaMatrix=true;}},
+  {id:"enhancedMatrix",name:"Enhanced Matrix",desc:"T2 · the matrix lasts longer and hits harder.",rd:6,apply:function(u){u.teslaMatrixPlus=true;}},
+  {id:"matrixThunder",name:"Matrix Thunderbolt",desc:"T3 · the matrix periodically paralyzes enemies.",rd:10,apply:function(u){u.teslaThunder=true;}}
  ],
  gravity:[
-  {id:"smallBlackHole",name:"Small Black Hole",desc:"T1 · поле притягивает врагов дольше.",rd:2,apply:function(u){u.gravityDuration+=1.2;}},
-  {id:"blackHoleExpansion",name:"Black Hole Expansion",desc:"T2 · радиус +35%, притяжение +20%.",rd:6,apply:function(u){u.gravityRadius*=1.35;u.gravityPull*=1.20;}},
-  {id:"destructiveBlackHole",name:"Destructive Black Hole",desc:"T3 · поле накладывает уязвимость.",rd:14,apply:function(u){u.gravityShred=true;}}
+  {id:"smallBlackHole",name:"Small Black Hole",desc:"T1 · the field pulls enemies in for longer.",rd:2,apply:function(u){u.gravityDuration+=1.2;}},
+  {id:"blackHoleExpansion",name:"Black Hole Expansion",desc:"T2 · radius +35%, pull +20%.",rd:6,apply:function(u){u.gravityRadius*=1.35;u.gravityPull*=1.20;}},
+  {id:"destructiveBlackHole",name:"Destructive Black Hole",desc:"T3 · the field applies vulnerability.",rd:14,apply:function(u){u.gravityShred=true;}}
  ],
  soldier:[
-  {id:"guardianCharge",name:"Заряженный выстрел",desc:"T1 · урон Guardian +25%.",rd:2,apply:function(u){u.dmgMul*=1.25;}},
-  {id:"guardianExplosion",name:"Разрывные пули",desc:"T2 · пули Guardian бьют по области.",rd:6,apply:function(u){u.splash=Math.max(u.splash,34);}},
-  {id:"guardianOverdrive",name:"Перегрузка Guardian",desc:"T3 · скорострельность +25%.",rd:14,apply:function(u){u.haste*=1.25;}}
+  {id:"guardianCharge",name:"Charged Shot",desc:"T1 · Guardian damage +25%.",rd:2,apply:function(u){u.dmgMul*=1.25;}},
+  {id:"guardianExplosion",name:"Explosive Rounds",desc:"T2 · Guardian bullets deal area damage.",rd:6,apply:function(u){u.splash=Math.max(u.splash,34);}},
+  {id:"guardianOverdrive",name:"Guardian Overdrive",desc:"T3 · fire rate +25%.",rd:14,apply:function(u){u.haste*=1.25;}}
  ]
 };
 function chainCandidates(u){
@@ -126,7 +126,7 @@ function genCards(allowSuper){
   if(u.cfg.id==="firewheel"&&u.runLv>=2&&(u.wheelMax||1)<2)pool.push({kind:"mod",u:u,mod:"wheelCount",w:3});
   chainCandidates(u).forEach(function(card){pool.push(card);});
  });
- /* комбо-карточки пар турелей (механика Combo из Galaxy Defense) */
+ /* combo cards for turret pairs (the Combo mechanic from Galaxy Defense) */
  var hasT=function(id){return B.turrets.some(function(u){return u.cfg.id===id;});};
  var fuT=function(id){return B.turrets.filter(function(u){return u.cfg.id===id;})[0];};
  if(hasT("laser")&&hasT("tesla")&&META.levels.tesla>=14&&!B.combos.spin)pool.push({kind:"combo",modId:"spin",u:fuT("laser"),w:3});
@@ -136,7 +136,7 @@ function genCards(allowSuper){
  if(hasT("firewheel")&&hasT("gravity")&&META.levels.gravity>=18&&!B.combos.vortexWheel)pool.push({kind:"combo",modId:"vortexWheel",u:fuT("firewheel"),w:3});
  if(hasT("gravity")&&hasT("hive")&&META.levels.gravity>=22&&!B.combos.binaryStars)pool.push({kind:"combo",modId:"binaryStars",u:fuT("gravity"),w:3});
  if(hasT("railgun")&&hasT("tesla")&&META.levels.railgun>=22&&!B.combos.surgePierce)pool.push({kind:"combo",modId:"surgePierce",u:fuT("railgun"),w:3});
- /* модули крепости — глобальные усиления боя, каждый один раз за бой */
+ /* fortress modules: global battle boosts, each once per battle */
  ["boost","healm","regenm","jam"].forEach(function(mid){if(!B.modulesUsed[mid])pool.push({kind:"module",modId:mid,w:3});});
  var guard=0;
  while(picks.length<3&&pool.length&&guard++<60){
@@ -150,34 +150,34 @@ function genCards(allowSuper){
  return picks;
 }
 function cardHTML(c){
- if(c.kind==="chain")return{cls:c.tier===3?"legend":"epic",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+c.def.name,tag:"T"+c.tier+" · R&D "+c.def.rd,desc:c.def.desc+" <b>+1 уровень юнита</b>."};
- if(c.kind==="super"){var s=SUPERS[c.u.cfg.id];return{cls:"super",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+s.name,tag:"⭐ СУПЕР · Lv. "+(c.u.runLv+1),desc:s.desc+" <b>+1 уровень юнита.</b>"};}
- if(c.kind==="new")return{cls:c.cfg.rarity,icon:c.cfg.icon,name:c.cfg.name,tag:"NEW",desc:"Построить <b>"+c.cfg.name+"</b>: "+c.cfg.desc+"<br>Урон: <b>"+c.cfg.damage+"</b> · "+c.cfg.dmgType+" · "+RARITY[c.cfg.rarity].n};
- if(c.kind==="up")return{cls:c.u.cfg.rarity,icon:c.u.cfg.icon,name:c.u.cfg.name,tag:"Lv. "+(c.u.runLv+1),desc:"<b>+18% урона</b>, +4% скорострельности."+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Условие Super Mode: R&D турели и уровень боя</b>":"")+" Урон за бой: <b>"+fmt(c.u.totalDmg)+"</b>."};
- if(c.kind==="combo"){var CM={spin:["Вращающийся лазер","Laser + Tesla Coil: дополнительный луч и +20% урона Laser."],det:["Детонационная молния","Sky Guard + Thunderbolt: ракеты поражают соседей током."],blaze:["Пылающий рой","Firewheel + Hive: осы поджигают противников."],disr:["Разрушающий луч","Beam + Disruption Drone: луч замедляет цель."],vortexWheel:["Вихревой диск","Firewheel + Gravity: диск получает +25% урона и срок жизни +2 с."],binaryStars:["Двойная сингулярность","Gravity + Hive: сильнее притяжение, радиус поля +30%."],surgePierce:["Электрорельса","Railgun + Tesla: пробитие +2, урон +25%."]}[c.modId];
-  return{cls:"epic",icon:"🔗",name:"Комбо: "+CM[0],tag:"КОМБО · Lv. "+(c.u.runLv+1),desc:CM[1]+" <b>+1 уровень: "+c.u.cfg.name+"</b>."};}
- if(c.kind==="module"){var MD={boost:["Усиление поля боя","Все юниты наносят +12% урона до конца боя."],healm:["Лечение крепости","Немедленно восстановить 250 HP базы."],regenm:["Цикл регенерации","Немедленно восстановить 200 HP базы."],jam:["Глушилка волн","Все враги на 15% медленнее до конца боя."]}[c.modId];
-  return{cls:"rare",icon:"🧩",name:"Модуль: "+MD[0],tag:"МОДУЛЬ КРЕПОСТИ",desc:MD[1]};}
- var M={dmg:["Силовой модуль","+15% к урону юнита."],crit:["Прицел крита","+6% шанс крита."],haste:["Ускоритель","+10% к скорострельности."],proj:["Сдвоенный ствол","+1 дополнительный снаряд в залпе."],chain:["Катушка+","+1 цель цепной молнии."],pierce:["Бронебой","+2 пробития снаряда."],splash:["Осколочный заряд","Снаряды получают урон по области."],slowpow:["Крио-ядро","Замедление усилено ещё на 12%."],refract:["Преломляющая линза","Луч преломляется в точке цели: две боковые ветви бьют врагов рядом на 50% урона."],reflect:["Отражающая призма","Луч отражается от крайней цели в соседнего врага (+1 отражение, до 3)."],
-   laserSweep:["Сканирующий луч","Луч поражает дополнительную цель — самую прочную из оставшихся."],
-   laserDeflect:["Дефлектор","Дополнительный луч бьёт вторую цель при работе лазера."],
-   laserDuration:["Усиленный конденсатор","Длительность лазерного импульса +30%."],
-   beamDuration:["Резонанс Beam","Продолжительность серии Beam +35%."],
-   beamFocus:["Фокусировка Beam","Повторные попадания по одной цели наращивают урон до +80%."],
-   teslaMatrix:["Электрическая матрица","После разряда остаётся поле периодического урона."],
-   teslaMatrixPlus:["Усиленная матрица","Увеличены длительность и урон поля Tesla."],
-   teslaBounce:["Отскок разряда","Разряд после попадания отскакивает ещё к одному ближайшему врагу."],
-   hiveCount:["Новые осы","+1 оса при каждом выпуске улья."],
-   hiveAttacks:["Усиленные жала","+2 атаки каждой осы."],
-   wheelDuration:["Стабилизатор Firewheel","Время полёта огненного диска +2 секунды."],
-   wheelCount:["Второй светлячок","Firewheel держит в поле два огненных диска вместо одного."]};
- var m=M[c.mod];return{cls:"rare",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+m[0],tag:"МОД · Lv. "+(c.u.runLv+1),desc:m[1]+" <b>+1 уровень юнита.</b>"+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Условие Super Mode: R&D турели и уровень боя</b>":"")};
+ if(c.kind==="chain")return{cls:c.tier===3?"legend":"epic",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+c.def.name,tag:"T"+c.tier+" · R&D "+c.def.rd,desc:c.def.desc+" <b>+1 unit level</b>."};
+ if(c.kind==="super"){var s=SUPERS[c.u.cfg.id];return{cls:"super",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+s.name,tag:"⭐ SUPER · Lv. "+(c.u.runLv+1),desc:s.desc+" <b>+1 unit level.</b>"};}
+ if(c.kind==="new")return{cls:c.cfg.rarity,icon:c.cfg.icon,name:c.cfg.name,tag:"NEW",desc:"Build <b>"+c.cfg.name+"</b>: "+c.cfg.desc+"<br>Damage: <b>"+c.cfg.damage+"</b> · "+c.cfg.dmgType+" · "+RARITY[c.cfg.rarity].n};
+ if(c.kind==="up")return{cls:c.u.cfg.rarity,icon:c.u.cfg.icon,name:c.u.cfg.name,tag:"Lv. "+(c.u.runLv+1),desc:"<b>+18% damage</b>, +4% fire rate."+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Super Mode requirement: turret R&D and battle level</b>":"")+" Battle damage: <b>"+fmt(c.u.totalDmg)+"</b>."};
+ if(c.kind==="combo"){var CM={spin:["Spinning Laser","Laser + Tesla Coil: an extra beam and +20% Laser damage."],det:["Detonation Lightning","Sky Guard + Thunderbolt: rockets shock nearby enemies."],blaze:["Blazing Swarm","Firewheel + Hive: wasps set enemies on fire."],disr:["Disrupting Beam","Beam + Disruption Drone: the beam slows its target."],vortexWheel:["Vortex Disc","Firewheel + Gravity: the disc gains +25% damage and +2 s lifetime."],binaryStars:["Binary Singularity","Gravity + Hive: stronger pull, field radius +30%."],surgePierce:["Surge Rail","Railgun + Tesla: pierce +2, damage +25%."]}[c.modId];
+  return{cls:"epic",icon:"🔗",name:"Combo: "+CM[0],tag:"COMBO · Lv. "+(c.u.runLv+1),desc:CM[1]+" <b>+1 level: "+c.u.cfg.name+"</b>."};}
+ if(c.kind==="module"){var MD={boost:["Battlefield Boost","All units deal +12% damage until the end of the battle."],healm:["Fortress Repair","Instantly restore 250 HP to the base."],regenm:["Regeneration Cycle","Instantly restore 200 HP to the base."],jam:["Wave Jammer","All enemies are 15% slower until the end of the battle."]}[c.modId];
+  return{cls:"rare",icon:"🧩",name:"Module: "+MD[0],tag:"FORTRESS MODULE",desc:MD[1]};}
+ var M={dmg:["Power Module","+15% unit damage."],crit:["Crit Scope","+6% crit chance."],haste:["Accelerator","+10% fire rate."],proj:["Twin Barrel","+1 extra projectile per volley."],chain:["Coil+","+1 chain lightning target."],pierce:["Armor Piercer","+2 projectile pierce."],splash:["Fragmentation Charge","Projectiles gain area damage."],slowpow:["Cryo Core","Slow increased by another 12%."],refract:["Refracting Lens","The beam refracts at the target: two side branches hit nearby enemies for 50% damage."],reflect:["Reflecting Prism","The beam reflects from the farthest target into a neighboring enemy (+1 reflection, up to 3)."],
+   laserSweep:["Sweeping Beam","The beam hits an extra target: the toughest of the remaining ones."],
+   laserDeflect:["Deflector","An extra beam hits a second target while the laser fires."],
+   laserDuration:["Boosted Capacitor","Laser pulse duration +30%."],
+   beamDuration:["Beam Resonance","Beam series duration +35%."],
+   beamFocus:["Beam Focus","Repeated hits on the same target build damage up to +80%."],
+   teslaMatrix:["Electric Matrix","A discharge leaves behind a damage-over-time field."],
+   teslaMatrixPlus:["Enhanced Matrix","Increased duration and damage of the Tesla field."],
+   teslaBounce:["Discharge Bounce","After a hit, the discharge bounces to one more nearby enemy."],
+   hiveCount:["New Wasps","+1 wasp per hive release."],
+   hiveAttacks:["Reinforced Stingers","+2 attacks per wasp."],
+   wheelDuration:["Firewheel Stabilizer","Fire disc flight time +2 seconds."],
+   wheelCount:["Second Firefly","Firewheel keeps two fire discs on the field instead of one."]};
+ var m=M[c.mod];return{cls:"rare",icon:c.u.cfg.icon,name:c.u.cfg.name+": "+m[0],tag:"MOD · Lv. "+(c.u.runLv+1),desc:m[1]+" <b>+1 unit level.</b>"+(((c.u.runLv+1)%5===0)?" <b style='color:var(--gold)'>Super Mode requirement: turret R&D and battle level</b>":"")};
 }
 var curCards=[];
 function openDraft(){
  SFX.levelup();
- $("lu-title").textContent="🎴 Очки накоплены!";
- $("lu-sub").textContent="Карточка за очки боя · Взято карточек: "+B.drafts+" · Следующая — за "+B.draftNeed+" очк."+(B.pendingDrafts>1?" · В очереди ещё "+(B.pendingDrafts-1)+"!":"")+(B.pendingSuper.length?" · ⭐ В драфте супер-карточка!":"");
+ $("lu-title").textContent="🎴 Points earned!";
+ $("lu-sub").textContent="Card for battle points · Cards taken: "+B.drafts+" · Next at "+B.draftNeed+" pts"+(B.pendingDrafts>1?" · "+(B.pendingDrafts-1)+" more queued!":"")+(B.pendingSuper.length?" · ⭐ A super card is in this draft!":"");
  var lb=$("lu-build");lb.innerHTML="";
  allFighters().forEach(function(t){var s=document.createElement("span");s.className="bchip";s.innerHTML=t.cfg.icon+" "+t.cfg.name+" <b>Lv."+t.runLv+"</b>";lb.appendChild(s);});
  curCards=genCards();
@@ -196,12 +196,12 @@ function renderCards(){
  });
 }
 $("btn-reroll").addEventListener("click",function(){if(!B.reroll)return;B.reroll=false;
- // супер-карточку при реролле не теряем
+ // do not lose the super card on reroll
  var sup=curCards.filter(function(c){return c.kind==="super";});
  curCards=genCards(sup.length===0);sup.forEach(function(s){if(!curCards.some(function(c){return c.kind==="super";}))curCards[0]=s;});
  renderCards();$("btn-reroll").style.display="none";SFX.pick();});
-/* ЛЮБАЯ карточка по существующему юниту (усиление, мод, супер) = +1 к его уровню.
-   Каждый 5-й уровень ставит супер-карточку в очередь на следующий драфт. */
+/* ANY card for an existing unit (upgrade, mod, super) = +1 to its level.
+   Every 5th level queues a super card for the next draft. */
 function gainLevel(u,statBoost){
  u.runLv++;
  if(statBoost){u.dmgMul*=1.18;u.haste*=1.04;}
@@ -268,7 +268,7 @@ function applyCard(c){
  }
  SFX.pick();
  B.drafts++;
- /* одна карточка из очереди потрачена; если очки дали ещё — сразу следующий драфт */
+ /* one queued card used; if the points earned more, open the next draft right away */
  B.pendingDrafts=Math.max(0,B.pendingDrafts-1);
  if(B.pendingDrafts>0){openDraft();lastTs=performance.now();return;}
  $("ov-levelup").classList.remove("on");
@@ -283,7 +283,7 @@ function endBattle(win){
  if(B.over)return;B.over=true;stopMusic();
  var time=Math.max(1,B.elapsed);
  var stats=allFighters().slice().sort(function(a,b){return b.totalDmg-a.totalDmg;}).map(function(t){return{t:t,dmg:t.totalDmg,dps:t.totalDmg/time};});
- var rw=B.elite?1.6:1; /* Elite: враги крепче — награды щедрее */
+ var rw=B.elite?1.6:1; /* Elite: tougher enemies, more generous rewards */
  var coins=Math.floor((B.kills*2.2+(win?220:60)+B.wave*25)*(1+(B.stage.n-1)*0.23)*rw);
  var comp=Math.floor((2+Math.floor(B.kills/25)+(win?3:0))*rw);
  var gems=(win?2:(B.kills>60?1:0))+(B.elite&&win?1:0);
@@ -298,12 +298,12 @@ function endBattle(win){
  persist();
  $("res-title").textContent=win?"Victory":"Defeat";
  $("res-title").className=win?"win":"lose";
- $("res-sub").textContent=B.stage.name+" · Волн пройдено: "+(win?finalWave():B.wave)+" · Убийств: "+B.kills+" · Время: "+mmss(B.elapsed)+" · 🎴 Карточек взято: "+B.drafts+" · ❤ Базе восстановлено: "+Math.floor(B.totalHealed)+" HP";
+ $("res-sub").textContent=B.stage.name+" · Waves cleared: "+(win?finalWave():B.wave)+" · Kills: "+B.kills+" · Time: "+mmss(B.elapsed)+" · 🎴 Cards taken: "+B.drafts+" · ❤ Base HP restored: "+Math.floor(B.totalHealed)+" HP";
  renderRewards();
  var tb=$("res-stats");tb.innerHTML="";
  stats.forEach(function(s){tb.innerHTML+="<tr><td>"+s.t.cfg.icon+" "+s.t.cfg.name+" <span style='color:var(--muted)'>Lv."+s.t.runLv+"</span></td><td>"+fmt(s.dmg)+"</td><td>"+fmt(s.dps)+"</td></tr>";});
- /* награды зачисляются сразу: раньше они начислялись только по кнопке «назад», а прогресс этапа уже был
-    сохранён — закрытие приложения на экране результатов оставляло открытый этап без наград */
+ /* rewards are credited immediately: previously they were credited only via the "back" button, while stage progress
+    was already saved, so closing the app on the results screen left the stage unlocked without rewards */
  applyRewards();
  $("ov-result").classList.add("on");
  if(win)SFX.win();else SFX.lose();
@@ -311,11 +311,11 @@ function endBattle(win){
 function renderRewards(){
  var r=lastRewards,m=1;
  var top3=Object.keys(r.mats).slice(0,3);
- var h='<div class="rwd"><div class="ric">⭐</div><div class="rv">'+(r.pxp*m)+'</div><div class="rn">Опыт аккаунта</div></div>'+
- '<div class="rwd"><div class="ric">🪙</div><div class="rv">'+(r.coins*m)+'</div><div class="rn">Монеты</div></div>'+
- '<div class="rwd"><div class="ric">💎</div><div class="rv">'+(r.gems*m)+'</div><div class="rn">Гемы</div></div>'+
- '<div class="rwd"><div class="ric">🧩</div><div class="rv">'+(r.comp*m)+'</div><div class="rn">Компоненты</div></div>';
- top3.forEach(function(id){var cfg=allUnitsCfg().filter(function(t){return t.id===id;})[0];h+='<div class="rwd"><div class="ric">'+cfg.icon+'</div><div class="rv">'+(r.mats[id]*m)+'</div><div class="rn">Материалы: '+cfg.name+'</div></div>';});
+ var h='<div class="rwd"><div class="ric">⭐</div><div class="rv">'+(r.pxp*m)+'</div><div class="rn">Account XP</div></div>'+
+ '<div class="rwd"><div class="ric">🪙</div><div class="rv">'+(r.coins*m)+'</div><div class="rn">Coins</div></div>'+
+ '<div class="rwd"><div class="ric">💎</div><div class="rv">'+(r.gems*m)+'</div><div class="rn">Gems</div></div>'+
+ '<div class="rwd"><div class="ric">🧩</div><div class="rv">'+(r.comp*m)+'</div><div class="rn">Components</div></div>';
+ top3.forEach(function(id){var cfg=allUnitsCfg().filter(function(t){return t.id===id;})[0];h+='<div class="rwd"><div class="ric">'+cfg.icon+'</div><div class="rv">'+(r.mats[id]*m)+'</div><div class="rn">Materials: '+cfg.name+'</div></div>';});
  $("res-rewards").innerHTML=h;
 }
 function applyRewards(){

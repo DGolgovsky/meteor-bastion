@@ -24,7 +24,7 @@ function harness(legacySave) {
   const canvasContext = new Proxy({
     createRadialGradient: () => gradient,
     createLinearGradient: () => gradient,
-    /* measureText: приближение ширины по текущему шрифту (для адаптивного HUD) */
+    /* measureText: width approximation for the current font (for the adaptive HUD) */
     measureText(s) {
       const m = /(\d+(?:\.\d+)?)px/.exec(canvasContext.font || "11px");
       const size = m ? parseFloat(m[1]) : 11;
@@ -156,8 +156,8 @@ test("Firewheel spawns airborne bouncing discs", () => {
   g.B.enemies = [sampleEnemy(g)];
   g.unitFire(u, 0.4);
   assert.ok(g.B.wheels.length > 0);
-  // «Светлячок»: один большой долгоживущий диск; повторные выстрелы не плодят
-  // новых, пока прежний жив. Карточка wheelCount поднимает лимит до двух.
+  // "Firefly": one large long-lived disc; repeated shots do not spawn
+  // new ones while the previous one is alive. The wheelCount card raises the limit to two.
   assert.equal(g.B.wheels.length, 1);
   assert.ok(g.B.wheels[0].life >= 9, "disc should live ~10s, got " + g.B.wheels[0].life);
   for (let i = 0; i < 5; i++) g.unitFire(u, 0.8);
@@ -191,8 +191,8 @@ test("Hive launches repeated-attack wasps", () => {
   const u = g.mkUnit(g.TURRETS.find(t => t.id === "hive"), 52, 0, false);
   g.B.turrets = [u];
   g.B.drones = [];
-  // тест был зависим от врага, оставшегося от прошлого теста; при taller-поле
-  // (BASEY 720) тот враг оказался вне радиуса улья — ставим своего, в радиусе
+  // the test depended on an enemy left over from the previous test; with the taller field
+  // (BASEY 720) that enemy ended up outside the hive radius, so we place our own, within range
   g.B.enemies = [sampleEnemy(g, 500)];
   g.unitFire(u, 0.5);
   assert.equal(g.B.drones.length, u.hiveCount);
@@ -497,14 +497,14 @@ test("Laser beam is fixed at the moment of firing and does not track the target"
   g.B.turrets=[laser];
   const enemy=sampleEnemy(g,400);enemy.x=180;enemy.speed=0;
   g.B.enemies=[enemy];
-  g.unitFire(laser,0.3); /* первый выстрел: канал стартует (cd ≤ 0,2) */
+  g.unitFire(laser,0.3); /* first shot: the channel starts (cd ≤ 0.2) */
   assert.ok(g.B.beams.length>0,"laser should emit a beam");
   const first=g.B.beams[g.B.beams.length-1];
   const a1=Math.atan2(first.y2-first.y1,first.x2-first.x1);
   assert.ok(Number.isFinite(laser.laserAngle),"laser must store its firing angle");
   assert.equal(laser.laserAngle,Math.atan2(400-(laser.y-14),180-laser.x),"angle must come from the target position at firing time");
-  enemy.x=320;enemy.y=250; /* цель резко уходит в сторону */
-  g.unitFire(laser,0.05); /* канал ещё активен */
+  enemy.x=320;enemy.y=250; /* the target abruptly moves sideways */
+  g.unitFire(laser,0.05); /* the channel is still active */
   const second=g.B.beams[g.B.beams.length-1];
   const a2=Math.atan2(second.y2-second.y1,second.x2-second.x1);
   assert.ok(Math.abs(a2-a1)<1e-9,"beam must not follow the target after firing: "+a1+" vs "+a2);
@@ -813,7 +813,7 @@ test("jam module slows both existing and newly spawned nonlinear enemies", () =>
   assert.ok(m.B.enemies[1].baseSpeed<old);
 });
 
-/* ---------- регрессии: исправленные баги ---------- */
+/* ---------- regressions: fixed bugs ---------- */
 function freshBattle(game){
   game.B=game.newBattle(game.STAGES[0]);game.B.soldier=game.mkUnit(game.SOLDIER_CFG,210,-1,true);
   game.B.soldier.cd=999;game.B.waveState="fighting";game.B.wave=3;game.B.waveQueue=1;game.B.spawnT=999;
@@ -831,7 +831,7 @@ test("Gravity field does not teleport an enemy that has just spawned above the v
   h.B.fields.push({kind:"gravity",x:210,y:60,r:120,life:3,src:gv,tick:9,pull:65,power:1});
   h.update(1/30);
   assert.ok(e.y<h.VIS_TOP,"enemy at y=-30 must stay above the visible line, got "+e.y);
-  /* а вот уже видимого врага поле по-прежнему не поднимает выше VIS_TOP */
+  /* but an already visible enemy is still not lifted above VIS_TOP by the field */
   const v=enemyOf(h,"meteor",210,h.VIS_TOP+2);h.B.enemies=[v];
   h.B.fields=[{kind:"gravity",x:210,y:-200,r:400,life:3,src:gv,tick:9,pull:500,power:1}];
   for(let i=0;i<30;i++)h.update(1/30);
@@ -844,7 +844,7 @@ test("Burn DPS is cleared when the burn expires, so a weaker later burn is not i
   const e=enemyOf(h,"meteor",100,300);h.B.enemies=[e];
   fw.dmgMul=10;h.dealDamage(fw,e,10,{burn:true});
   const strong=e.burnDps;assert.ok(strong>0);
-  for(let i=0;i<150;i++)h.update(1/30); /* 5 с: ожог (3 с) истёк */
+  for(let i=0;i<150;i++)h.update(1/30); /* 5 s: the burn (3 s) has expired */
   assert.equal(e.burnDps,0,"expired burn must reset DPS");
   fw.dmgMul=1;h.dealDamage(fw,e,10,{burn:true});
   assert.ok(e.burnDps<strong,"new weak burn must use its own DPS, not the stale strong one");
@@ -894,7 +894,7 @@ test("Battle rewards are credited immediately, exactly once", () => {
   assert.equal(h.META.coins,after,"pressing back must not credit rewards a second time");
 });
 
-/* ---------- отрисовка моделей ---------- */
+/* ---------- model rendering ---------- */
 function drawScene(game,setup){
   game.B=game.newBattle(game.STAGES[0]);game.B.waveState="fighting";game.B.wave=3;game.B.t=1.7;
   game.B.soldier=game.mkUnit(game.SOLDIER_CFG,210,-1,true);
@@ -920,7 +920,7 @@ test("Guardian faces its target and keeps facing near vertical aim (no flicker)"
   assert.equal(h.B.soldier.facing,-1,"aiming left must face left");
   h.B.soldier.angle=-0.4;h.draw();
   assert.equal(h.B.soldier.facing,1,"aiming right must face right");
-  h.B.soldier.angle=-Math.PI/2-0.05; /* почти строго вверх, чуть влево: остаётся прежняя сторона */
+  h.B.soldier.angle=-Math.PI/2-0.05; /* almost straight up, slightly left: the previous side is kept */
   h.draw();
   assert.equal(h.B.soldier.facing,1,"near-vertical aim must not flip the Guardian");
 });

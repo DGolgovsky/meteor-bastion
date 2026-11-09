@@ -4,8 +4,8 @@ function startWave(n){
  B.waveTotal=B.waveQueue=BALANCE.waveStart+Math.round(n*BALANCE.waveGrowth)+(B.stage.n-1)*2+(B.elite?Math.ceil(BALANCE.eliteWaveBase+n*BALANCE.eliteWaveGrowth):0);
  B.waveKilled=0;B.spawnT=0.25;B.formationCd=0;B.waveKinds={};B.waveKindCount={};
  B.waveSpecials=0;
- /* тост «Волна N / 20» при старте волны убран (2026-11-08): уведомление под полем
-    мешало; предупреждение о боссе в spawnBoss оставлено — это отдельное событие */
+ /* the "Wave N / 20" toast at wave start was removed (2026-11-08): the notification under the field
+    got in the way; the boss warning in spawnBoss is kept, since it is a separate event */
 }
 function wavePickKind(){
  var w=B.wave,elite=B.elite,pool=[["meteor",elite?7:10]];

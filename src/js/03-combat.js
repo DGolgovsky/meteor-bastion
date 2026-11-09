@@ -1,7 +1,7 @@
 /* ---------- targeting & damage ---------- */
-/* Дальность ограничивает только высоту: по ширине юнит видит всё поле целиком,
-   а вниз зона поражения тянется до самой базы (враг у базы виден при любом x).
-   Сверху — VIS_TOP: враги выше строки состояния (за HUD) в прицел не берутся. */
+/* Range limits only height: horizontally a unit sees the entire field,
+   and downward the engagement zone extends all the way to the base (an enemy at the base is visible at any x).
+   At the top is VIS_TOP: enemies above the status row (behind the HUD) are not targeted. */
 function inRange(t,e){
  if(e.hp<=0||e.dead)return false;
  if(e.y<VIS_TOP)return false;
@@ -9,9 +9,9 @@ function inRange(t,e){
  return (t.y-e.y)<=t.cfg.range && e.y<=BASEY+12;
 }
 /* Hive launches within turret range, but deployed wasps hunt across the WHOLE field.
-   Осы распределяются по целям: не больше 2 ос на одну цель — толпа не летит
-   в центр одного врага. Если все живые цели уже заняты, оса берёт наименее
-   загруженную из них. */
+   Wasps are distributed across targets: at most 2 wasps per target, so the crowd does not fly
+   into the center of a single enemy. If all live targets are already taken, a wasp picks the least
+   loaded one. */
 function pickDroneTarget(dr){
  var alive=B.enemies.filter(function(e){return !e.dead&&e.hp>0&&e.y<=BASEY+12&&!(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0));});
  if(!alive.length)return null;
@@ -43,11 +43,11 @@ function pickTarget(t){
   default:return inR.reduce(function(a,b){return b.y>a.y?b:a;});
  }
 }
-/* скорость врага для упреждения: vy — падение с учётом замедления, vx — рысканье летуна (как в update) */
+/* enemy velocity for leading shots: vy is the descent including slow, vx is the flyer's weaving (as in update) */
 function enemyVel(e){
  return {x:e.vx===undefined?0:e.vx,y:e.vy===undefined?e.speed*e.slowFactor*(e.chargeMul||1):e.vy};
 }
-/* точка перехвата: решаем |P + V·t − S| = projSpeed·t и целимся туда, а не в текущую позицию */
+/* intercept point: solve |P + V·t − S| = projSpeed·t and aim there rather than at the current position */
 function aimPoint(t,e){
  var sx=t.x,sy=t.y-10,sp=t.cfg.projSpeed;
  if(sp<=0)return{x:e.x,y:e.y};
@@ -71,7 +71,7 @@ function dealDamage(src,e,baseDmg,opts){
  if(opts.reveal){e.revealedT=Math.max(e.revealedT||0,4);e.cloakT=0;}
  var crit=Math.random()<Math.min(0.95,Math.max(0,src?src.cfg.crit+src.critBonus:0.05));
  var cm=crit?(src?src.cfg.critMul:1.8)*(1+totalCritBonus()/100):1;
- /* сопротивление/уязвимость врага к типу урона атакующего (механика Galaxy Defense) */
+ /* the enemy's resistance/vulnerability to the attacker's damage type (a Galaxy Defense mechanic) */
  var rm=1;
  if(src&&src.cfg.dtype&&e.cfg.res&&e.cfg.res[src.cfg.dtype])rm=e.cfg.res[src.cfg.dtype];
  if(e.champion)rm=Math.min(1,rm);
@@ -90,9 +90,9 @@ function dealDamage(src,e,baseDmg,opts){
  if(e.hp<=0)killEnemy(e);
  return dmg;
 }
-/* Очки боя за убийство: значения берутся из поля xp конфига врага
-   (метеорит 1, летун 2, бронированный 3, голем-матка 5, звезда 6, элит 8, босс 60).
-   При достижении порога в очередь ставится карточка; сам драфт откроется в конце кадра update(). */
+/* Battle points per kill: values come from the xp field of the enemy config
+   (meteor 1, flyer 2, armored 3, golem mother 5, star 6, elite 8, boss 60).
+   When a threshold is reached, a card is queued; the draft itself opens at the end of the update() frame. */
 function addDraftScore(pts){
  B.scoreTotal+=pts;B.score+=pts;
  while(B.score>=B.draftNeed){
@@ -107,7 +107,7 @@ function killEnemy(e){
  if(e.dead)return;e.dead=true;
  B.kills++;B.waveKilled++;if(e.champion)B.championsKilled++;
  addDraftScore(e.xp||1);
- /* каждый поражённый (уничтоженный) враг восстанавливает базе +2 HP, не выше максимума */
+ /* every enemy hit and destroyed restores +2 HP to the base, capped at the maximum */
  if(B.baseHp<B.baseMax){
    var healed=Math.min(2,B.baseMax-B.baseHp);
    B.baseHp+=healed;B.totalHealed+=healed;
@@ -118,7 +118,7 @@ function killEnemy(e){
  }
  burst(e.x,e.y,e.kind==="boss"?26:12,e.color);
  if(e.kind==="boss"){B.shake=10;SFX.boom();}
- /* голем-матка при гибели делится на двух осколков (как Alien Golem в Galaxy Defense) */
+ /* a golem mother splits into two shards on death (like the Alien Golem in Galaxy Defense) */
  if(e.cfg.id==="splitter"){
    var mini=ENEMIES.filter(function(x){return x.id==="mini";})[0];
    var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*0.78*0.8;
@@ -163,9 +163,9 @@ function fireLaser(t,dt){
    var initial=pickTarget(t);if(!initial)return;
    t.laserActive=1.65*t.durationMul*(t.laserDurationMul||1);t.recoil=3;
    t.laserTickT=0;
-   t.cd=7.8*t.metaCd/t.haste; /* перезарядка между импульсами увеличена в 1,5 раза (было 5,2) */
-   /* луч НЕ ведёт цель: направление и точка прицела фиксируются в момент выстрела
-      (позиция цели при старте канала) и не двигаются за ней до конца канала */
+   t.cd=7.8*t.metaCd/t.haste; /* the cooldown between pulses is increased 1.5× (was 5.2) */
+   /* the beam does NOT track the target: the direction and aim point are locked at the moment of firing
+      (the target's position when the channel starts) and do not follow it until the channel ends */
    t.laserAngle=Math.atan2(initial.y-(t.y-14),initial.x-t.x);
    t.laserAimX=initial.x;t.laserAimY=initial.y;
    SFX.laser();
@@ -180,8 +180,8 @@ function fireLaser(t,dt){
    if(pr<=0)return;
    if(Math.abs(px*dy-py*dx)<=e.r+8){hits.push(e);far=Math.max(far,pr);}
  });
- /* луч идёт от турели через цель до края поля в направлении выстрела —
-    урон не меняется (он считается по hits), меняется только длина визуала */
+ /* the beam goes from the turret through the target to the edge of the field in the firing direction;
+    damage does not change (it is computed from hits), only the visual length changes */
  var edgeT=Infinity;
  if(dx>1e-6)edgeT=Math.min(edgeT,(W-ox)/dx);
  if(dx<-1e-6)edgeT=Math.min(edgeT,(0-ox)/dx);
@@ -228,8 +228,8 @@ function fireLaser(t,dt){
   if(def){beamFx(ox,oy,def.x,def.y,"#4ade80",1.8);dealDamage(t,def,t.cfg.damage*0.5,opts);}
  }
  if(t.laserSweep>0&&Math.random()<0.25){
-  /* сканирующий луч бьёт вторую цель ДЕТЕРМИНИРОВАННО — самую прочную
-     из оставшихся, а не случайную: стрельба не превращается в разнобой */
+  /* the sweeping beam hits the second target DETERMINISTICALLY, the toughest
+     of the remaining ones rather than a random one, so the fire does not turn into scatter */
   var candidate=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
   if(candidate.length){var sw=candidate.reduce(function(a,b){return b.maxHp>a.maxHp?b:a;});beamFx(ox,oy,sw.x,sw.y,"#a7f3d0",2);dealDamage(t,sw,t.cfg.damage*0.8,opts);}
  }
@@ -282,7 +282,7 @@ function unitFire(t,dt){
  t.cd-=dt;
  if(t.cd>0)return;
  var target=pickTarget(t); if(!target)return;
- var ap=aimPoint(t,target); /* упреждение: снаряд летит в точку перехвата движущейся цели */
+ var ap=aimPoint(t,target); /* leading: the projectile flies to the intercept point of the moving target */
  t.angle=Math.atan2(ap.y-(t.y-10),ap.x-t.x);
  t.cd=1/cfg.attackSpeed*t.metaCd/t.haste;
  if(cfg.effect==="gravity"){
@@ -307,12 +307,12 @@ function unitFire(t,dt){
    t.recoil=2;
     var hcount=Math.min(12,t.hiveCount*(t.hiveDouble?2:1));
    for(var h=0;h<hcount&&B.drones.length<90;h++){
-     /* осы ВЫЛЕТАЮТ веером вверх от турели (разброс 10–14px от неё), а не появляются
-        в её точке: короткая фаза вылета (~0,25 с) наружу, затем самонаведение (см. update). */
+     /* wasps FLY OUT in an upward fan from the turret (spread 10–14px from it) instead of appearing
+        at its point: a short outward launch phase (~0.25 s), then homing (see update). */
      var la=-Math.PI/2+(Math.random()*1.1-0.55);
      var lr=10+Math.random()*4;
-     /* оса сначала попадает в рой, а цель выбирает уже с учётом занятых целей —
-        иначе весь залп летит в одну точку (см. pickDroneTarget, макс. 2 на цель) */
+     /* a wasp joins the swarm first and only then picks a target, taking occupied targets into account;
+        otherwise the whole volley flies to one point (see pickDroneTarget, max 2 per target) */
      var dr={x:t.x+Math.cos(la)*lr,y:t.y-10+Math.sin(la)*lr,src:t,life:8.5*t.durationMul,tgt:null,hitT:0,hits:t.hiveAttacks,boost:1,echoed:false,isEcho:false,launchT:0.25,vx:Math.cos(la)*120,vy:Math.sin(la)*120};
      B.drones.push(dr);
      dr.tgt=pickDroneTarget(dr)||target;
@@ -320,10 +320,10 @@ function unitFire(t,dt){
    SFX.shoot();return;
  }
  if(cfg.id==="firewheel"){
-   /* «Светлячок»: в поле одновременно не больше одного диска (два — с карточкой
-      «Второй светлячок»); один, но большой (r=14) и долгоживущий (10 с). Пока диск
-      жив, турель не выпускает следующий — кулдаун тратится вхолостую, замена
-      вылетает, как только прежний сгорит. */
+   /* "Firefly": at most one disc on the field at a time (two with the
+      "Second Firefly" card); just one, but large (r=14) and long-lived (10 s). While the disc
+      is alive, the turret does not launch another: the cooldown runs idle, and the replacement
+      flies out as soon as the previous one burns out. */
    var speed=290,count=Math.min(3,1+t.extraProj),maxWheels=t.wheelMax||1,active=0,spawned=0;
    B.wheels.forEach(function(w){if(w.src===t)active++;});
    for(var z=0;z<count&&active+spawned<maxWheels&&B.wheels.length<20;z++){
@@ -335,10 +335,10 @@ function unitFire(t,dt){
    if(spawned){t.recoil=3;SFX.shoot();}return;
  }
  if(cfg.id==="aeroblast"){
-   /* ДРОБОВИК: веер широк вблизи, но сужается к дальним целям. Без этого
-      увеличенная дальность давала лишь центральную дробинку: остальные
-      расходились мимо даже неподвижного врага. На дальней дистанции
-      угловой шаг удерживает соседние дробинки примерно в 14px от центра. */
+   /* SHOTGUN: the spread is wide up close but narrows toward distant targets. Without this,
+      the increased range gave only the central pellet: the others
+      diverged past even a stationary enemy. At long range the
+      angular step keeps neighboring pellets about 14px from the center. */
    var pellets=(t.aeroPellets||5)+t.extraProj;
    var targetDist=Math.hypot(ap.x-t.x,ap.y-(t.y-10));
    var spreadStep=Math.min(0.14,14/Math.max(90,targetDist));
@@ -356,10 +356,10 @@ function unitFire(t,dt){
  t.recoil=5;
  if(t.isSoldier){
    var px=-Math.sin(t.angle),py=Math.cos(t.angle);
-   /* страж стреляет из двух рук: ОДНА рука на весь залп — все три выстрела
-      идут плотной группой (шаг 3px) с одной стороны, следующий залп — с другой.
-      Раньше рука менялась на каждом выстреле залпа, и третий выстрел уходил
-      далеко от первых двух. */
+   /* the guardian fires from both hands: ONE hand for the whole burst, so all three shots
+      go in a tight group (3px spacing) from one side, and the next burst from the other.
+      Previously the hand switched on every shot of the burst, and the third shot went
+      far from the first two. */
    var hand=(t.handAlt?1:-1)*6;t.handAlt=!t.handAlt;
    for(var k=0;k<n;k++){
      var off=k-(n-1)/2;
@@ -369,8 +369,8 @@ function unitFire(t,dt){
    var px2=-Math.sin(t.angle),py2=Math.cos(t.angle);
    for(var k2=0;k2<n;k2++){
      var off2=k2-(n-1)/2;
-     /* дополнительные снаряды турелей летят ПАРАЛЛЕЛЬНО основному (боковое
-        смещение 7px), а не веером — карточки не превращают стрельбу в разнобой */
+     /* extra turret projectiles fly PARALLEL to the main one (lateral
+        offset 7px), not in a spread, so cards do not turn the fire into scatter */
      B.projs.push({x:t.x+px2*off2*7,y:t.y-10+py2*off2*7,vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
    }
  }
@@ -380,10 +380,10 @@ function unitFire(t,dt){
 function applyHit(p,e){
  var cfg=p.src.cfg,opts={};
  if(cfg.effect==="charge"){
-   /* Прямой разряд + взрыв по площади, а затем ОТСКОК: разряд перескакивает
-      от поражённой цели к ближайшему непобитому врагу, и так по цепочке —
-      каждый следующий отскок слабее. Старый «двойной заряд» (одновременное
-      поражение нескольких целей вокруг первой) убран полностью. */
+   /* Direct discharge + area explosion, then a BOUNCE: the discharge jumps
+      from the struck target to the nearest enemy not yet hit, and so on along the chain;
+      each subsequent bounce is weaker. The old "double charge" (hitting several
+      targets around the first one simultaneously) is removed entirely. */
    dealDamage(p.src,e,p.dmg*0.8,{});
    var radius=Math.max(55,p.src.splash||60);
    B.enemies.forEach(function(o){
@@ -433,7 +433,7 @@ function applyHit(p,e){
    B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=45)dealDamage(p.src,o,p.dmg*0.25,{});});
    ringFx(e.x,e.y,"#f472b6",75);
  }
- /* комбо Sky Guard + Thunderbolt: попадание ракеты бьёт током соседа */
+ /* Sky Guard + Thunderbolt combo: a rocket hit shocks a neighbor */
  if(p.src.zapOnHit){
    var nx2=null,bd2=85;
    B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead){var dd=Math.hypot(o.x-e.x,o.y-e.y);if(dd<bd2){bd2=dd;nx2=o;}}});
@@ -443,7 +443,7 @@ function applyHit(p,e){
    B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=p.src.splash)dealDamage(p.src,o,p.dmg*0.5,cfg.effect==="slow"?{slow:true,slowPow:p.src.slowPow}:cfg.effect==="knockback"?{knock:p.src.knock*0.6}:{});});
    burst(e.x,e.y,8,"#ff8a3c");
  }
- /* различимые эффекты попаданий по типу турели */
+ /* distinguishable hit effects per turret type */
  if(cfg.effect==="slow")ringFx(e.x,e.y,"#38c8ff",130);
  if(cfg.effect==="knockback")ringFx(e.x,e.y,"#7dd7ff",170);
  if(cfg.effect==="burn")burst(e.x,e.y,6,"#ff8a3c");

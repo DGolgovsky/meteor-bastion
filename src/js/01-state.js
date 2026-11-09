@@ -6,7 +6,7 @@ function freshMeta(){
   return m;
 }
 var META=freshMeta();
-/* ===== Сохранение прогресса: localStorage, схема v1 (явный запрос игрока: прогресс должен переживать перезагрузку) ===== */
+/* ===== Progress saving: localStorage, schema v1 (explicit player request: progress must survive a reload) ===== */
 var SAVE_KEY="meteor-bastion-save-v1";
 function persist(){try{var d={v:1};["coins","gems","energy","components","playerXp","wins","unlocked","selStage","music","sfx","elite","lastPatrol","lastEnergyAt"].forEach(function(k){d[k]=META[k];});d.chips=META.chips;d.livery=META.livery;d.eliteCleared=META.eliteCleared;d.normalCleared=META.normalCleared;d.levels=META.levels;d.mats=META.mats;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}}
 function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var d=JSON.parse(raw);if(!d||d.v!==1)return;
@@ -26,9 +26,9 @@ loadSave();
 function totalCritBonus(){var s=0;allUnitsCfg().forEach(function(t){s+=(Math.min(45,META.levels[t.id])-1)*3;});return Math.min(100,s);}
 function upCost(t){var lv=META.levels[t.id];return{mats:14+lv*9,coins:70+lv*30};}
 var CHIP_DEFS=[
- {id:"core",name:"Усилитель турелей",icon:"◆",desc:"Урон турелей +3% за уровень",max:5},
- {id:"speed",name:"Хрономодуль",icon:"✧",desc:"Скорострельность +2% за уровень",max:5},
- {id:"fort",name:"Резерв крепости",icon:"⬡",desc:"+40 к максимуму HP базы за уровень",max:5}
+ {id:"core",name:"Turret Amplifier",icon:"◆",desc:"Turret damage +3% per level",max:5},
+ {id:"speed",name:"Chrono Module",icon:"✧",desc:"Fire rate +2% per level",max:5},
+ {id:"fort",name:"Fortress Reserve",icon:"⬡",desc:"+40 max base HP per level",max:5}
 ];
 function chipCost(id){return 4+(META.chips[id]||0)*4;}
 function purchaseChip(id){
@@ -42,7 +42,7 @@ function renderChips(){
   var lv=META.chips[def.id],cost=chipCost(def.id),can=lv<def.max&&META.components>=cost;
   var card=document.createElement("div");card.className="chip-card";
   card.innerHTML='<strong>'+def.icon+' '+def.name+'</strong><span>Lv. '+lv+' / '+def.max+'</span><small>'+def.desc+'</small>'+
-    '<button class="btn" '+(can?'':'disabled')+'>'+(lv>=def.max?'МАКС. УР.':'⬡ '+cost+' компонентов')+'</button>';
+    '<button class="btn" '+(can?'':'disabled')+'>'+(lv>=def.max?'MAX LV.':'⬡ '+cost+' components')+'</button>';
   card.querySelector("button").addEventListener("click",function(){purchaseChip(def.id);});grid.appendChild(card);
  });
 }
@@ -51,7 +51,7 @@ function setLivery(id){
  META.livery=id;persist();syncToggles();SFX.pick();return true;
 }
 function rdTierUnlock(id){return {skyguard:14,laser:18,disruption:18,aeroblast:14,thunder:18,beam:18,firewheel:10,hive:18,railgun:14,tesla:18,gravity:10,soldier:18}[id]||18;}
-function rdTierName(level){return level>=22?"T3/Combo":level>=14?"Breakthrough":level>=10?"T3":level>=6?"T2":level>=2?"T1":"БАЗОВЫЙ";}
+function rdTierName(level){return level>=22?"T3/Combo":level>=14?"Breakthrough":level>=10?"T3":level>=6?"T2":level>=2?"T1":"BASIC";}
 
 function refillEnergy(){var now=Date.now();if(!META.lastEnergyAt)META.lastEnergyAt=now;
  if(META.energy>=30){META.energy=30;META.lastEnergyAt=now;return;}
@@ -86,7 +86,7 @@ function show(name){
  document.querySelectorAll(".nav button").forEach(function(b){b.classList.toggle("on",b.dataset.nav===name);});
  if(name==="home")renderHome(); if(name==="turrets")renderTurrets();
  window.scrollTo(0,0);
- /* канвас виден только на экране боя — его CSS-ширина известна лишь после показа */
+ /* the canvas is visible only on the battle screen; its CSS width is known only after it is shown */
  if(name==="battle")requestAnimationFrame(fitCanvas);
 }
 document.querySelectorAll("[data-nav]").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.nav);});});
@@ -97,16 +97,16 @@ function curHTML(){return '<span class="resource-item gold"><span class="currenc
 function bindTop(){ /* Debug top-up buttons are deliberately removed from release UI. */ }
 function bindTops(){bindTop($("home-cur"));bindTop($("tur-cur"));}
 var INTEL=[
- "Разведка: метеориты слабы к физ. урону и держат огонь; бронированные почти не берут физ. — бей электричеством.",
- "Разведка: летуны уязвимы к электричеству; с 5-й волны — големы-матки (делятся при гибели), с 6-й — звёзды регенерации (лечат соседей).",
- "Разведка: элитки держат энергию, но слабы к силовому полю; босс устойчив к огню и физ. урону."
+ "Intel: meteors are weak to physical damage and resist fire; armored ones barely take physical damage, so hit them with electricity.",
+ "Intel: flyers are vulnerable to electricity; from wave 5 come golem mothers (they split on death), from wave 6 regeneration stars (they heal their neighbors).",
+ "Intel: elites resist energy but are weak to force fields; the boss resists fire and physical damage."
 ];
 function patrolAccrued(){var h=(Date.now()-META.lastPatrol)/3600000;return Math.floor(Math.min(8,h)*25*(1+META.unlocked*0.5));}
 function renderHome(){
  refillEnergy();
  $("home-cur").innerHTML=curHTML();
  var accountLv=1+Math.floor(META.playerXp/100),stage=STAGES[META.selStage-1],elite=META.elite;
- $("prof-line").textContent="Командир · Ур. "+accountLv+" · Побед "+META.wins;
+ $("prof-line").textContent="Commander · Lv. "+accountLv+" · Wins "+META.wins;
  $("home-stage-title").textContent=(elite?"ELITE":"NORMAL")+" STAGE "+stage.n;
  $("scr-home").classList.toggle("elite-mode",elite);
  $("hq-scene").classList.toggle("elite-mode",elite);
@@ -116,18 +116,18 @@ function renderHome(){
  $("stage-next").disabled=META.selStage>=META.unlocked;
  $("scene-stage-num").textContent=("0"+stage.n).slice(-2)+" / "+("0"+STAGES.length).slice(-2);
  var clearMap=elite?META.eliteCleared:META.normalCleared;
- $("scene-stage-status").textContent=clearMap[stage.n]?"✓ ПРОЙДЕН":elite?"⚠ ЭЛИТНАЯ УГРОЗА":"ЭТАП ДОСТУПЕН";
- $("stage-brief").textContent=elite?"Элитные враги • усиленные волны":stage.desc;
+ $("scene-stage-status").textContent=clearMap[stage.n]?"✓ CLEARED":elite?"⚠ ELITE THREAT":"STAGE AVAILABLE";
+ $("stage-brief").textContent=elite?"Elite enemies • reinforced waves":stage.desc;
  $("stage-risk").textContent=elite?"ELITE ×"+BALANCE.eliteHp+" HP":"NORMAL";
  var waveCount=BALANCE.waveStart+Math.round(BALANCE.waveGrowth*1)+(stage.n-1)*2+(elite?Math.ceil(BALANCE.eliteWaveBase+BALANCE.eliteWaveGrowth):0);
- $("stage-metrics").innerHTML='<span class="hq-metric">⚔ <b>'+stageWaves(stage)+'</b> волн</span>'+
- '<span class="hq-metric">▣ <b>'+waveCount+'</b> в первой</span>'+
- '<span class="hq-metric">✦ <b>'+(elite?"×1.6":"×1.0")+'</b> награды</span>';
+ $("stage-metrics").innerHTML='<span class="hq-metric">⚔ <b>'+stageWaves(stage)+'</b> waves</span>'+
+ '<span class="hq-metric">▣ <b>'+waveCount+'</b> in wave 1</span>'+
+ '<span class="hq-metric">✦ <b>'+(elite?"×1.6":"×1.0")+'</b> rewards</span>';
  var pa=patrolAccrued();
- $("btn-patrol").innerHTML='<span class="hq-action-ico">◉</span><span>Автопатруль</span><span style="font-size:10px;color:#f6d078">'+pa+' ⬤</span>';
+ $("btn-patrol").innerHTML='<span class="hq-action-ico">◉</span><span>Auto-patrol</span><span style="font-size:10px;color:#f6d078">'+pa+' ⬤</span>';
  $("btn-patrol").disabled=pa<=0;
  $("btn-start").innerHTML="BATTLE <small>ϟ5</small>";
- $("battle-energy-note").textContent=elite?"⚠ Элитные враги · 5 энергии":"Обычный этап · 5 энергии";
+ $("battle-energy-note").textContent=elite?"⚠ Elite enemies · 5 energy":"Normal stage · 5 energy";
 }
 function setGameMode(elite){
  if(META.elite===elite)return;
@@ -147,10 +147,10 @@ function openStageInfo(){
  var st=STAGES[META.selStage-1],mode=META.elite?"Elite":"Normal",clear=META.elite?META.eliteCleared:META.normalCleared;
  $("stage-info-title").textContent=mode+" Stage "+st.n;
  $("stage-info-sub").textContent=st.desc;
- $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>ВОЛНЫ</span><b>'+stageWaves(st)+' · БОСС</b>Враг атакует крепость сверху</div>'+
- '<div class="hq-stage-info-cell"><span>РЕЖИМ</span><b>'+mode.toUpperCase()+'</b>'+(META.elite?"Чемпионы, ускоряющие союзников":"Стандартные составы волн")+'</div>'+
- '<div class="hq-stage-info-cell"><span>СТАТУС</span><b>'+(clear[st.n]?"ПРОЙДЕН":"НЕ ПРОЙДЕН")+'</b>Сохраняется на устройстве</div>'+
- '<div class="hq-stage-info-cell"><span>НАГРАДЫ</span><b>'+(META.elite?"×1.6":"×1")+'</b>При победе или поражении</div>';
+ $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>WAVES</span><b>'+stageWaves(st)+' · BOSS</b>The enemy attacks the fortress from above</div>'+
+ '<div class="hq-stage-info-cell"><span>MODE</span><b>'+mode.toUpperCase()+'</b>'+(META.elite?"Champions that speed up their allies":"Standard wave compositions")+'</div>'+
+ '<div class="hq-stage-info-cell"><span>STATUS</span><b>'+(clear[st.n]?"CLEARED":"NOT CLEARED")+'</b>Saved on this device</div>'+
+ '<div class="hq-stage-info-cell"><span>REWARDS</span><b>'+(META.elite?"×1.6":"×1")+'</b>On victory or defeat</div>';
  $("ov-stage-info").classList.add("on");
 }
 $("btn-stage-chest").addEventListener("click",openStageInfo);
@@ -159,7 +159,7 @@ $("btn-close-stage-info").addEventListener("click",function(){$("ov-stage-info")
 $("btn-patrol").addEventListener("click",function(){var pa=patrolAccrued();if(pa<=0)return;META.coins+=pa;META.lastPatrol=Date.now();persist();SFX.pick();renderHome();bindTops();});
 function renderTurrets(){refillEnergy();
  $("tur-cur").innerHTML=curHTML();renderChips();
- $("bonus-bar").innerHTML='<div class="upgrade-stat"><span>ПОСТОЯННЫЕ УСИЛЕНИЯ</span><b>CRIT DMG +'+totalCritBonus()+'%</b><small>Урон +8% / уровень · CD и эффекты по этапам</small></div>';
+ $("bonus-bar").innerHTML='<div class="upgrade-stat"><span>PERMANENT BOOSTS</span><b>CRIT DMG +'+totalCritBonus()+'%</b><small>Damage +8% / level · CD and effects by tier</small></div>';
  var g=$("tgrid");g.innerHTML="";
  allUnitsCfg().forEach(function(t){
    var lv=META.levels[t.id],c=upCost(t),can=lv<45&&META.mats[t.id]>=c.mats&&META.coins>=c.coins;
@@ -169,7 +169,7 @@ function renderTurrets(){refillEnergy();
     '<div class="dmg">CD −'+Math.round((1-metaCooldown(lv))*100)+'% · '+secondaryName(t.id)+' ×'+metaSecondary(lv).toFixed(1)+'</div>'+
      '<div class="prog"><i style="width:'+Math.min(100,META.mats[t.id]/c.mats*100)+'%"></i></div>'+
     '<div class="mats">🔩 '+META.mats[t.id]+' / '+c.mats+' · 🪙 '+c.coins+'</div>'+
-    '<button class="btn up">'+(lv>=45?"MAX Lv.45":"⬆ Улучшить")+'</button>';
+    '<button class="btn up">'+(lv>=45?"MAX Lv.45":"⬆ Upgrade")+'</button>';
    var btn=d.querySelector(".up");
    if(!can)btn.disabled=true;
    btn.addEventListener("click",function(){
@@ -188,7 +188,7 @@ $("tgl-music").addEventListener("click",function(){META.music=!META.music;persis
 $("tgl-sfx").addEventListener("click",function(){META.sfx=!META.sfx;persist();syncToggles();});
 var resetArm=false;
 $("btn-reset").addEventListener("click",function(){
- if(!resetArm){resetArm=true;$("btn-reset").textContent="Точно сбросить?";setTimeout(function(){resetArm=false;$("btn-reset").textContent="Сброс";},3000);return;}
- META=freshMeta();persist();resetArm=false;$("btn-reset").textContent="Сброс";syncToggles();show("home");
+ if(!resetArm){resetArm=true;$("btn-reset").textContent="Really reset?";setTimeout(function(){resetArm=false;$("btn-reset").textContent="Reset";},3000);return;}
+ META=freshMeta();persist();resetArm=false;$("btn-reset").textContent="Reset";syncToggles();show("home");
 });
 

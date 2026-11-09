@@ -24,7 +24,7 @@ function harness(legacySave) {
   const canvasContext = new Proxy({
     createRadialGradient: () => gradient,
     createLinearGradient: () => gradient,
-    /* measureText: приближение ширины по текущему шрифту (для адаптивного HUD) */
+    /* measureText: width approximation for the current font (for the adaptive HUD) */
     measureText(s) {
       const m = /(\d+(?:\.\d+)?)px/.exec(canvasContext.font || "11px");
       const size = m ? parseFloat(m[1]) : 11;

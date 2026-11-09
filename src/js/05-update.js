@@ -58,10 +58,10 @@ function update(dt){
    var e=B.enemies[i];
    if(e.dead){B.enemies.splice(i,1);continue;}
    if(e.burnT>0){e.burnT-=dt;var burnHit=Math.min(e.hp,e.burnDps*dt);e.hp-=burnHit;if(e.burnSource)e.burnSource.totalDmg+=burnHit;
-     /* ожог кончился — сбросить DPS: иначе устаревший сильный ожог перебивал бы любой более слабый поджог позже */
+     /* the burn has ended, so reset its DPS: otherwise a stale strong burn would override any weaker ignite later */
      if(e.burnT<=0){e.burnDps=0;e.burnSource=null;}if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});if(e.hp<=0){killEnemy(e);B.enemies.splice(i,1);continue;}}
    if(e.slowT>0){e.slowT-=dt;if(e.slowT<=0)e.slowFactor=1;}
-   /* звезда регенерации лечит соседних врагов (поддержка, как Rejuvenation Star) */
+   /* the regeneration star heals nearby enemies (support, like the Rejuvenation Star) */
    if(e.kind==="healer"&&!e.dead){
      e.healT-=dt;
      if(e.healT<=0){e.healT=2.2;
@@ -118,9 +118,9 @@ function update(dt){
  for(var j=B.drones.length-1;j>=0;j--){
    var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);
    if(dr.launchT>0){
-     /* фаза вылета: оса летит наружу от турели, самонаведение ещё не включено,
-        но цель уже переназначается, если первая погибла, — после вылета оса
-        сразу летит к живой цели, а не тратит время на перевыбор */
+     /* launch phase: the wasp flies outward from the turret, homing is not on yet,
+        but the target is already reassigned if the first one died, so after launch the wasp
+        heads straight for a live target instead of wasting time re-picking */
      if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
      dr.launchT-=dt;dr.x+=dr.vx*dt;dr.y+=dr.vy*dt;
      if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
@@ -132,8 +132,8 @@ function update(dt){
     var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);
     dr.x+=Math.cos(a)*240*dt;dr.y+=Math.sin(a)*240*dt;
     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
-    /* оса бьёт, находясь ПОД врагом: касание нижней кромки (дистанция до центра
-       меньше радиуса врага + 4), а не долёт до его центра */
+    /* the wasp strikes while UNDER the enemy: touching its bottom edge (distance to the center
+       less than the enemy radius + 4), not reaching its center */
     if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
       dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*0.65*dr.boost,dr.src.hiveBurn?{burn:true}:{});
       /* Swarm Echo T1–T3: an ordinary wasp that kills an enemy releases one echo.
@@ -190,8 +190,8 @@ function update(dt){
        if(d>=field.r||d<4)return;
        var strength=field.pull*(1-d/field.r)*(e.kind==="boss"?0.20:e.champion?0.48:1);
        e.x=Math.max(e.r,Math.min(W-e.r,e.x+dx/d*strength*dt));
-       /* нижняя граница VIS_TOP держит врага под HUD, но не должна «телепортировать» вниз
-          только что появившегося (y<VIS_TOP): для него пол — его текущая высота */
+       /* the VIS_TOP lower bound keeps an enemy below the HUD, but must not "teleport" down
+          a freshly spawned one (y<VIS_TOP): for it, the floor is its current height */
        e.y=Math.min(BASEY-20,Math.max(Math.min(e.y,VIS_TOP),e.y+dy/d*strength*dt*0.28));
      });
    }
@@ -212,7 +212,7 @@ function update(dt){
  /* projectiles */
  for(var q=B.projs.length-1;q>=0;q--){
    var pr=B.projs[q];pr.life-=dt;
-   /* ракеты Sky Guard самонаводятся на цель */
+   /* Sky Guard rockets home in on their target */
    if(pr.src.cfg.effect==="rocket"){
      if(!pr.tgt||pr.tgt.hp<=0||pr.tgt.dead)pr.tgt=pickTarget(pr.src);
      if(pr.tgt){var sp=pr.src.cfg.projSpeed,ca=Math.atan2(pr.vy,pr.vx),wa=Math.atan2(pr.tgt.y-pr.y,pr.tgt.x-pr.x),df=wa-ca;
@@ -223,7 +223,7 @@ function update(dt){
    pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
    if(pr.src.cfg.effect==="rocket"&&Math.random()<dt*55)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.26,t:0,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2.2});
    if(pr.src.cfg.effect==="charge"&&Math.random()<dt*50)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*14-7,vy:Math.random()*14-7,life:0.24,t:0,color:"#a06bff",r:1.9});
-   /* следы снарядов — у каждого типа свой */
+   /* projectile trails: each type has its own */
    if(pr.src.cfg.id==="firewheel"&&Math.random()<dt*46)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*20-10,vy:Math.random()*20-10,life:0.28,t:0,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2.4});
    if(pr.src.cfg.id==="railgun"&&Math.random()<dt*60)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.22,t:0,color:"#f472b6",r:2});
    if(pr.src.cfg.id==="disruption"&&Math.random()<dt*30)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.25,t:0,color:"#38c8ff",r:1.8});
@@ -251,15 +251,15 @@ function update(dt){
  B.rings=B.rings.filter(function(r){r.t+=dt;r.r+=r.vr*dt;return r.t<r.life;});
  B.nums=B.nums.filter(function(n){n.t+=dt;n.y-=26*dt;return n.t<0.85;});
  if(B.shake>0)B.shake=Math.max(0,B.shake-dt*26);
- /* wave clear? — волна сама по себе карточек больше НЕ даёт:
-    следующая волна стартует сразу, а драфт открывается только по очкам */
+ /* wave clear? A wave by itself NO longer grants cards:
+    the next wave starts immediately, and the draft opens only from points */
  if(B.waveState==="fighting"&&B.waveQueue<=0&&B.enemies.length===0&&!B.over){
    if(B.wave>=finalWave()){if(!B.bossSpawned)return;endBattle(true);return;}
    if(B.pendingDrafts>0){B.waveState="draft";B.draftReturn="nextwave";openDraft();}
    else startWave(B.wave+1);
    syncHud();return;
  }
- /* карточка по накоплению очков — драфт открывается прямо посреди волны */
+ /* a card from accumulated points: the draft opens right in the middle of a wave */
  if(B.waveState==="fighting"&&B.pendingDrafts>0&&!B.over){
    B.waveState="draft";B.draftReturn="fighting";openDraft();
  }

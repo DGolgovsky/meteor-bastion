@@ -1,72 +1,72 @@
 # Meteor Bastion
 
-Мобильная HTML5 Canvas 2D tower-defense / roguelite, созданная по игровым ориентирам Galaxy Defense: Fortress TD. Все игровые изображения рисуются собственным Canvas/CSS-кодом. Это самостоятельная игра, а **не точное воспроизведение всех скрытых чисел оригинала**.
+A mobile HTML5 Canvas 2D tower-defense / roguelite built after the gameplay reference points of Galaxy Defense: Fortress TD. All in-game graphics are drawn by the project's own Canvas/CSS code. This is a standalone game, **not an exact reproduction of every hidden number in the original**.
 
-## Запуск
+## Running
 
-Проект не требует Node.js, npm, TypeScript, сборщика зависимостей или сервера для самой игры. Для объединения исходников нужна только Python 3:
+The game itself needs no Node.js, npm, TypeScript, dependency bundler, or server. Assembling the sources requires only Python 3:
 
 ```sh
 python3 build.py
 ```
 
-Скрипт создаёт `index.html` в корне; откройте его в браузере. **Собранный `index.html` исключён из Git**; в репозитории хранится исходный код. Чтобы проверить механику и сохранения:
+The script creates `index.html` in the repository root; open it in a browser. **The built `index.html` is excluded from Git**; the repository stores the source code. To check the mechanics and saves:
 
 ```sh
 node tests/smoke.cjs
 node tests/balance.cjs
 ```
 
-Набор собирает скрипт из `src/` в памяти и работает на чистом Node.js без установки пакетов.
+The suite assembles the script from `src/` in memory and runs on plain Node.js with no packages to install.
 
-## Что уже реализовано
+## What is already implemented
 
-- **Кампания из 12 этапов**: 1–3 по 20 волн, 4–8 по 25 волн, 9–12 по 30 волн. Победа открывает следующий этап, финальный босс появляется в последней волне каждого этапа.
-- **Normal / Elite** с отдельными составами волн и чемпионами, способными ускорять союзников.
-- **Подвижный Guardian и 4 слота турелей**. Guardian стреляет попеременно из двух рук. В бою нет микроменеджмента турелей; они автоматически выбирают противников.
-- **11 турелей**: Sky Guard, Laser, Disruption Drone, Aeroblast, Thunderbolt, Beam, Firewheel Drone, Hive, Railgun, Tesla Coil, Gravity Vortex Gun. Aeroblast использует адаптивный дробовой веер и дальность 540 вместо 200, чтобы успевать участвовать в бою до подхода врагов к крепости.
-- **11 видов врагов**: метеорит, быстрый, бронированный, летун, голем-матка, осколок, звезда регенерации, элитный, призрачный разведчик, штурмовик и босс. Есть сопротивления урону, маскировка, ускоряющиеся рывки и поддержка союзников.
-- **Карточки боя 1 из 3** за боевые очки: стандартные, специализированные, **36 T1/T2/T3 улучшений**, комбо и Super Mode. Цепочки зависят от уровня R&D и ранее выбранных улучшений.
-- **Перманентная прокачка** каждого юнита до R&D Lv.45; стоимость повышается по уровням. Ранние R&D-уровни открывают специализированные карты, отдельные пороги — Super Mode и комбо.
-- **Chips**: три линии покупки за компоненты — урон турелей, скорострельность, запас щита, по пять уровней. **Liveries**: Classic / Arctic / Ember, только косметика.
-- Ресурсы, патруль, энергия с восстановлением, награды и экран результатов, мобильное меню этапов и боевой HUD.
-- Сохранение прогресса в **`localStorage` с ключом `meteor-bastion-save-v1`, схемой `v:1`**, с чтением старых сохранений.
+- **A 12-stage campaign**: stages 1–3 have 20 waves each, 4–8 have 25 waves, 9–12 have 30 waves. A victory unlocks the next stage, and the final boss appears in the last wave of every stage.
+- **Normal / Elite** with separate wave compositions and champions that can speed up their allies.
+- **A movable Guardian and 4 turret slots**. The Guardian fires alternately from both hands. There is no turret micromanagement in battle; turrets pick their targets automatically.
+- **11 turrets**: Sky Guard, Laser, Disruption Drone, Aeroblast, Thunderbolt, Beam, Firewheel Drone, Hive, Railgun, Tesla Coil, Gravity Vortex Gun. Aeroblast uses an adaptive shotgun spread and a range of 540 instead of 200, so it can join the fight before enemies reach the fortress.
+- **11 enemy types**: meteor, fast meteor, armored, flyer, golem mother, golem shard, regeneration star, elite, phantom scout, assault meteor and the boss. There are damage resistances, cloaking, accelerating dashes and ally support.
+- **Pick-1-of-3 battle cards** earned with battle points: standard, specialized, **36 T1/T2/T3 upgrades**, combos and Super Mode. The chains depend on the R&D level and on previously chosen upgrades.
+- **Permanent upgrades** for every unit up to R&D Lv.45; the cost rises with level. Early R&D levels unlock specialized cards, and separate thresholds unlock Super Mode and combos.
+- **Chips**: three purchase lines paid with components — turret damage, fire rate, shield reserve, five levels each. **Liveries**: Classic / Arctic / Ember, cosmetic only.
+- Resources, patrol, regenerating energy, rewards and the results screen, a mobile stage menu and the battle HUD.
+- Progress saving in **`localStorage` under the key `meteor-bastion-save-v1`, schema `v:1`**, with support for reading older saves.
 
-## Структура
+## Structure
 
 ```text
-src/shell.html     HTML/CSS-оболочка
-src/order.txt      единственный источник порядка склейки модулей
+src/shell.html     HTML/CSS shell
+src/order.txt      the single source of the module concatenation order
 src/js/
-  00-config.js     турели, враги, этапы, коэффициенты сложности
-  01-state.js      сохранения, мета-прокачка, Chips, Liveries, меню
-  02-units.js      инициализация боя, юниты, Guardian
-  04-waves.js      состав волн и появление противников
-  03-combat.js     урон, наведение, эффекты оружия
-  05-update.js     симуляция боя, физика, поля, прорывы
-  06-render.js     Canvas-отрисовка
-  07-ui.js         карточки, R&D-цепочки, награды
-  08-main.js       инициализация
-build.py           сборка в один standalone index.html
-tests/smoke.cjs    регрессионные проверки
-BALANCE.md         параметры и протокол тестирования баланса
+  00-config.js     turrets, enemies, stages, difficulty coefficients
+  01-state.js      saves, meta progression, Chips, Liveries, menus
+  02-units.js      battle initialization, units, Guardian
+  04-waves.js      wave composition and enemy spawning
+  03-combat.js     damage, targeting, weapon effects
+  05-update.js     battle simulation, physics, fields, breaches
+  06-render.js     Canvas rendering
+  07-ui.js         cards, R&D chains, rewards
+  08-main.js       initialization
+build.py           build into one standalone index.html
+tests/smoke.cjs    regression checks
+BALANCE.md         parameters and the balance testing protocol
 ```
 
-Порядок в `src/order.txt` намеренно не совпадает с алфавитной сортировкой: `04-waves.js` следует перед `03-combat.js`. Не сортировать по именам. Изменения вносить в `src/`, а не в сгенерированный `index.html`.
+The order in `src/order.txt` intentionally differs from alphabetical sorting: `04-waves.js` comes before `03-combat.js`. Do not sort by name. Make changes in `src/`, not in the generated `index.html`.
 
-## Баланс
+## Balance
 
-По сравнению с предыдущей сборкой враги заметно быстрее и прочнее, а Guardian и турели ослаблены/перенастроены так, чтобы часть волн действительно достигала крепости. Проверенные headless-забеги Stage 1 при R&D 1 включали **победы с 6 и 8 прорывами к базе**; случайные сборки также могут проигрывать. Поздние этапы проверялись с соответствующей мета-прокачкой. Числа и остаточные ограничения — в [BALANCE.md](BALANCE.md).
+Compared with the previous build, enemies are noticeably faster and tougher, while the Guardian and turrets have been weakened/retuned so that some waves actually reach the fortress. Verified headless Stage 1 runs at R&D 1 included **victories with 6 and 8 breaches of the base**; random builds can also lose. Later stages were checked with matching meta progression. Numbers and remaining limitations are in [BALANCE.md](BALANCE.md).
 
-**Ограничения:** прошедшие тесты — headless-симуляции и синтаксическая проверка, а не визуальный тест на реальном Android. Оригинальные коэффициенты Galaxy Defense не восстановлены; они требуют замеров конкретной версии оригинала. Chips/Liveries — компактная самостоятельная реализация без заявлений об идентичности оригинальному инвентарю.
+**Limitations:** the passing tests are headless simulations and syntax checks, not a visual test on a real Android device. The original Galaxy Defense coefficients have not been recovered; that would require measurements of a specific version of the original. Chips/Liveries are a compact standalone implementation with no claim of being identical to the original inventory.
 
-## Локальный тест после правки
+## Local test after a change
 
 ```sh
 python3 build.py
 node tests/smoke.cjs
 ```
 
-Проверьте также вручную один полный забег на мобильном браузере: плавность Guardian, читаемость HUD, правильное появление босса в волнах 20/25/30, способность противников наносить урон базе и сохранения после перезапуска.
+Also manually check one full run in a mobile browser: Guardian smoothness, HUD readability, correct boss appearance in waves 20/25/30, enemies' ability to damage the base, and saves after a restart.
 
-Режим боя переработан по плану скриншотов от 2026-11-08: плотные формации врагов, собственные траектории с зависанием, панорама города, купол и HP базы, полосы Disruption, более выразительные турели и выстрелы. Подробности и коэффициенты — в [BALANCE.md](BALANCE.md).
+The battle mode was reworked following the screenshot plan of 2026-11-08: dense enemy formations, custom trajectories with hovering, a city panorama, the dome and base HP, Disruption bands, more expressive turrets and shots. Details and coefficients are in [BALANCE.md](BALANCE.md).

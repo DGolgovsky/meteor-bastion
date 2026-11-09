@@ -1,16 +1,16 @@
 /* ==================== BATTLE ==================== */
 var cv=$("cv"),ctx=cv.getContext("2d");
-/* ---------- Резкость поля: рендер в нативном разрешении экрана ----------
-   Раньше бэкстор канваса был жёстко забит в 420×700 px, а CSS растягивал его
-   на всю ширину экрана. На Google Pixel 10a (панель 1080×2424, DPR ≈ 2,625,
-   CSS-ширина ≈ 412 px) полю достаётся ~400 CSS-px ширины, т.е. ~1050 физических
-   пикселей — картинка 420 px растягивалась в ~2,5 раза, отсюда «мыло».
-   Это НЕ ограничение платформы: вся графика поля — векторная (canvas-фигуры
-   и текст), поэтому достаточно рендерить её сразу в физических пикселях.
-   fitCanvas() ставит canvas.width = CSS-ширина × DPR (DPR ограничен 3 ради
-   производительности), а draw() масштабирует контекст так, что игровая логика
-   по-прежнему работает в координатах 420×760. Подбор автоматический — под
-   Pixel 10a даёт ~1050×1900, на других устройствах — их нативное разрешение. */
+/* ---------- Field sharpness: render at the screen's native resolution ----------
+   The canvas backing store used to be hard-coded at 420×700 px, and CSS stretched it
+   across the full screen width. On a Google Pixel 10a (1080×2424 panel, DPR ≈ 2.625,
+   CSS width ≈ 412 px) the field gets ~400 CSS px of width, i.e. ~1050 physical
+   pixels, so the 420 px image was stretched ~2.5×, hence the blur.
+   This is NOT a platform limitation: all field graphics are vector (canvas shapes
+   and text), so it is enough to render them directly in physical pixels.
+   fitCanvas() sets canvas.width = CSS width × DPR (DPR is capped at 3 for
+   performance), and draw() scales the context so the game logic
+   still works in 420×760 coordinates. The fit is automatic: on a
+   Pixel 10a it gives ~1050×1900, on other devices their native resolution. */
 var RENDER_SCALE=1;
 function fitCanvas(){
   var dpr=Math.min(window.devicePixelRatio||1,3);
@@ -43,10 +43,10 @@ function newBattle(stage){
   baseHp:1000+40*META.chips.fort,baseMax:1000+40*META.chips.fort,
   wave:0,waveQueue:0,waveTotal:0,waveKilled:0,spawnT:0,bossSpawned:false,
   kills:0,reroll:true,turrets:[],soldier:null,usedTypes:{},
-  /* Очки боя: убийства копят очки, карточка выдаётся при достижении порога.
-     Баланс порогов: 2, 10, 18, 26… (+8 за карточку и +2 за каждую пройденную волну) —
-     как в оригинале, первая карточка приходит уже после второго монстра
-     (первые враги волны 1 — метеориты по 1 очку), дальше темп замедляется с волнами. */
+  /* Battle points: kills accumulate points, and a card is granted when a threshold is reached.
+     Threshold balance: 2, 10, 18, 26… (+8 per card and +2 per cleared wave);
+     as in the original, the first card arrives right after the second monster
+     (the first enemies of wave 1 are meteors worth 1 point each), then the pace slows with the waves. */
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
   enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],
   shake:0,baseFlashT:0,baseHitTextT:0,waveDensity:{},maxUpwardOwn:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,
@@ -60,7 +60,7 @@ function startBattle(){refillEnergy();
    elite:!!META.elite,waves:stageWaves(st),hpMul:st.hpMul*(META.elite?BALANCE.eliteHp:1),spdMul:st.spdMul*(META.elite?BALANCE.eliteSpeed:1),
    contactMul:META.elite?BALANCE.eliteContact:1,desc:st.desc};
  B=newBattle(eff);B.elite=META.elite;
- /* новый бой всегда стартует на ×1 — сбросить кнопку (раньше подпись «×2» переживала бой) и «залипший» указатель */
+ /* a new battle always starts at ×1: reset the button (the "×2" label used to survive between battles) and any "stuck" pointer */
  var spd=$("btn-speed");spd.textContent="×1";spd.classList.toggle("on",false);guardianPointerId=null;
  B.soldier=mkUnit(SOLDIER_CFG,SOLDIER_X,-1,true);
  show("battle");fitCanvas();startMusic();

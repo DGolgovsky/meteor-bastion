@@ -1,5 +1,5 @@
-# Порядок склейки — порядок секций в исходном файле (этот список, а не номера имён).
-# 04-waves.js идёт раньше 03-combat.js: в оригинале секция волн предшествует секции боя.
+# Concatenation order is the order of sections in the original file (this list, not the numbers in the names).
+# 04-waves.js comes before 03-combat.js: in the original, the waves section precedes the combat section.
 00-config.js
 01-state.js
 02-units.js

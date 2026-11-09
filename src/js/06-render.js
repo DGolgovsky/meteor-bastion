@@ -2,37 +2,37 @@
 /* ---------- shared drawing helpers ---------- */
 var LIVERY_COL={classic:"#2ee6c8",arctic:"#90d5ff",ember:"#ff995e"};
 function liveryCol(){return LIVERY_COL[META.livery]||LIVERY_COL.classic;}
-/* скруглённый прямоугольник без ctx.roundRect (его нет в старых Android WebView) */
+/* rounded rectangle without ctx.roundRect (it is missing in old Android WebViews) */
 function rrPath(x,y,w,h,r){r=Math.max(0,Math.min(r,w/2,h/2));
  ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function shade(c1,c2,x0,y0,x1,y1){var g=ctx.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
-/* детерминированный «шум» по зерну: форма каждого врага стабильна от кадра к кадру, но у врагов разная */
+/* deterministic seeded "noise": each enemy's shape is stable from frame to frame, but differs between enemies */
 function hrand(seed,i){var v=Math.sin(seed*127.1+i*311.7)*43758.5453;return v-Math.floor(v);}
 var _tintCache={};
-/* осветлить (amt>0) или затемнить (amt<0) цвет #rrggbb */
+/* lighten (amt>0) or darken (amt<0) a #rrggbb color */
 function tint(hex,amt){var key=hex+"|"+amt;if(_tintCache[key])return _tintCache[key];
  if(!/^#[0-9a-f]{6}$/i.test(hex))return hex;
  var n=parseInt(hex.slice(1),16),R=n>>16,G=(n>>8)&255,Bl=n&255;
  function f(c){return Math.max(0,Math.min(255,Math.round(amt<0?c*(1+amt):c+(255-c)*amt)));}
  return(_tintCache[key]="rgb("+f(R)+","+f(G)+","+f(Bl)+")");}
 function glowDot(x,y,r,c,blur){ctx.save();ctx.shadowColor=c;ctx.shadowBlur=blur||r*2.4;ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.fill();ctx.restore();}
-/* металлическая панель: вертикальный градиент, акцентная окантовка и блик по верхней кромке */
+/* metal panel: vertical gradient, accent outline and a highlight along the top edge */
 function metal(x,y,w,h,col,r,lw){
  rrPath(x,y,w,h,r===undefined?1.6:r);
  ctx.fillStyle=shade("#34506f","#121f33",x,y,x,y+h);ctx.fill();
  ctx.lineWidth=lw||1.1;ctx.strokeStyle=col;ctx.stroke();
  ctx.fillStyle="rgba(255,255,255,.16)";ctx.fillRect(x+1.2,y+0.9,Math.max(0,w-2.4),Math.min(1.3,h/4));
 }
-/* постамент-трапеция, на которой стоит установка (нижняя кромка y=12 — палуба) */
+/* trapezoid pedestal the mount stands on (bottom edge y=12 is the deck) */
 function pedestal(col,w1,w2,h){
  ctx.beginPath();ctx.moveTo(-w1,12);ctx.lineTo(w1,12);ctx.lineTo(w2,12-h);ctx.lineTo(-w2,12-h);ctx.closePath();
  ctx.fillStyle=shade("#2f4a69","#0f1b2d",0,12-h,0,12);ctx.fill();
  ctx.lineWidth=1.2;ctx.strokeStyle=col;ctx.stroke();
  ctx.fillStyle=col;ctx.globalAlpha=0.75;ctx.fillRect(-w2+1.5,12-h+1.6,(w2-1.5)*2,1.1);ctx.globalAlpha=1;
 }
-/* поворотная голова: начало координат в оси вращения, «вперёд» = −y */
+/* rotating head: origin at the rotation axis, "forward" = −y */
 function aimed(t,px,py,fn){ctx.save();ctx.translate(px,py);ctx.rotate(t.angle+Math.PI/2);ctx.translate(0,Math.min(4,t.recoil*.7));fn();ctx.restore();}
-/* посадочная площадка */
+/* landing pad */
 function drawPad(col){
  ctx.fillStyle="rgba(0,0,0,.38)";ctx.beginPath();ctx.ellipse(0,14.6,24,6.6,0,0,6.2832);ctx.fill();
  ctx.fillStyle="#0c1626";ctx.strokeStyle="rgba(120,160,190,.5)";ctx.lineWidth=1;
@@ -43,53 +43,53 @@ function drawPad(col){
  ctx.fillStyle="#6f8ea3";[-19,19].forEach(function(bx){ctx.beginPath();ctx.arc(bx,13.4,1.1,0,6.2832);ctx.fill();});
 }
 
-/* ---------- Guardian: боец с каской, бронежилетом, руками и винтовкой ---------- */
+/* ---------- Guardian: a fighter with a helmet, body armor, arms and a rifle ---------- */
 function drawGuardian(t,col){
  var ca=Math.cos(t.angle);
- /* боец смотрит в сторону цели; у самой вертикали не дёргается (гистерезис) */
+ /* the fighter faces the target; near vertical it does not jitter (hysteresis) */
  if(Math.abs(ca)>0.14||!t.facing)t.facing=ca<0?-1:1;
  var f=t.facing,la=Math.atan2(Math.sin(t.angle),f*ca),rc=t.recoil*0.55,tm=B.t;
- var br=Math.sin(tm*2.6)*0.45;               /* лёгкое дыхание */
+ var br=Math.sin(tm*2.6)*0.45;               /* light breathing */
  ctx.save();ctx.scale(f,1);ctx.lineCap="round";ctx.lineJoin="round";
- /* ноги и ботинки */
+ /* legs and boots */
  ctx.strokeStyle="#263a52";ctx.lineWidth=3.6;
  ctx.beginPath();ctx.moveTo(-2.6,1.5);ctx.lineTo(-4.2,10.6);ctx.moveTo(2.6,1.5);ctx.lineTo(4.4,10.6);ctx.stroke();
  ctx.strokeStyle="#34506f";ctx.lineWidth=1.2;
  ctx.beginPath();ctx.moveTo(-3.2,4);ctx.lineTo(-3.8,8);ctx.moveTo(3.2,4);ctx.lineTo(3.9,8);ctx.stroke();
  ctx.fillStyle="#0d1420";rrPath(-7.2,10,5.6,2.6,1.2);ctx.fill();rrPath(1.6,10,6.2,2.6,1.2);ctx.fill();
- /* рюкзак-боеукладка за спиной */
+ /* ammo backpack on the back */
  ctx.fillStyle="#17283d";rrPath(-10,-9+br,4.6,10,1.4);ctx.fill();
  ctx.strokeStyle=col;ctx.globalAlpha=0.8;ctx.lineWidth=0.9;ctx.stroke();ctx.globalAlpha=1;
- /* торс: бронежилет, пластина и ливрея на плечах */
+ /* torso: body armor, plate and livery on the shoulders */
  rrPath(-6.6,-10+br,13.2,12.6,2.2);ctx.fillStyle=shade("#2d6a54","#17382d",0,-10,0,3);ctx.fill();
  ctx.lineWidth=0.9;ctx.strokeStyle="rgba(0,0,0,.45)";ctx.stroke();
  ctx.fillStyle="rgba(255,255,255,.10)";rrPath(-4.2,-8.4+br,8.4,5.2,1.3);ctx.fill();
  ctx.fillStyle=col;ctx.fillRect(-6.6,-10+br,13.2,2.2);
  ctx.fillStyle="#0d1420";ctx.fillRect(-6.6,1.2,13.2,1.5);ctx.fillStyle="#8fa8b5";ctx.fillRect(-1.2,1.1,2.4,1.7);
- /* дальняя рука держит цевьё */
+ /* the far hand holds the handguard */
  var cs=Math.cos(la),sn=Math.sin(la),SX=2.4,SY=-6.4+br;
  var gx=SX+cs*(8.5-rc),gy=SY+sn*(8.5-rc)+0.9,tx=SX+cs*(2.2-rc),ty=SY+sn*(2.2-rc)+1.6;
  ctx.strokeStyle="#1d4a3a";ctx.lineWidth=2.8;
  ctx.beginPath();ctx.moveTo(-2.8,-7.2+br);ctx.quadraticCurveTo((-2.8+gx)/2-0.5,(-7.2+gy)/2+3,gx,gy);ctx.stroke();
- /* ближняя рука к рукояти */
+ /* the near hand on the grip */
  ctx.strokeStyle="#256650";ctx.beginPath();ctx.moveTo(SX,SY);ctx.quadraticCurveTo((SX+tx)/2-0.4,(SY+ty)/2+2.4,tx,ty);ctx.stroke();
  ctx.fillStyle="#d9b380";ctx.beginPath();ctx.arc(gx,gy,1.5,0,6.2832);ctx.arc(tx,ty,1.5,0,6.2832);ctx.fill();
- /* винтовка: поворачивается вокруг плеча (локальный угол всегда «вперёд», не вверх ногами) */
+ /* rifle: rotates around the shoulder (the local angle is always "forward", never upside down) */
  ctx.save();ctx.translate(SX,SY);ctx.rotate(la);ctx.translate(-rc,0);
- ctx.fillStyle="#1a2638";rrPath(-6.2,-1.5,7,3.4,1);ctx.fill();                  /* приклад */
- ctx.fillStyle=shade("#3a4f66","#18222f",0,-2,0,2.4);rrPath(0,-2,11,4.2,1);ctx.fill();    /* ствольная коробка */
- ctx.fillStyle="#10161f";ctx.fillRect(3.2,2,2.4,3.6);                          /* магазин */
- ctx.fillStyle="#0d1420";rrPath(11,-1.1,7.4,2.2,0.8);ctx.fill();                /* ствол */
- ctx.fillStyle="#7b97a8";ctx.fillRect(17.4,-1.5,2,3);                          /* дульный тормоз */
+ ctx.fillStyle="#1a2638";rrPath(-6.2,-1.5,7,3.4,1);ctx.fill();                  /* stock */
+ ctx.fillStyle=shade("#3a4f66","#18222f",0,-2,0,2.4);rrPath(0,-2,11,4.2,1);ctx.fill();    /* receiver */
+ ctx.fillStyle="#10161f";ctx.fillRect(3.2,2,2.4,3.6);                          /* magazine */
+ ctx.fillStyle="#0d1420";rrPath(11,-1.1,7.4,2.2,0.8);ctx.fill();                /* barrel */
+ ctx.fillStyle="#7b97a8";ctx.fillRect(17.4,-1.5,2,3);                          /* muzzle brake */
  ctx.fillStyle=col;ctx.globalAlpha=0.85;ctx.fillRect(1,-0.3,8.4,0.9);ctx.globalAlpha=1;
- ctx.fillStyle="#0d1420";rrPath(3.2,-3.6,5,1.8,0.7);ctx.fill();                /* прицел */
+ ctx.fillStyle="#0d1420";rrPath(3.2,-3.6,5,1.8,0.7);ctx.fill();                /* sight */
  ctx.fillStyle=col;ctx.beginPath();ctx.arc(8,-2.7,0.8,0,6.2832);ctx.fill();
- if(t.recoil>2.4){                                                              /* вспышка выстрела */
+ if(t.recoil>2.4){                                                              /* muzzle flash */
    ctx.save();ctx.shadowColor="#ffd34d";ctx.shadowBlur=9;ctx.fillStyle="#fff3b0";
    ctx.beginPath();ctx.moveTo(19.4,0);ctx.lineTo(22.5,-3);ctx.lineTo(25,0);ctx.lineTo(22.5,3);ctx.closePath();ctx.fill();ctx.restore();
  }
  ctx.restore();
- /* голова рисуется ПОСЛЕ винтовки: при прицеливании вверх ствол не закрывает лицо */
+ /* the head is drawn AFTER the rifle: when aiming upward, the barrel does not cover the face */
  var hx=1.2,hy=-14.6+br;
  ctx.fillStyle="#d9b380";ctx.beginPath();ctx.arc(hx,hy,4.6,0,6.2832);ctx.fill();
  ctx.fillStyle=shade("#59803a","#324d1f",0,hy-6,0,hy);ctx.beginPath();ctx.arc(hx,hy-0.8,5.6,Math.PI,0);ctx.fill();
@@ -99,27 +99,27 @@ function drawGuardian(t,col){
  ctx.restore();
 }
 
-/* ---------- турели ---------- */
+/* ---------- turrets ---------- */
 var TURRET_DRAW={
  skyguard:function(t,col){
-   /* ракетная установка: пакет из 4 труб на цапфах, ось вращения — на верхней кромке постамента */
+   /* rocket launcher: a pack of 4 tubes on trunnions, rotation axis on the top edge of the pedestal */
    pedestal(col,11,8,8);
    ctx.fillStyle="#1d3350";ctx.strokeStyle=col;ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(0,4,9,2.5,0,0,6.2832);ctx.fill();ctx.stroke();
    aimed(t,0,2,function(){var r=t.recoil*0.6;
      ctx.fillStyle="#22344e";ctx.strokeStyle=col;ctx.lineWidth=1;
-     rrPath(-13.2,-4,3.2,9,1);ctx.fill();ctx.stroke();rrPath(10,-4,3.2,9,1);ctx.fill();ctx.stroke();   /* цапфы */
+     rrPath(-13.2,-4,3.2,9,1);ctx.fill();ctx.stroke();rrPath(10,-4,3.2,9,1);ctx.fill();ctx.stroke();   /* trunnions */
      metal(-10.4,-12+r,20.8,15.5,col,2);
      [-7.4,-2.5,2.5,7.4].forEach(function(tx){
-       ctx.fillStyle="#070b13";ctx.fillRect(tx-2.3,-15.4+r,4.6,4.6);                                /* дульные срезы */
+       ctx.fillStyle="#070b13";ctx.fillRect(tx-2.3,-15.4+r,4.6,4.6);                                /* muzzle openings */
        ctx.fillStyle="#e5edf5";ctx.fillRect(tx-1.3,-14.6+r,2.6,3);
        ctx.fillStyle="#ff5470";ctx.beginPath();ctx.moveTo(tx-1.5,-14.6+r);ctx.lineTo(tx,-17.8+r);ctx.lineTo(tx+1.5,-14.6+r);ctx.closePath();ctx.fill();
      });
      ctx.fillStyle=col;ctx.globalAlpha=0.9;ctx.fillRect(-10.4,-3+r,20.8,1.5);ctx.globalAlpha=1;
-     ctx.fillStyle="#0a101c";ctx.fillRect(-6,0.4+r,3,1.6);ctx.fillRect(3,0.4+r,3,1.6);                  /* задние сопла */
+     ctx.fillStyle="#0a101c";ctx.fillRect(-6,0.4+r,3,1.6);ctx.fillRect(3,0.4+r,3,1.6);                  /* rear nozzles */
    });
  },
  laser:function(t,col){
-   /* мачта на треноге; призма-излучатель сидит прямо на её вершине */
+   /* tripod mast; the emitter prism sits right on its top */
    ctx.strokeStyle=col;ctx.lineWidth=1.3;ctx.fillStyle=shade("#2f4a69","#0f1b2d",0,-6,0,12);
    ctx.beginPath();ctx.moveTo(-11,12);ctx.lineTo(-2.4,-7);ctx.lineTo(2.4,-7);ctx.lineTo(11,12);ctx.closePath();ctx.fill();ctx.stroke();
    ctx.fillStyle="#0a2218";ctx.fillRect(-1.4,-4,2.8,14);
@@ -136,7 +136,7 @@ var TURRET_DRAW={
  },
  disruption:function(t,col){
    var bob=Math.sin(B.t*3+t.x)*1.6,tm=B.t;
-   /* колодец-излучатель на палубе и конус удерживающего поля */
+   /* emitter well on the deck and the cone of the containment field */
    ctx.strokeStyle="rgba(56,200,255,.4)";ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(0,12,13,3.4,0,0,6.2832);ctx.stroke();
    ctx.fillStyle="rgba(56,200,255,.10)";ctx.beginPath();ctx.moveTo(-9,-8+bob);ctx.lineTo(9,-8+bob);ctx.lineTo(13,12);ctx.lineTo(-13,12);ctx.closePath();ctx.fill();
    ctx.save();ctx.translate(0,-15+bob);
@@ -144,8 +144,8 @@ var TURRET_DRAW={
    ctx.beginPath();ctx.ellipse(0,0,12.6,6.2,0,0,6.2832);ctx.fill();ctx.stroke();
    ctx.fillStyle="rgba(56,200,255,.9)";ctx.beginPath();ctx.ellipse(0,-2.2,5.8,3.2,0,Math.PI,0);ctx.fill();
    ctx.fillStyle="rgba(255,255,255,.55)";ctx.beginPath();ctx.ellipse(-1.6,-3.6,2.2,1,-0.3,0,6.2832);ctx.fill();
-   for(var li=0;li<4;li++){var la=tm*2.2+li*1.571;glowDot(Math.cos(la)*9.6,Math.sin(la)*3.6+0.6,1.1,"#bff0ff",4);}   /* бегущие огни по ободу */
-   var rp=Math.sin(tm*24)*6;ctx.strokeStyle=col;ctx.lineWidth=1.6;                                                       /* стабилизаторы */
+   for(var li=0;li<4;li++){var la=tm*2.2+li*1.571;glowDot(Math.cos(la)*9.6,Math.sin(la)*3.6+0.6,1.1,"#bff0ff",4);}   /* running lights along the rim */
+   var rp=Math.sin(tm*24)*6;ctx.strokeStyle=col;ctx.lineWidth=1.6;                                                       /* stabilizers */
    ctx.beginPath();ctx.moveTo(-18,-3);ctx.lineTo(-11+rp,-3);ctx.moveTo(18,-3);ctx.lineTo(11-rp,-3);ctx.stroke();
    ctx.fillStyle=col;ctx.beginPath();ctx.arc(0,5.4,2,0,6.2832);ctx.fill();
    ctx.restore();
@@ -155,11 +155,11 @@ var TURRET_DRAW={
    ctx.fillStyle=shade("#2c4a6c","#10203a",0,-18,0,2);ctx.strokeStyle=col;ctx.lineWidth=1.6;
    ctx.beginPath();ctx.arc(0,-8,10.8,0,6.2832);ctx.fill();ctx.stroke();
    ctx.fillStyle="#071522";ctx.beginPath();ctx.arc(0,-8,8.2,0,6.2832);ctx.fill();
-   var sp=B.t*9;                                                                      /* крыльчатка: 4 лопасти */
+   var sp=B.t*9;                                                                      /* impeller: 4 blades */
    for(var fb=0;fb<4;fb++){var fa=sp+fb*1.5708;ctx.fillStyle=fb%2?"#5fc6ee":"#8fe0ff";
      ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(Math.cos(fa-0.32)*8,-8+Math.sin(fa-0.32)*8);ctx.lineTo(Math.cos(fa+0.32)*8,-8+Math.sin(fa+0.32)*8);ctx.closePath();ctx.fill();}
    ctx.fillStyle="#cfeeff";ctx.beginPath();ctx.arc(0,-8,2,0,6.2832);ctx.fill();
-   aimed(t,0,-8,function(){                                                          /* сопло смотрит на цель */
+   aimed(t,0,-8,function(){                                                          /* the nozzle faces the target */
      ctx.fillStyle=shade("#2c4a6c","#0d1f33",-5,0,5,0);ctx.strokeStyle=col;ctx.lineWidth=1.2;
      ctx.beginPath();ctx.moveTo(-4.4,-6);ctx.lineTo(4.4,-6);ctx.lineTo(6.6,-14);ctx.lineTo(-6.6,-14);ctx.closePath();ctx.fill();ctx.stroke();
      ctx.fillStyle="#7dd7ff";ctx.fillRect(-6.6,-15.2,13.2,1.5);
@@ -172,7 +172,7 @@ var TURRET_DRAW={
    ctx.lineCap="round";
    [-6.4,6.4].forEach(function(ex){
      ctx.strokeStyle="#1b2c46";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(ex,2.6);ctx.lineTo(ex,-19);ctx.stroke();
-     ctx.strokeStyle=col;ctx.lineWidth=1.3;                                         /* витки катушки */
+     ctx.strokeStyle=col;ctx.lineWidth=1.3;                                         /* coil windings */
      for(var cw=0;cw<5;cw++){var cy=-1-cw*3.8;ctx.beginPath();ctx.moveTo(ex-2.6,cy);ctx.lineTo(ex+2.6,cy-1.6);ctx.stroke();}
    });
    glowDot(-6.4,-22,3.4,"#e9d5ff",t.recoil>0?16:8);glowDot(6.4,-22,3.4,"#e9d5ff",t.recoil>0?16:8);
@@ -183,36 +183,36 @@ var TURRET_DRAW={
    pedestal(col,14,10,9);
    ctx.fillStyle="#1d3350";ctx.strokeStyle=col;ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(0,3,9.5,2.6,0,0,6.2832);ctx.fill();ctx.stroke();
    aimed(t,0,0,function(){var r=t.recoil*0.7;
-     metal(-7.6,-6,15.2,10,col,2);                                                  /* корпус на оси */
-     metal(-3.8,-24+r,7.6,19,col,1.4);                                              /* ствол */
+     metal(-7.6,-6,15.2,10,col,2);                                                  /* body on the axis */
+     metal(-3.8,-24+r,7.6,19,col,1.4);                                              /* barrel */
      ctx.strokeStyle=col;ctx.lineWidth=1;
-     for(var fin=0;fin<4;fin++){ctx.beginPath();ctx.moveTo(-5.6,-20+fin*3.6+r);ctx.lineTo(5.6,-20+fin*3.6+r);ctx.stroke();}   /* рёбра охлаждения */
+     for(var fin=0;fin<4;fin++){ctx.beginPath();ctx.moveTo(-5.6,-20+fin*3.6+r);ctx.lineTo(5.6,-20+fin*3.6+r);ctx.stroke();}   /* cooling fins */
      ctx.fillStyle="#0a2236";ctx.fillRect(-2,-24.4+r,4,2);
      ctx.save();ctx.shadowColor="#7dd7ff";ctx.shadowBlur=9;ctx.fillStyle="#bfeaff";ctx.fillRect(-3.8,-26+r,7.6,2.2);ctx.restore();
      glowDot(0,-0.6,2.1,"#7dd7ff",7);
    });
  },
  firewheel:function(t,col){
-   /* жаровня-подставка и огненное колесо */
+   /* brazier stand and the fire wheel */
    ctx.strokeStyle="#3a3f4d";ctx.lineWidth=3;ctx.lineCap="round";
    ctx.beginPath();ctx.moveTo(-9,12);ctx.lineTo(0,-5);ctx.lineTo(9,12);ctx.stroke();
    ctx.strokeStyle="#59606f";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-5.4,6);ctx.lineTo(5.4,6);ctx.stroke();
    metal(-5,-5,10,4,"#ff8a3c",1.4);
    var tm=B.t;
    ctx.save();ctx.translate(0,-13);
-   ctx.fillStyle="rgba(255,138,60,.16)";ctx.beginPath();ctx.arc(0,0,15.5,0,6.2832);ctx.fill();   /* жар */
+   ctx.fillStyle="rgba(255,138,60,.16)";ctx.beginPath();ctx.arc(0,0,15.5,0,6.2832);ctx.fill();   /* heat */
    ctx.rotate(tm*3.4);
    ctx.strokeStyle="#ff8a3c";ctx.lineWidth=3.2;ctx.beginPath();ctx.arc(0,0,10.2,0,6.2832);ctx.stroke();
    for(var fs=0;fs<6;fs++){var sa=fs*1.0472;ctx.strokeStyle=fs%2?"#ffb03c":"#ff6a2c";ctx.lineWidth=fs%2?1.4:2.2;
      ctx.beginPath();ctx.moveTo(Math.cos(sa)*3,Math.sin(sa)*3);ctx.lineTo(Math.cos(sa)*10,Math.sin(sa)*10);ctx.stroke();}
-   ctx.fillStyle="#ffcf6a";                                                                     /* языки пламени по ободу */
+   ctx.fillStyle="#ffcf6a";                                                                     /* flame tongues along the rim */
    for(var fl=0;fl<8;fl++){var fa=fl*0.7854;ctx.beginPath();ctx.moveTo(Math.cos(fa-0.16)*10.2,Math.sin(fa-0.16)*10.2);
      ctx.lineTo(Math.cos(fa)*(13.6+Math.sin(tm*14+fl*2)*1.6),Math.sin(fa)*(13.6+Math.sin(tm*14+fl*2)*1.6));ctx.lineTo(Math.cos(fa+0.16)*10.2,Math.sin(fa+0.16)*10.2);ctx.closePath();ctx.fill();}
    ctx.restore();
    glowDot(0,-13,3.6,"#ffb03c",10);
  },
  hive:function(t,col){
-   /* улей на опорной колонне: сот-пакет с лётным люком и осами на орбите */
+   /* hive on a support column: a honeycomb pack with a flight hatch and wasps in orbit */
    ctx.strokeStyle="#3a3410";ctx.lineWidth=3.2;ctx.lineCap="round";
    ctx.beginPath();ctx.moveTo(0,12);ctx.lineTo(0,1);ctx.stroke();
    ctx.strokeStyle="#6b5f1d";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-6,12);ctx.lineTo(0,3);ctx.lineTo(6,12);ctx.stroke();
@@ -221,7 +221,7 @@ var TURRET_DRAW={
    hex(0,-9,13,shade("#4a3f12","#201a07",0,-22,0,4),col,1.7);
    hex(-4.6,-12.4,3.9,"#0a0803","#6b5f1d",1);hex(4.6,-12.4,3.9,"#0a0803","#6b5f1d",1);
    hex(0,-5.2,3.9,"#0a0803","#6b5f1d",1);
-   var pulse=0.55+0.45*Math.sin(B.t*3.2);hex(0,-5.2,2.7,"rgba(250,204,21,"+pulse.toFixed(2)+")");   /* светится соты с «личинкой» */
+   var pulse=0.55+0.45*Math.sin(B.t*3.2);hex(0,-5.2,2.7,"rgba(250,204,21,"+pulse.toFixed(2)+")");   /* glowing honeycomb cell with a "larva" */
    ctx.fillStyle="#fff7cc";ctx.globalAlpha=0.2;ctx.beginPath();ctx.ellipse(-4,-17,5,1.8,-0.5,0,6.2832);ctx.fill();ctx.globalAlpha=1;
    for(var ob=0;ob<2;ob++){var oa=B.t*2.2+ob*3.1416,bx=Math.cos(oa)*18,by=-10+Math.sin(oa)*6,bz=Math.sin(oa)>0?1:0.85;
      ctx.fillStyle="rgba(220,240,255,.8)";ctx.beginPath();ctx.ellipse(bx,by-2.8,2.8*bz,1.2,0,0,6.2832);ctx.fill();
@@ -229,24 +229,24 @@ var TURRET_DRAW={
      ctx.fillStyle="#191919";ctx.fillRect(bx-1.2,by-2,1,4);}
  },
  railgun:function(t,col){
-   /* накопитель-конденсатор и два рельса, сходящихся к дульному срезу */
+   /* capacitor bank and two rails converging at the muzzle */
    metal(-14,3,28,9,col,2);
    ctx.fillStyle=col;[-9,-3,3,9].forEach(function(bx,i){ctx.globalAlpha=0.35+0.45*((Math.sin(B.t*4+i)+1)/2);ctx.fillRect(bx-1.1,5,2.2,5);});ctx.globalAlpha=1;
    ctx.strokeStyle="#2a4262";ctx.lineWidth=2.6;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-8,3.4);ctx.lineTo(-3,-3);ctx.moveTo(8,3.4);ctx.lineTo(3,-3);ctx.stroke();
    aimed(t,0,-3,function(){var r=t.recoil*0.8;
      ctx.fillStyle="#0b121d";ctx.fillRect(-4.4,-6,8.8,9);ctx.strokeStyle=col;ctx.lineWidth=1;ctx.strokeRect(-4.4,-6,8.8,9);
-     ctx.fillStyle=shade("#34506f","#121f33",-3,0,3,0);ctx.fillRect(-3.8,-34+r,2.6,31);ctx.fillRect(1.2,-34+r,2.6,31);   /* рельсы */
-     ctx.strokeStyle="#f472b6";ctx.lineWidth=1.8;[-28,-21,-14,-8].forEach(function(ry){ctx.beginPath();ctx.moveTo(-5.4,ry+r);ctx.lineTo(5.4,ry+r);ctx.stroke();});   /* катушки */
+     ctx.fillStyle=shade("#34506f","#121f33",-3,0,3,0);ctx.fillRect(-3.8,-34+r,2.6,31);ctx.fillRect(1.2,-34+r,2.6,31);   /* rails */
+     ctx.strokeStyle="#f472b6";ctx.lineWidth=1.8;[-28,-21,-14,-8].forEach(function(ry){ctx.beginPath();ctx.moveTo(-5.4,ry+r);ctx.lineTo(5.4,ry+r);ctx.stroke();});   /* coils */
      ctx.fillStyle="#0a0f18";ctx.fillRect(-1.2,-34+r,2.4,31);
      ctx.save();ctx.shadowColor="#f472b6";ctx.shadowBlur=8;ctx.fillStyle="#ffffff";ctx.fillRect(-3.8,-35.4+r,7.6,2);ctx.restore();
    });
  },
  gravity:function(t,col){
-   /* эмиттер-тарелка на колонне, над ней — аккреционные кольца вокруг сингулярности */
+   /* emitter dish on a column, above it accretion rings around the singularity */
    pedestal(col,12,7,6);
    ctx.fillStyle="#1d3350";ctx.strokeStyle=col;ctx.lineWidth=1.2;
    ctx.beginPath();ctx.moveTo(-9,6);ctx.lineTo(9,6);ctx.lineTo(5,-1);ctx.lineTo(-5,-1);ctx.closePath();ctx.fill();ctx.stroke();
-   ctx.fillStyle="rgba(140,181,255,.18)";ctx.beginPath();ctx.moveTo(-5,-1);ctx.lineTo(5,-1);ctx.lineTo(9,-9);ctx.lineTo(-9,-9);ctx.closePath();ctx.fill();   /* луч захвата */
+   ctx.fillStyle="rgba(140,181,255,.18)";ctx.beginPath();ctx.moveTo(-5,-1);ctx.lineTo(5,-1);ctx.lineTo(9,-9);ctx.lineTo(-9,-9);ctx.closePath();ctx.fill();   /* tractor beam */
    var tm=B.t;
    ctx.save();ctx.translate(0,-14);
    ctx.fillStyle="rgba(140,181,255,.14)";ctx.beginPath();ctx.arc(0,0,16,0,6.2832);ctx.fill();
@@ -277,21 +277,21 @@ function drawUnit(t){
  var col=t.isSoldier?liveryCol():t.cfg.color;
  t.recoil=Math.max(0,(t.recoil||0)-1.1);
  ctx.save();ctx.translate(t.x,t.y);
- ctx.scale(0.88,0.88); /* турели и солдат чуть меньше; подпись уровня ниже — вне save/restore, не масштабируется */
+ ctx.scale(0.88,0.88); /* turrets and the soldier are slightly smaller; the level label below is outside save/restore and is not scaled */
  drawPad(col);
  if(t.isSoldier)drawGuardian(t,col);
  else(TURRET_DRAW[t.cfg.id]||drawGenericTurret)(t,col);
  ctx.restore();
- /* уровень под юнитом — внутри поля */
+ /* level under the unit, inside the field */
  ctx.fillStyle="#0a1420";ctx.fillRect(t.x-14,t.y+16,28,5);
  ctx.fillStyle=t.cfg.color;ctx.fillRect(t.x-14,t.y+16,28*Math.min(1,t.runLv/10),5);
  ctx.font="700 9px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#cfe8e2";
  ctx.fillText("Lv."+t.runLv,t.x,t.y+30);
 }
-/* Боевой HUD — одна строка на прозрачном фоне, без подложки и шкал.
-   Слева направо: режим/этап, волна, средний DPS, убийства; таймер — справа.
-   DOM-кнопки (пауза/×2/сборка) занимают левые ~130px поля, поэтому текст начинается с x=140.
-   Размер шрифта подбирается по измеренной ширине, чтобы всё влезло в 420px. */
+/* Battle HUD: a single row on a transparent background, with no backing or bars.
+   Left to right: mode/stage, wave, average DPS, kills; the timer is on the right.
+   The DOM buttons (pause/×2/build) take up the left ~130px of the field, so the text starts at x=140.
+   The font size is picked from the measured width so that everything fits in 420px. */
 function drawCombatHud(){
  ctx.save();
  var left=140,gap=9,y=18;
@@ -374,29 +374,29 @@ function drawBattleFields(){
   ctx.restore();
  });
 }
-/* ---------- враги: у каждого типа свой силуэт ----------
-   Без градиентов и shadowBlur: врагов в кадре до ~70, на телефоне это дорого. Объём даётся наложением
-   плоских слоёв (база → тень → блик → детали). Форма зависит от e.seed (стабильна у конкретного врага). */
+/* ---------- enemies: each type has its own silhouette ----------
+   No gradients or shadowBlur: there are up to ~70 enemies per frame, which is expensive on a phone. Volume comes from layering
+   flat layers (base → shadow → highlight → details). The shape depends on e.seed (stable for a given enemy). */
 function enemyTones(e){var fl=e.flash>0;
  return{fl:fl,base:fl?"#ffffff":e.color,lt:fl?"#ffffff":tint(e.color,0.34),dk:fl?"#cfd9e6":tint(e.color,-0.42),deep:fl?"#b8c6d8":tint(e.color,-0.65)};}
-/* вершины неправильного многоугольника считаются один раз на врага и кэшируются (раньше — ~30 вызовов sin() за кадр) */
+/* irregular polygon vertices are computed once per enemy and cached (previously ~30 sin() calls per frame) */
 function shapePts(e,n,jit){var key="p"+n,c=e.shp||(e.shp={});if(c[key])return c[key];
  var a=[];for(var i=0;i<n;i++){var ang=i/n*6.2832,rr=1-jit+hrand(e.seed,i)*jit*2;a.push(Math.cos(ang)*rr,Math.sin(ang)*rr);}return(c[key]=a);}
-/* путь: кэшированный многоугольник, масштаб s и сдвиг (ox,oy). Объём — «тёмное тело + сдвинутое светлое»,
-   без clip(): clip с большой заливкой на мобильном канвасе заметно дороже */
+/* path: cached polygon, scale s and offset (ox,oy). Volume is "dark body + offset light body",
+   without clip(): clip with a large fill is noticeably more expensive on a mobile canvas */
 function blobE(e,n,jit,s,ox,oy){var p=shapePts(e,n,jit),r=e.r*s;ctx.beginPath();
  for(var i=0;i<p.length;i+=2){var x=ox+p[i]*r,y=oy+p[i+1]*r;if(!i)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.closePath();}
-/* направление света «сверху-слева» остаётся неизменным, пока тело вращается */
+/* the "top-left" light direction stays fixed while the body rotates */
 function lightOff(rot,dx,dy){var c=Math.cos(rot),sn=Math.sin(rot);return[dx*c+dy*sn,-dx*sn+dy*c];}
 
 function eMeteor(e,k){var r=e.r,sd=e.seed,small=r<11,rot=e.phase*0.12+sd*6.28,lo=lightOff(rot,-r*0.07,-r*0.08);
  ctx.save();ctx.rotate(rot);
- blobE(e,9,0.17,1,0,0);ctx.fillStyle=k.dk;ctx.fill();                               /* тёмное тело */
- blobE(e,9,0.17,0.9,lo[0],lo[1]);ctx.fillStyle=k.base;ctx.fill();                   /* освещённая часть */
+ blobE(e,9,0.17,1,0,0);ctx.fillStyle=k.dk;ctx.fill();                               /* dark body */
+ blobE(e,9,0.17,0.9,lo[0],lo[1]);ctx.fillStyle=k.base;ctx.fill();                   /* lit part */
  if(!small){var hl=lightOff(rot,-r*0.36,-r*0.4);ctx.globalAlpha=0.38;ctx.fillStyle=k.lt;ctx.beginPath();ctx.arc(hl[0],hl[1],r*0.4,0,6.2832);ctx.fill();ctx.globalAlpha=1;}
  if(!small)for(var i=0;i<3;i++){var a=hrand(sd,20+i)*6.28,d=r*(0.22+hrand(sd,30+i)*0.3),cr=r*(0.13+hrand(sd,40+i)*0.1),cx=Math.cos(a)*d,cy=Math.sin(a)*d;
    ctx.fillStyle=k.deep;ctx.globalAlpha=0.7;ctx.beginPath();ctx.ellipse(cx,cy,cr,cr*0.78,a,0,6.2832);ctx.fill();ctx.globalAlpha=1;}
- /* раскалённые трещины (не выходят за контур) */
+ /* glowing cracks (they stay inside the outline) */
  ctx.strokeStyle="#ff9a3c";ctx.lineWidth=Math.max(0.9,r*0.085);ctx.lineCap="round";ctx.globalAlpha=k.fl?0.4:0.95;
  ctx.beginPath();for(var c=0;c<(small?2:3);c++){var ca=hrand(sd,50+c)*6.28,ca2=ca+(hrand(sd,60+c)-0.5)*1.2;
    ctx.moveTo(Math.cos(ca)*r*0.12,Math.sin(ca)*r*0.12);ctx.lineTo(Math.cos(ca2)*r*0.5,Math.sin(ca2)*r*0.5);ctx.lineTo(Math.cos(ca2+0.25)*r*0.8,Math.sin(ca2+0.25)*r*0.8);}
@@ -405,7 +405,7 @@ function eMeteor(e,k){var r=e.r,sd=e.seed,small=r<11,rot=e.phase*0.12+sd*6.28,lo
  if(!small){ctx.fillStyle="rgba(255,225,160,.9)";ctx.beginPath();ctx.arc(0,0,r*0.12,0,6.2832);ctx.fill();}
  blobE(e,9,0.17,1,0,0);ctx.strokeStyle=k.deep;ctx.lineWidth=1;ctx.stroke();
  ctx.restore();
- ctx.strokeStyle="rgba(255,160,70,.55)";ctx.lineWidth=Math.max(1.2,r*0.14);ctx.lineCap="round";ctx.beginPath();ctx.arc(0,0,r*1.02,0.55,Math.PI-0.55);ctx.stroke();   /* разогретая передняя кромка (низ) */
+ ctx.strokeStyle="rgba(255,160,70,.55)";ctx.lineWidth=Math.max(1.2,r*0.14);ctx.lineCap="round";ctx.beginPath();ctx.arc(0,0,r*1.02,0.55,Math.PI-0.55);ctx.stroke();   /* heated leading edge (bottom) */
 }
 function eFast(e,k){var r=e.r,sway=Math.sin(e.phase*1.8)*0.5;
  ctx.fillStyle="rgba(255,150,60,.14)";ctx.beginPath();ctx.moveTo(-r*0.95,0);ctx.lineTo(sway,-r*4.4);ctx.lineTo(r*0.95,0);ctx.closePath();ctx.fill();
@@ -422,11 +422,11 @@ function eArmored(e,k){var r=e.r,sd=e.seed;
  oct(1,0,0);ctx.fillStyle=k.dk;ctx.fill();
  oct(0.92,-r*0.05,-r*0.06);ctx.fillStyle=k.base;ctx.fill();
  ctx.fillStyle=k.lt;ctx.globalAlpha=0.35;ctx.beginPath();ctx.moveTo(-r*0.4,-r*0.9);ctx.lineTo(r*0.4,-r*0.9);ctx.lineTo(r*0.62,-r*0.68);ctx.lineTo(-r*0.62,-r*0.68);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
- ctx.strokeStyle=k.deep;ctx.lineWidth=1.2;ctx.beginPath();                                   /* швы плит */
+ ctx.strokeStyle=k.deep;ctx.lineWidth=1.2;ctx.beginPath();                                   /* plate seams */
  ctx.moveTo(-r*0.9,0);ctx.lineTo(r*0.9,0);ctx.moveTo(0,-r*0.9);ctx.lineTo(0,r*0.9);ctx.stroke();
- ctx.fillStyle="#0e1219";ctx.beginPath();ctx.ellipse(0,0,r*0.5,r*0.16,0,0,6.2832);ctx.fill();   /* вентиляционная щель с жаром */
+ ctx.fillStyle="#0e1219";ctx.beginPath();ctx.ellipse(0,0,r*0.5,r*0.16,0,0,6.2832);ctx.fill();   /* vent slit with heat */
  ctx.fillStyle="rgba(255,138,60,.95)";ctx.beginPath();ctx.ellipse(0,0,r*0.36,r*0.09,0,0,6.2832);ctx.fill();
- ctx.fillStyle=k.lt;ctx.beginPath();for(var q=0;q<4;q++){var ra=0.3927+q*1.5708;ctx.moveTo(Math.cos(ra)*r*0.7+r*0.075,Math.sin(ra)*r*0.7);ctx.arc(Math.cos(ra)*r*0.7,Math.sin(ra)*r*0.7,r*0.075,0,6.2832);}ctx.fill();   /* заклёпки */
+ ctx.fillStyle=k.lt;ctx.beginPath();for(var q=0;q<4;q++){var ra=0.3927+q*1.5708;ctx.moveTo(Math.cos(ra)*r*0.7+r*0.075,Math.sin(ra)*r*0.7);ctx.arc(Math.cos(ra)*r*0.7,Math.sin(ra)*r*0.7,r*0.075,0,6.2832);}ctx.fill();   /* rivets */
  oct(1,0,0);ctx.strokeStyle=k.deep;ctx.lineWidth=1.6;ctx.stroke();
  ctx.restore();
 }
@@ -439,7 +439,7 @@ function eFlyer(e,k){var r=e.r,w=Math.sin(B.t*(e.hoverT>0?27:18)+e.phase);
  ctx.fillStyle=k.base;ctx.beginPath();ctx.ellipse(0,0,r*0.86,r*0.98,0,0,6.2832);ctx.fill();
  ctx.fillStyle=k.dk;ctx.globalAlpha=0.5;ctx.beginPath();ctx.ellipse(r*0.2,r*0.25,r*0.66,r*0.76,0,0,6.2832);ctx.fill();ctx.globalAlpha=1;
  ctx.fillStyle=k.lt;ctx.globalAlpha=0.5;ctx.beginPath();ctx.ellipse(-r*0.25,-r*0.4,r*0.3,r*0.2,-0.5,0,6.2832);ctx.fill();ctx.globalAlpha=1;
- ctx.fillStyle=k.deep;ctx.beginPath();ctx.moveTo(-r*0.28,-r*0.78);ctx.lineTo(0,-r*1.35);ctx.lineTo(r*0.28,-r*0.78);ctx.closePath();ctx.fill();   /* хвостовой шип */
+ ctx.fillStyle=k.deep;ctx.beginPath();ctx.moveTo(-r*0.28,-r*0.78);ctx.lineTo(0,-r*1.35);ctx.lineTo(r*0.28,-r*0.78);ctx.closePath();ctx.fill();   /* tail spike */
  ctx.fillStyle=k.fl?"#fff":"#7ef0d4";ctx.beginPath();ctx.arc(-r*0.34,r*0.14,r*0.2,0,6.2832);ctx.arc(r*0.34,r*0.14,r*0.2,0,6.2832);ctx.fill();
  ctx.fillStyle="#06201a";ctx.beginPath();ctx.arc(-r*0.34,r*0.2,r*0.08,0,6.2832);ctx.arc(r*0.34,r*0.2,r*0.08,0,6.2832);ctx.fill();
 }
@@ -451,7 +451,7 @@ function eSplitter(e,k){var r=e.r,sd=e.seed,pl=0.6+0.4*Math.sin(e.phase*1.4),rot
  ctx.fillStyle=k.deep;ctx.globalAlpha=0.5;ctx.beginPath();for(var m=0;m<4;m++){var mx=(hrand(sd,70+m)-0.5)*r*1.0,my=(hrand(sd,80+m)-0.5)*r*1.0;ctx.moveTo(mx+r*0.1,my);ctx.arc(mx,my,r*0.1,0,6.2832);}ctx.fill();ctx.globalAlpha=1;
  blobE(e,10,0.14,1,0,0);ctx.strokeStyle=k.deep;ctx.lineWidth=1.1;ctx.stroke();
  ctx.restore();
- /* два «зародыша» в прозрачных ячейках, трещина между ними */
+ /* two "embryos" in transparent cells, with a crack between them */
  [[-r*0.32,r*0.16],[r*0.3,-r*0.12]].forEach(function(p,i){
    ctx.fillStyle="rgba(10,30,14,.55)";ctx.beginPath();ctx.arc(p[0],p[1],r*0.3,0,6.2832);ctx.fill();
    ctx.fillStyle=k.fl?"#fff":"rgba(168,230,150,"+(0.7+0.3*pl).toFixed(2)+")";ctx.beginPath();ctx.arc(p[0],p[1],r*0.22+pl*r*0.03*(i?-1:1),0,6.2832);ctx.fill();
@@ -505,7 +505,7 @@ function eCharger(e,k){var r=e.r,ch=(e.chargeMul||1)>1.2,fl=Math.sin(B.t*40+e.ph
 }
 function eBoss(e,k){var r=e.r,pu=0.5+0.5*Math.sin(B.t*2.4);
  ctx.save();ctx.rotate(e.phase*0.04);
- ctx.fillStyle=k.fl?"#ffffff":tint(e.color,0.12);ctx.beginPath();                      /* шипы-«корона» */
+ ctx.fillStyle=k.fl?"#ffffff":tint(e.color,0.12);ctx.beginPath();                      /* spike "crown" */
  for(var i=0;i<12;i++){var a=i/12*6.2832,a1=a-0.17,a2=a+0.17;ctx.moveTo(Math.cos(a1)*r*0.9,Math.sin(a1)*r*0.9);ctx.lineTo(Math.cos(a)*r*1.26,Math.sin(a)*r*1.26);ctx.lineTo(Math.cos(a2)*r*0.9,Math.sin(a2)*r*0.9);}
  ctx.fill();
  ctx.restore();
@@ -513,7 +513,7 @@ function eBoss(e,k){var r=e.r,pu=0.5+0.5*Math.sin(B.t*2.4);
  ctx.save();ctx.rotate(rot);
  blobE(e,12,0.09,1,0,0);ctx.fillStyle=k.dk;ctx.fill();
  blobE(e,12,0.09,0.92,lo[0],lo[1]);ctx.fillStyle=k.base;ctx.fill();
- ctx.fillStyle=k.lt;ctx.globalAlpha=0.28;ctx.beginPath();                              /* бронеплиты вокруг ядра (внутри контура) */
+ ctx.fillStyle=k.lt;ctx.globalAlpha=0.28;ctx.beginPath();                              /* armor plates around the core (inside the outline) */
  for(var p=0;p<6;p++){var pa=p/6*6.2832+0.5;
    ctx.moveTo(Math.cos(pa)*r*0.5,Math.sin(pa)*r*0.5);ctx.lineTo(Math.cos(pa)*r*0.86,Math.sin(pa)*r*0.86);ctx.lineTo(Math.cos(pa+0.9)*r*0.86,Math.sin(pa+0.9)*r*0.86);ctx.lineTo(Math.cos(pa+0.9)*r*0.5,Math.sin(pa+0.9)*r*0.5);ctx.closePath();}
  ctx.fill();
@@ -522,14 +522,14 @@ function eBoss(e,k){var r=e.r,pu=0.5+0.5*Math.sin(B.t*2.4);
  ctx.stroke();
  blobE(e,12,0.09,1,0,0);ctx.strokeStyle=k.deep;ctx.lineWidth=1.8;ctx.stroke();
  ctx.restore();
- ctx.fillStyle="#1a0508";ctx.beginPath();ctx.arc(0,0,r*0.5,0,6.2832);ctx.fill();         /* ядро */
+ ctx.fillStyle="#1a0508";ctx.beginPath();ctx.arc(0,0,r*0.5,0,6.2832);ctx.fill();         /* core */
  ctx.fillStyle="rgba(255,90,60,"+(0.55+pu*0.35).toFixed(2)+")";ctx.beginPath();ctx.arc(0,0,r*0.42,0,6.2832);ctx.fill();
  ctx.fillStyle=k.fl?"#fff":"#ffb15c";ctx.beginPath();ctx.arc(0,0,r*(0.26+pu*0.04),0,6.2832);ctx.fill();
  ctx.fillStyle="#fff4cf";ctx.beginPath();ctx.arc(-r*0.04,-r*0.05,r*0.1,0,6.2832);ctx.fill();
  ctx.strokeStyle=k.lt;ctx.lineWidth=1.4;ctx.globalAlpha=0.7;ctx.beginPath();ctx.arc(0,0,r*0.5,0,6.2832);ctx.stroke();ctx.globalAlpha=1;
 }
 function drawEnemyBody(e){
- if(e.seed===undefined)e.seed=hrand(e.phase,7); /* зерно формы берётся один раз — от случайной начальной фазы */
+ if(e.seed===undefined)e.seed=hrand(e.phase,7); /* the shape seed is taken once, from the random initial phase */
  var k=enemyTones(e);
  switch(e.cfg.id){
   case "fast":eFast(e,k);break;
@@ -552,8 +552,8 @@ function drawEnemy(e){
  ctx.save();ctx.translate(e.x,e.y);ctx.scale(e.visualScale||1,e.visualScale||1);
  if(e.kind==="phase"&&e.cloakT>0&&!e.revealedT)ctx.globalAlpha=0.38;
  drawEnemyBody(e);
- if(e.cfg.id==="elite"){ctx.strokeStyle="#ff7ab8";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-e.r*1.2,-e.r*1.2);ctx.lineTo(e.r*1.2,e.r*1.2);ctx.moveTo(e.r*1.2,-e.r*1.2);ctx.lineTo(-e.r*1.2,e.r*1.2);ctx.stroke();}   /* метка элиты */
- if(e.cfg.id==="phase"&&e.cloakT>0){ctx.fillStyle="rgba(131,164,217,.3)";for(var ph=0;ph<3;ph++){ctx.beginPath();ctx.arc(0,-e.r-6-ph*7,2+ph,0,6.2832);ctx.fill();}}   /* «пар» скрытности */
+ if(e.cfg.id==="elite"){ctx.strokeStyle="#ff7ab8";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-e.r*1.2,-e.r*1.2);ctx.lineTo(e.r*1.2,e.r*1.2);ctx.moveTo(e.r*1.2,-e.r*1.2);ctx.lineTo(-e.r*1.2,e.r*1.2);ctx.stroke();}   /* elite mark */
+ if(e.cfg.id==="phase"&&e.cloakT>0){ctx.fillStyle="rgba(131,164,217,.3)";for(var ph=0;ph<3;ph++){ctx.beginPath();ctx.arc(0,-e.r-6-ph*7,2+ph,0,6.2832);ctx.fill();}}   /* cloaking "vapor" */
  if(e.kind==="charger"){ctx.strokeStyle="#ff9a4d";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,e.r+2+Math.sin(B.t*14)*1.5,0,6.2832);ctx.stroke();}
  if(e.kind==="elite"||e.kind==="boss"){ctx.strokeStyle="#ffd34d";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,e.r+4+Math.sin(e.phase*2)*1.5,0,6.2832);ctx.stroke();}
  if(e.slowFactor<1){ctx.strokeStyle="rgba(56,200,255,.8)";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,e.r+2,0,6.2832);ctx.stroke();}
@@ -566,7 +566,7 @@ function drawEnemy(e){
    ctx.restore();
  }
  ctx.restore();
- /* полоса HP и число HP босса — без изменений относительно существующего интерфейса */
+ /* boss HP bar and HP number, unchanged from the existing interface */
  if(e.hp<e.maxHp||e.champion){var bh=e.kind==="boss"?6:e.r<12?3:4;
    ctx.fillStyle="#20060c";ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2,bh);
    ctx.fillStyle=e.champion?"#d88cff":e.kind==="boss"?"#ff5470":"#4ade80";ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2*Math.max(0,e.hp/e.maxHp),bh);
@@ -574,7 +574,7 @@ function drawEnemy(e){
  }
 }
 function draw(){
- /* рендерим в физических пикселях экрана, рисуя в логических координатах 420×700 */
+ /* render in physical screen pixels while drawing in 420×700 logical coordinates */
  ctx.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
  ctx.clearRect(0,0,W,H);
  var sx=B.shake?(Math.random()*B.shake-B.shake/2):0, sy=B.shake?(Math.random()*B.shake-B.shake/2):0;
@@ -608,23 +608,23 @@ function draw(){
  ctx.fillStyle=dg;ctx.fill();
  ctx.strokeStyle=rgba(domeColor,B.baseFlashT>0?.65:.35);ctx.lineWidth=1.5;ctx.shadowColor=rgba(domeColor,.35);ctx.shadowBlur=8;
  ctx.beginPath();ctx.ellipse(W/2,BASEY+14,205,62,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
- /* палуба базы: турели и солдат СТОЯТ на ней, на одном уровне с базой */
+ /* base deck: turrets and the soldier STAND on it, level with the base */
  ctx.fillStyle="#101c2e";ctx.fillRect(0,BASEY+14,W,H-(BASEY+14));
  ctx.fillStyle="rgba(46,230,200,.4)";ctx.fillRect(0,BASEY+14,W,2);
  ctx.fillStyle="#16283e";ctx.fillRect(0,BASEY+14,W,8);
  ctx.font="26px serif";ctx.textAlign="center";ctx.fillText("🏰",W/2,BASEY+12);
  /* HP arc is drawn over the units; see drawBaseHp(). */
- /* пустые слоты турелей */
+ /* empty turret slots */
  TURRET_X.forEach(function(x,i){
    if(!B.turrets.some(function(t){return t.slot===i;})){
      ctx.strokeStyle="rgba(143,168,181,.35)";ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,LINE_Y,15,0,6.29);ctx.stroke();ctx.setLineDash([]);
-     ctx.font="8.5px 'Segoe UI',sans-serif";ctx.fillStyle="rgba(143,168,181,.8)";ctx.textAlign="center";ctx.fillText("СЛОТ",x,LINE_Y+26);
+     ctx.font="8.5px 'Segoe UI',sans-serif";ctx.fillStyle="rgba(143,168,181,.8)";ctx.textAlign="center";ctx.fillText("SLOT",x,LINE_Y+26);
    }
  });
  drawBattleFields();
- /* враги */
+ /* enemies */
  B.enemies.forEach(drawEnemy);
- /* Hive выпускает рой пчёл: полосатое тельце, машущие крылья, жало */
+ /* Hive releases a swarm of bees: striped body, flapping wings, stinger */
  B.drones.forEach(function(d){
    var flap=Math.sin(B.t*46+d.x*0.7)*0.5;
    ctx.save();ctx.translate(d.x,d.y);
@@ -639,17 +639,17 @@ function draw(){
  B.wheels.forEach(function(w){ctx.save();ctx.translate(w.x,w.y);ctx.rotate(B.t*12);ctx.shadowColor="#ff8a3c";ctx.shadowBlur=18;ctx.strokeStyle="#ffb03c";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,14,0,6.29);ctx.stroke();for(var i=0;i<3;i++){var a=i*2.094;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);ctx.stroke();}ctx.restore();});
  allFighters().forEach(drawUnit);
  drawBaseHp();
- /* снаряды: у каждого типа турели свой силуэт и свечение */
+ /* projectiles: each turret type has its own silhouette and glow */
  B.projs.forEach(function(p){
    var id=p.src.cfg.id,col=p.src.cfg.color;
    ctx.save();ctx.shadowColor=col;
-   if(id==="skyguard"){ /* ракета: корпус по курсу полёта, конус и огненный выхлоп */
+   if(id==="skyguard"){ /* rocket: body along the flight path, nose cone and fiery exhaust */
      ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy,p.vx));
      ctx.shadowBlur=8;ctx.fillStyle="#e5edf5";ctx.fillRect(-7,-2.6,13,5.2);
      ctx.fillStyle="#ff5470";ctx.beginPath();ctx.moveTo(6,-2.6);ctx.lineTo(11,0);ctx.lineTo(6,2.6);ctx.closePath();ctx.fill();
      ctx.fillStyle="#5b7a8c";ctx.fillRect(-7,-4.6,3.4,2);ctx.fillRect(-7,2.6,3.4,2);
      ctx.shadowColor="#ff8a3c";ctx.shadowBlur=12;ctx.fillStyle="#ffb03c";ctx.beginPath();ctx.arc(-8.6,0,3.4+Math.random()*1.3,0,6.29);ctx.fill();
-   }else if(id==="tesla"){ /* летящий заряд энергии: фиолетовая сфера с белым ядром и искрами */
+   }else if(id==="tesla"){ /* flying energy charge: a purple sphere with a white core and sparks */
      ctx.shadowColor="#a06bff";ctx.shadowBlur=16;ctx.fillStyle="#a06bff";ctx.beginPath();ctx.arc(p.x,p.y,5.8,0,6.29);ctx.fill();
      ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.3,0,6.29);ctx.fill();
      ctx.strokeStyle="rgba(216,180,254,.8)";ctx.lineWidth=1.5;ctx.beginPath();
@@ -658,24 +658,24 @@ function draw(){
      ctx.lineTo(p.x-p.vx*.014-Math.sin(B.t*45)*3,p.y-p.vy*.014);
      ctx.lineTo(p.x,p.y);ctx.stroke();
      ctx.strokeStyle="rgba(216,180,254,.9)";ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(p.x-3,p.y-6);ctx.lineTo(p.x+1,p.y-10-Math.random()*3);ctx.moveTo(p.x+4,p.y+3);ctx.lineTo(p.x+8+Math.random()*3,p.y+6);ctx.stroke();
-   }else if(id==="railgun"){ /* длинный розовый след-штрих и белое ядро */
+   }else if(id==="railgun"){ /* long pink trail streak and a white core */
      ctx.lineWidth=3.5;ctx.shadowBlur=10;ctx.strokeStyle=col;
      ctx.beginPath();ctx.moveTo(p.x-p.vx*0.12,p.y-p.vy*0.12);ctx.lineTo(p.x,p.y);ctx.stroke();
      ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,6.29);ctx.fill();
-   }else if(id==="disruption"){ /* пульсирующее кольцо-импульс */
+   }else if(id==="disruption"){ /* pulsing impulse ring */
      ctx.lineWidth=2;ctx.shadowBlur=8;ctx.strokeStyle=col;
      ctx.globalAlpha=Math.max(.25,p.life/2.6);ctx.beginPath();ctx.arc(p.x,p.y,4+(2.6-p.life)/2.6*8,0,6.29);ctx.stroke();
      ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,2,0,6.29);ctx.fill();
-   }else if(id==="aeroblast"){ /* вращающаяся воздушная дуга-вихрь */
+   }else if(id==="aeroblast"){ /* spinning air arc vortex */
      ctx.lineWidth=2.6;ctx.shadowBlur=6;ctx.strokeStyle=col;
      var a0=B.t*18+p.x*0.05;ctx.beginPath();ctx.arc(p.x,p.y,6.5,a0,a0+4.2);ctx.stroke();
-   }else if(id==="beam"){ /* тяжёлый энергозаряд с белым ядром */
+   }else if(id==="beam"){ /* heavy energy charge with a white core */
      ctx.shadowBlur=16;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,5.6+Math.min(2,p.src.beamRamp||0)*1.5,0,6.29);ctx.fill();
      ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,6.29);ctx.fill();
-   }else if(id==="firewheel"){ /* огненный шар */
+   }else if(id==="firewheel"){ /* fireball */
      ctx.shadowColor="#ff8a3c";ctx.shadowBlur=13;ctx.fillStyle="#ffb03c";ctx.beginPath();ctx.arc(p.x,p.y,4.6,0,6.29);ctx.fill();
      ctx.shadowBlur=0;ctx.fillStyle="#ff8a3c";ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,6.29);ctx.fill();
-   }else{ /* трассеры: Sky Guard — жёлтые, солдат — золотые, покороче/подлиннее */
+   }else{ /* tracers: Sky Guard yellow, soldier gold, shorter/longer */
      ctx.lineWidth=id==="soldier"?3.2:2;ctx.shadowBlur=id==="soldier"?10:6;ctx.strokeStyle=id==="soldier"?"#ffd34d":col;
      var tl=id==="soldier"?0.07:0.03;
      ctx.beginPath();ctx.moveTo(p.x-p.vx*tl,p.y-p.vy*tl);ctx.lineTo(p.x,p.y);ctx.stroke();
@@ -696,19 +696,19 @@ function draw(){
   else {ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.29);ctx.fill();}
   ctx.restore();
  });
- /* числа урона: крит — золото, уязвимость врага — оранжевым крупнее, сопротивление — приглушённо */
+ /* damage numbers: crit in gold, enemy vulnerability larger in orange, resistance muted */
  B.nums.forEach(function(n){ctx.save();ctx.globalAlpha=1-n.t/0.85;ctx.font=(n.crit?"800 17px":(n.rm>1.15?"800 14.5px":"700 12px"))+" 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle=n.heal?"#4ade80":n.crit?"#ff9f2e":(n.rm>1.15?"#ff7a4d":(n.rm<0.85?"#8fa8b5":"#ffffff"));ctx.fillText(n.txt,n.x,n.y);ctx.restore();});
  ctx.restore();
  drawCombatHud();
 }
 function mmss(s){s=Math.max(0,Math.floor(s));return "0"+Math.floor(s/60)+":"+("0"+(s%60)).slice(-2);}
-function syncHud(){ /* все метрики боя рисуются прямо на канвасе внутри поля (draw) */ }
+function syncHud(){ /* all battle metrics are drawn directly on the canvas inside the field (draw) */ }
 $("btn-speed").addEventListener("click",function(){if(!B)return;B.speed=B.speed===1?2:1;this.textContent="×"+B.speed;this.classList.toggle("on",B.speed===2);SFX.pick();});
-$("btn-pause").addEventListener("click",function(){if(!B||B.over)return;B.paused=true;openPause("⏸ Пауза");});
-$("btn-buildinfo").addEventListener("click",function(){if(!B)return;B.paused=true;openPause("🧰 Сборка");});
+$("btn-pause").addEventListener("click",function(){if(!B||B.over)return;B.paused=true;openPause("⏸ Pause");});
+$("btn-buildinfo").addEventListener("click",function(){if(!B)return;B.paused=true;openPause("🧰 Build");});
 function openPause(title){
  $("pause-title").textContent=title;
- var h='<table class="stats"><thead><tr><th>Юнит</th><th>Ур.</th><th>DMG</th></tr></thead><tbody>';
+ var h='<table class="stats"><thead><tr><th>Unit</th><th>Lv.</th><th>DMG</th></tr></thead><tbody>';
  allFighters().slice().sort(function(a,b){return b.totalDmg-a.totalDmg;}).forEach(function(t){h+="<tr><td>"+t.cfg.icon+" "+t.cfg.name+"</td><td>"+t.runLv+"</td><td>"+fmt(t.totalDmg)+"</td></tr>";});
  $("pause-body").innerHTML=h+"</tbody></table>";
  $("ov-pause").classList.add("on");

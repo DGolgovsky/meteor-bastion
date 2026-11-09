@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Собрать Meteor Bastion из src/ в единый index.html (байт-в-байт как исходник).
+"""Build Meteor Bastion from src/ into a single index.html (byte-for-byte identical to the original source).
 
-Использование: python3 build.py   (из корня этого дерева)
-Результат: index.html в корне. Собранный файл в репозиторий не коммитится
-(см. .gitignore); правки вносятся только в src/, затем пересборка.
+Usage: python3 build.py   (from the root of this tree)
+Result: index.html in the root. The built file is not committed to the repository
+(see .gitignore); edits are made only in src/, followed by a rebuild.
 """
 import pathlib
 
