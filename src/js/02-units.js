@@ -28,7 +28,7 @@ window.addEventListener("orientationchange",function(){setTimeout(fitCanvas,80);
 var B=null, raf=null, lastTs=0;
 function mkUnit(cfg,x,slot,isSoldier){
  var lv=META.levels[cfg.id],secondary=metaSecondary(lv),area={rocket:32,charge:42,knockback:40,slow:34};
- return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,laserActive:0,laserTickT:0,angle:-Math.PI/2,recoil:0,handAlt:false,
+ return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,laserActive:0,angle:-Math.PI/2,recoil:0,handAlt:false,
   metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:metaDamage(lv)*(isSoldier?1:BALANCE.turretBasePower)*(isSoldier?1:1+0.03*META.chips.core),haste:1+0.02*META.chips.speed,extraProj:0,
   pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?Math.floor((secondary-1)*5):0),
   chain:(cfg.effect==="chain"?2:0)+(cfg.id==="thunder"?Math.floor((secondary-1)*2):0),
@@ -60,6 +60,8 @@ function startBattle(){refillEnergy();
    elite:!!META.elite,waves:stageWaves(st),hpMul:st.hpMul*(META.elite?BALANCE.eliteHp:1),spdMul:st.spdMul*(META.elite?BALANCE.eliteSpeed:1),
    contactMul:META.elite?BALANCE.eliteContact:1,desc:st.desc};
  B=newBattle(eff);B.elite=META.elite;
+ /* новый бой всегда стартует на ×1 — сбросить кнопку (раньше подпись «×2» переживала бой) и «залипший» указатель */
+ var spd=$("btn-speed");spd.textContent="×1";spd.classList.toggle("on",false);guardianPointerId=null;
  B.soldier=mkUnit(SOLDIER_CFG,SOLDIER_X,-1,true);
  show("battle");fitCanvas();startMusic();
  lastTs=performance.now();

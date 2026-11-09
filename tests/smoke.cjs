@@ -813,4 +813,141 @@ test("jam module slows both existing and newly spawned nonlinear enemies", () =>
   assert.ok(m.B.enemies[1].baseSpeed<old);
 });
 
+/* ---------- регрессии: исправленные баги ---------- */
+function freshBattle(game){
+  game.B=game.newBattle(game.STAGES[0]);game.B.soldier=game.mkUnit(game.SOLDIER_CFG,210,-1,true);
+  game.B.soldier.cd=999;game.B.waveState="fighting";game.B.wave=3;game.B.waveQueue=1;game.B.spawnT=999;
+}
+function enemyOf(game,id,x,y){
+  const cfg=game.ENEMIES.find(e=>e.id===id);
+  return {cfg,kind:cfg.kind,x,y,hp:1e6,maxHp:1e6,speed:0,dmg:1,armor:0,xp:1,r:cfg.r,color:cfg.color,
+    phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:1};
+}
+
+test("Gravity field does not teleport an enemy that has just spawned above the visible line", () => {
+  const {game:h}=harness();freshBattle(h);
+  const gv=h.mkUnit(h.TURRETS.find(t=>t.id==="gravity"),52,0,false);gv.cd=999;h.B.turrets=[gv];
+  const e=enemyOf(h,"meteor",210,-30);h.B.enemies=[e];
+  h.B.fields.push({kind:"gravity",x:210,y:60,r:120,life:3,src:gv,tick:9,pull:65,power:1});
+  h.update(1/30);
+  assert.ok(e.y<h.VIS_TOP,"enemy at y=-30 must stay above the visible line, got "+e.y);
+  /* а вот уже видимого врага поле по-прежнему не поднимает выше VIS_TOP */
+  const v=enemyOf(h,"meteor",210,h.VIS_TOP+2);h.B.enemies=[v];
+  h.B.fields=[{kind:"gravity",x:210,y:-200,r:400,life:3,src:gv,tick:9,pull:500,power:1}];
+  for(let i=0;i<30;i++)h.update(1/30);
+  assert.ok(v.y>=h.VIS_TOP,"visible enemy must not be pulled above VIS_TOP, got "+v.y);
+});
+
+test("Burn DPS is cleared when the burn expires, so a weaker later burn is not inflated", () => {
+  const {game:h}=harness();freshBattle(h);
+  const fw=h.mkUnit(h.TURRETS.find(t=>t.id==="firewheel"),52,0,false);fw.cd=999;h.B.turrets=[fw];
+  const e=enemyOf(h,"meteor",100,300);h.B.enemies=[e];
+  fw.dmgMul=10;h.dealDamage(fw,e,10,{burn:true});
+  const strong=e.burnDps;assert.ok(strong>0);
+  for(let i=0;i<150;i++)h.update(1/30); /* 5 с: ожог (3 с) истёк */
+  assert.equal(e.burnDps,0,"expired burn must reset DPS");
+  fw.dmgMul=1;h.dealDamage(fw,e,10,{burn:true});
+  assert.ok(e.burnDps<strong,"new weak burn must use its own DPS, not the stale strong one");
+});
+
+test("Burn still ticks its final frame of damage before it is cleared", () => {
+  const {game:h}=harness();freshBattle(h);
+  const e=enemyOf(h,"meteor",100,300);e.burnDps=60;e.burnT=0.02;e.hp=1000;h.B.enemies=[e];
+  h.update(0.05);
+  assert.ok(e.hp<1000,"the last burn tick must still be applied");
+  assert.equal(e.burnDps,0);
+});
+
+test("Fortress module card texts match what they actually restore", () => {
+  const {game:h}=harness();
+  for(const [id,amount] of [["healm",250],["regenm",200]]){
+    freshBattle(h);h.B.baseHp=100;
+    const text=h.cardHTML({kind:"module",modId:id}).desc;
+    h.applyCard({kind:"module",modId:id});
+    assert.equal(h.B.baseHp-100,amount,id+" restores a different amount than expected");
+    assert.ok(text.includes(amount+" HP"),id+" card text must mention "+amount+" HP: "+text);
+  }
+});
+
+test("A new battle resets the x2 speed button and stale pointer state", () => {
+  const {game:h,element}=harness();
+  h.startBattle();h.B.speed=2;
+  element("btn-speed").textContent="×2";element("btn-speed").classList.add("on");
+  h.guardianPointerId=7;
+  h.B.over=true;h.startBattle();
+  assert.equal(h.B.speed,1);
+  assert.equal(element("btn-speed").textContent,"×1");
+  assert.equal(element("btn-speed").classList.contains("on"),false);
+  assert.equal(h.guardianPointerId,null);
+});
+
+test("Battle rewards are credited immediately, exactly once", () => {
+  const {game:h,store}=harness();h.startBattle();
+  const coins0=h.META.coins;
+  h.B.kills=40;h.B.wave=7;
+  h.endBattle(false);
+  assert.ok(h.META.coins>coins0,"coins must be credited at the end of the battle");
+  const saved=JSON.parse(store.get("meteor-bastion-save-v1"));
+  assert.equal(saved.coins,h.META.coins,"credited rewards must already be persisted");
+  const after=h.META.coins;
+  h.applyRewards();h.applyRewards();
+  assert.equal(h.META.coins,after,"pressing back must not credit rewards a second time");
+});
+
+/* ---------- отрисовка моделей ---------- */
+function drawScene(game,setup){
+  game.B=game.newBattle(game.STAGES[0]);game.B.waveState="fighting";game.B.wave=3;game.B.t=1.7;
+  game.B.soldier=game.mkUnit(game.SOLDIER_CFG,210,-1,true);
+  setup(game);game.draw();
+}
+
+test("Every turret, the Guardian and every livery draw at any aim angle and recoil", () => {
+  const {game:h}=harness();
+  for(const livery of ["classic","arctic","ember"]){
+    h.META.livery=livery;
+    for(const angle of [-3.0,-2.2,-1.57,-0.9,0,0.4]){
+      drawScene(h,g2=>{
+        g2.B.soldier.angle=angle;g2.B.soldier.recoil=5;
+        g2.TURRETS.forEach((cfg,i)=>{const u=g2.mkUnit(cfg,40+i*34,i%4,false);u.angle=angle;u.recoil=i%2?5:0;u.laserActive=i%2;g2.B.turrets.push(u);});
+      });
+    }
+  }
+});
+
+test("Guardian faces its target and keeps facing near vertical aim (no flicker)", () => {
+  const {game:h}=harness();
+  drawScene(h,g2=>{g2.B.soldier.angle=-2.6;});
+  assert.equal(h.B.soldier.facing,-1,"aiming left must face left");
+  h.B.soldier.angle=-0.4;h.draw();
+  assert.equal(h.B.soldier.facing,1,"aiming right must face right");
+  h.B.soldier.angle=-Math.PI/2-0.05; /* почти строго вверх, чуть влево: остаётся прежняя сторона */
+  h.draw();
+  assert.equal(h.B.soldier.facing,1,"near-vertical aim must not flip the Guardian");
+});
+
+test("Every enemy type draws in every state, with a stable per-enemy shape", () => {
+  const {game:h}=harness();
+  drawScene(h,g2=>{
+    g2.ENEMIES.forEach((cfg,i)=>{
+      const base=enemyOf(g2,cfg.id,30+(i%5)*80,100+Math.floor(i/5)*90);
+      base.hp=base.maxHp*0.5;base.chargeMul=i%2?1.85:1;base.cloakT=i%3?0:1.8;base.revealedT=0;
+      g2.B.enemies.push(base);
+      g2.B.enemies.push(Object.assign({},base,{x:base.x+40,flash:0.05,slowFactor:0.6,champion:true}));
+    });
+  });
+  h.B.enemies.forEach(e=>assert.ok(Number.isFinite(e.seed),"each enemy gets a shape seed"));
+  const e=h.B.enemies[0],seed=e.seed;
+  const pts=JSON.stringify(e.shp);
+  h.draw();h.draw();
+  assert.equal(e.seed,seed,"seed must be stable across frames");
+  assert.equal(JSON.stringify(e.shp),pts,"polygon vertices must be cached, not regenerated");
+});
+
+test("Ordinary enemies of the same type do not share one identical silhouette", () => {
+  const {game:h}=harness();
+  drawScene(h,g2=>{for(let i=0;i<6;i++){const m=enemyOf(g2,"meteor",40+i*60,200);m.phase=0.9+i*1.07;g2.B.enemies.push(m);}});
+  const shapes=new Set(h.B.enemies.map(e=>JSON.stringify(e.shp)));
+  assert.ok(shapes.size>=5,"meteors must vary in shape, got "+shapes.size+" distinct");
+});
+
 console.log("\n" + tests.length + " smoke tests passed.");

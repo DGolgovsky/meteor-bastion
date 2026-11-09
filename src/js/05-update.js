@@ -57,7 +57,9 @@ function update(dt){
  for(var i=B.enemies.length-1;i>=0;i--){
    var e=B.enemies[i];
    if(e.dead){B.enemies.splice(i,1);continue;}
-   if(e.burnT>0){e.burnT-=dt;var burnHit=Math.min(e.hp,e.burnDps*dt);e.hp-=burnHit;if(e.burnSource)e.burnSource.totalDmg+=burnHit;if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});if(e.hp<=0){killEnemy(e);B.enemies.splice(i,1);continue;}}
+   if(e.burnT>0){e.burnT-=dt;var burnHit=Math.min(e.hp,e.burnDps*dt);e.hp-=burnHit;if(e.burnSource)e.burnSource.totalDmg+=burnHit;
+     /* ожог кончился — сбросить DPS: иначе устаревший сильный ожог перебивал бы любой более слабый поджог позже */
+     if(e.burnT<=0){e.burnDps=0;e.burnSource=null;}if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});if(e.hp<=0){killEnemy(e);B.enemies.splice(i,1);continue;}}
    if(e.slowT>0){e.slowT-=dt;if(e.slowT<=0)e.slowFactor=1;}
    /* звезда регенерации лечит соседних врагов (поддержка, как Rejuvenation Star) */
    if(e.kind==="healer"&&!e.dead){
@@ -188,7 +190,9 @@ function update(dt){
        if(d>=field.r||d<4)return;
        var strength=field.pull*(1-d/field.r)*(e.kind==="boss"?0.20:e.champion?0.48:1);
        e.x=Math.max(e.r,Math.min(W-e.r,e.x+dx/d*strength*dt));
-       e.y=Math.max(VIS_TOP,Math.min(BASEY-20,e.y+dy/d*strength*dt*0.28));
+       /* нижняя граница VIS_TOP держит врага под HUD, но не должна «телепортировать» вниз
+          только что появившегося (y<VIS_TOP): для него пол — его текущая высота */
+       e.y=Math.min(BASEY-20,Math.max(Math.min(e.y,VIS_TOP),e.y+dy/d*strength*dt*0.28));
      });
    }
    if(field.tick<=0){
@@ -213,7 +217,7 @@ function update(dt){
      if(!pr.tgt||pr.tgt.hp<=0||pr.tgt.dead)pr.tgt=pickTarget(pr.src);
      if(pr.tgt){var sp=pr.src.cfg.projSpeed,ca=Math.atan2(pr.vy,pr.vx),wa=Math.atan2(pr.tgt.y-pr.y,pr.tgt.x-pr.x),df=wa-ca;
        while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;
-       var turn=Math.max(-3.6*dt,Math.min(3.6*dt,df));ca+=turn;pr.vx=Math.cos(ca)*sp;pr.vy=Math.sin(ca)*sp;}
+       var rturn=Math.max(-3.6*dt,Math.min(3.6*dt,df));ca+=rturn;pr.vx=Math.cos(ca)*sp;pr.vy=Math.sin(ca)*sp;}
    }
    var p0x=pr.x,p0y=pr.y;
    pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
