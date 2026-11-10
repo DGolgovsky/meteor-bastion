@@ -43,7 +43,7 @@ function spawnEnemy(kind,opts){
  var scripted=B.elite&&B.waveQueue===B.waveTotal&&Object.keys(B.waveKindCount||{}).length===0&&(B.wave===1||B.wave%5===0);
  var champion=B.elite&&(scripted||cfg.id==="elite"||Math.random()<Math.min(BALANCE.eliteChampionMaxChance,BALANCE.eliteChampionBaseChance+B.wave*BALANCE.eliteChampionWaveChance));
  var champMul=champion?BALANCE.eliteChampionHp:1;
- var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*champMul*0.78;
+ var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*champMul*BALANCE.enemyHpMul;
  var speed=cfg.speed*B.stage.spdMul*B.enemySpdMul*(0.93+Math.random()*0.18)*0.85*(opts.speedScale||1);
  var spawnR=cfg.r+(champion?2:0);
  var x=opts.x===undefined?26+Math.random()*(W-52):Math.max(spawnR,Math.min(W-spawnR,opts.x));

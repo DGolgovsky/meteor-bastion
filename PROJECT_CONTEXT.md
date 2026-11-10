@@ -15,7 +15,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **HTML5 + CSS + plain JavaScript, Canvas 2D.** The game release is **a single self-contained `index.html`**. No npm, Vite, webpack, Phaser, TS compilation, Unity/Godot/APK for this project without a separate decision by the user.
 - The code is now **modular**: `src/shell.html`, `src/js/*.js`, `src/order.txt`. The **`python3 build.py`** script assembles a single `index.html`.
 - The built `index.html` is **not stored in Git** (excluded via `.gitignore`). **Edit only `src/`**; don't try to fix the missing `index.html` through GitHub.
-- Running tests: **`node tests/smoke.cjs`** (60 tests) and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
+- Running tests: **`node tests/smoke.cjs`** (70 tests) and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
 - `BALANCE.md` holds the current numeric parameters, `README.md` the overview. In case of contradictions, **the source of truth is the current `src/js/00-config.js` and the other sources**, then the tests, then the documentation. Update the documents when things change.
 
 **Concatenation order from `src/order.txt`:** `00-config.js` → `01-state.js` → `02-units.js` → `04-waves.js` → `03-combat.js` → `05-update.js` → `06-render.js` → `07-ui.js` → `08-main.js`. **Do not sort** the modules by name.
@@ -25,7 +25,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **12 stages**: 1–3 with **20 waves** each; 4–8 with **25 waves**; 9–12 with **30 waves**. A boss in the last wave; a victory unlocks the next stage.
 - **4 turret slots** filled in the order "far left → far right → center left → center right"; a horizontally movable Guardian. A battle starts with the Guardian, and towers are granted through cards. The Guardian fires from both hands; recent changes concerned the compact triple burst.
 - **11 turrets**: Sky Guard, Laser, Disruption Drone, Aeroblast, Thunderbolt, Beam, Firewheel Drone, Hive, Railgun, Tesla Coil, Gravity Vortex Gun. There are **11 enemy types**, resistances by damage type, splitting golems, healing of neighbors, cloaking scouts, accelerating assault meteors, Elite champions.
-- **Pick-1-of-3 cards** for battle points, R&D levels up to 45, **36 chained T1/T2/T3 cards** with R&D and previous-tier requirements, Combo, Super, separate unit upgrades.
+- **Pick-1-of-3 cards** for battle points (card system rework 2026-11-10, see the section below), R&D levels up to 45, Combo, fortress modules.
 - **Normal / Elite** have different wave compositions, champions and multipliers. Rewards/clears are tracked separately per mode.
 - **Chips** are bought with components (damage, fire rate, base survivability). **Liveries** Classic/Arctic/Ember are cosmetic. Patrol, energy, rewards, the main menu and the mobile HUD are in place.
 - **Local save: `meteor-bastion-save-v1`, format `v:1`**. Keep backward compatibility with early saves. **No ads and no watch-an-ad-to-double mechanics.**
@@ -37,7 +37,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **Hive is a critical invariant:** the hive's range limits **only the release of wasps**. Released wasps move and look for enemies **across the whole field**, even outside the turret's range, with correct retargeting. Don't bring back single-use kamikaze wasps.
 - **Laser:** a time-limited pulse, **the direction is locked at the moment of firing**; the beam visually reaches the edge of the field, but only damages along its line; the base CD is currently **7.8 s** (check the current code).
 - **Beam** differs from Laser: sequential focused ticks on a target, with damage stacking and upgrades; **Sky Guard** has separate impact and explosion; **Firewheel** is a long-lived bouncing disc, not a regular projectile; **Gravity** is a field that pulls enemies in and deals tick damage; **Disruption** is control/fields.
-- **Current parameters in `src/js/00-config.js` at the last check (×3, 2026-11-09):** `waveStart:24`, `waveGrowth:8.4`, `spawnBase:0.20`, `spawnReduction:0.002`, `spawnMin:0.06`, `formationCd:1.33`, `waveHpGrowth:0.06`, `turretBasePower:1.6`, `MAX_ENEMIES:330`; field `420×760`, bottom base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
+- **Current parameters in `src/js/00-config.js` at the last check (×3, 2026-11-09):** `waveStart:24`, `waveGrowth:8.4`, `spawnBase:0.20`, `spawnReduction:0.002`, `spawnMin:0.06`, `formationCd:1.33`, `waveHpGrowth:0.14` (0.06 before the 2026-11-10 card rework), `turretBasePower:1.6`, `MAX_ENEMIES:330`; field `420×760`, bottom base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
 - The latest `BALANCE.md` states that the base has **1000 HP and no separate shield until Chips** — this has changed compared with earlier versions. Always check the current values against `newBattle()`.
 
 ## 5. What was found about the original and how to use it
@@ -65,6 +65,16 @@ Gameplay reference points of the original discussed in the chat: the Guardian is
 - CI: [GitHub Actions](https://github.com/DGolgovsky/meteor-bastion/actions) runs smoke 55, two sets of 12 headless runs and `build.py`. Observation over 12 seeds (master 72766b32): the first victory for the sensible draft comes on attempt 3, for "first card" on attempt 4. With ×3 (2026-11-09): 0 victories out of 12 for either strategy.
 - **Open balance issue:** density ×3 meets the targets (14.0/29.6 visible on waves 1/10 versus ≥8/≥28). Fresh-account headless sims say Stage 1 is unwinnable (0 victories out of 24, sensible strategy dies on waves 6–11) — but the owner cleared it on the FIRST attempt himself (2026-11-09: 2521 kills, 8:24, 31 cards), so the sims understate a developed account plus human drafts. Scratch-copy compensations: a 2000 HP base does not help (0/12); +50% turret power (2.4) restores victories, first one on the 6th–7th attempt. The owner approved ×3 as-is. On the Pixel 10a phone, FPS checks and screenshot acceptance are still needed.
 - Don't start phase 6 (crab, mines, ×1.5 speed, active abilities) without separate agreement.
+
+## Card system rework, 2026-11-10 (owner decisions)
+
+- Source: the owner's screenshots of the reference "Selected Cards Overview" screen. One declarative `CARDS` table in `src/js/07-cards.js`; `cardDesc()` (text) and `applyCardDef()` (effect) both read the same `fx` ops, so a card's text cannot drift from its effect (smoke-tested).
+- **Removed:** generic cards (`up` +18%, Power Module, Crit Scope, Accelerator, Twin Barrel, Coil+, Armor Piercer as a generic, Fragmentation Charge…) and the SUPER-every-5-levels rule. **Kept:** combos (now fill a pip) and fortress modules; a repeatable "Field Patch" (+120 HP) only fills a draft when no other card is left.
+- **Levels 1–3, 4 pips:** a built turret is Lv.1 with 0/4 pips; each normal (teal) unit card fills a pip; after 3 pips the unit's purple card is **guaranteed in every draft until taken** (never random; survives a reroll) and fills the 4th pip, raising the level (+25% DMG, `BALANCE.levelUpDmg`). Lv.1 purple = evolution (Wasp Evolution II, Beam Penetration, High-Energy Pulse, Impact Multiplier, Shotgun Evolution; non-reference turrets got a migrated tier card as their evolution), Lv.2 purple = the existing SUPER (still gated by `rdTierUnlock`). Lv.3 is the maximum. The card badge 1/2 is the minimum unit level for the card.
+- **R&D gates kept:** migrated T1 cards R&D 2, level-2 cards R&D 6/10/14 (as their old tiers), SUPER `rdTierUnlock`; Lv.1 purple cards need no R&D so a fresh account can level up.
+- **Guardian = the reference bullet turret** (Bullets Boost, Volley Shot, Piercing Bullet, Shotgun Evolution, Flame Bullet). **Shotgun Evolution uses a real spread: the one documented exception to the "extra projectiles fly parallel" rule** (Aeroblast's own pellet fan is not a card).
+- Card numbers are exactly the reference ones (+50%, +200%…); enemies were retuned instead: `waveHpGrowth` 0.06 → 0.14.
+- UI: draft with the 5-slot level/pip row (field order: far left, center left, Guardian, center right, far right), teal/purple cards with level badges, the Selected Cards Overview overlay (`ov-cards`) from draft/pause/results, 4 pips under every unit on the field.
 
 ## Models in `06-render.js`
 

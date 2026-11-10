@@ -23,7 +23,7 @@ In every campaign the boss is in the last wave; stage progress carries over to t
 | First card thresholds | 2, 4, 6, 9 points; then 14 + 10 per next pick + 2.5 per cleared wave |
 | Waves | `8 + round(2.8 × wave) + (stage−1)×2`; Elite adds enemies |
 | Spawn interval | `max(0.18,0.60 − wave×0.006)` s, then a small random variation |
-| HP multiplier per wave | `0.78 × (1 + (wave−1)×0.06)`, on top of the stage multiplier |
+| HP multiplier per wave | `0.78 × (1 + (wave−1)×0.14)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; growth was 0.06 before the 2026-11-10 card rework) |
 | Boss HP multiplier per wave | `0.88 × 1.1 × (1 + (wave−1)×0.07)`, on top of the stage |
 | Guardian | 12 damage (−8% from 13, a small round 4 nerf), 4 attacks/s, fires from both hands alternately; the triple burst is a tight group (3px spacing, one hand for the whole burst) |
 | Turret visibility top (VIS_TOP) | y=30 — enemies above the line (just below the HUD row) are not targeted; spawning (y=-30) is unchanged |
@@ -50,13 +50,185 @@ For the exact HP/speed of the 11 enemies and the attacks of the 11 turrets, use 
 - **Hive:** wasps are released within the hive's radius but look for targets on their own across the **whole field**; the Swarm Echo R&D chain limits repeated wasp replication. Wasps fly out in an upward fan from the turret (spread 10–14px from it, a 0.25 s launch phase at 120 px/s), then home in at 240 px/s; damage is dealt on touching the enemy's bottom edge (the wasp is under the enemy, not at its center). **Wasp lifetime 8.5 s** (was 5.5 s), echo wasps 6.5 s (was 4.3 s). **At most 2 wasps per target:** wasps are distributed across targets when choosing and retargeting, the rest take other enemies; if all targets are taken, the least loaded one is chosen.
 - **Firewheel:** a single long-lived bouncing disc (radius 14, lifetime 10 s; a second disc after the "Second Firefly" card, mod `wheelCount`); burning areas and duration.
 - **Tesla:** a direct hit (0.8×), an area explosion (0.65×, radius 55), a flash ring of 170, 12 particles; the charge damage is unchanged. **Bounce instead of "double charge":** after a hit, the discharge jumps from the target to the nearest enemy not yet hit within 150px, and so on along the chain (bounces = multiCount−1, 2 by default); bounce damage falls off: 0.7×, 0.5×, 0.35×, 0.25×, 0.2×. The old simultaneous hit on several targets around the first one is removed entirely; the "Secondary Arc" card is replaced by "Discharge Bounce" (one more bounce), and the "Overvoltage" super bounces across 6 targets.
-- **No scatter:** extra turret projectiles fly **in parallel** with the main one (7px lateral offset), not in a spread — the "Twin Barrel", "Cluster Salvo", "Shockwave" cards and the "Rocket Barrage" super no longer scatter the fire. The Laser's sweeping beam hits the second target **deterministically** — the toughest of the remaining ones, not a random one. The only spread in the game is the pellet spread of the Aeroblast shotgun itself (its design, not a card).
+- **No scatter:** extra turret projectiles fly **in parallel** with the main one (7px lateral offset), not in a spread — the "Twin Barrel", "Cluster Salvo", "Shockwave" cards and the "Rocket Barrage" super no longer scatter the fire. The Laser's sweeping beam hits the second target **deterministically** — the toughest of the remaining ones, not a random one. The only spreads in the game are the pellet spread of the Aeroblast shotgun itself (its design, not a card) and, since 2026-11-10, the Guardian's **Shotgun Evolution** card (each shot scatters into 2 extra bullets at ±0.12 rad) — an explicit owner-approved exception.
 - **Railgun, Disruption, Thunderbolt:** distinct effects and T1/T2/T3 chains.
 - **Combos:** including Gravity + Firewheel, Gravity + Hive, Railgun + Tesla. R&D requirements are tied to meta progression, not only to random battle cards.
 - **Chips:** levels 0–5 for `core` (+3% turret damage per step), `speed` (+2% fire rate), `fort` (+40 to the base's maximum HP), paid in components using the formula `4 + 4×current level`. Liveries change only the appearance.
 - **Base HP:** a single arc above the dome (same center as the dome: W/2, BASEY+22) — HP (r=112), arc length ∝ the HP fraction, symmetric around the apex. The full arc angle is 120° (±60° from the apex): at full HP the ends are ~48px above the deck and don't drop down between the Guardian and the turrets. The exact HP is shown as a small number centered above the dome. The base has no shield: breaches damage HP directly; the "Fortress Shield" module was replaced by "Fortress Repair" (+250 HP).
 - **Notifications:** there are no pop-up notifications (toasts) in the game — not for super cards, patrol, or boss/champion warnings. The toast element and its styles were removed from the markup.
 - **HUD:** a single row on a transparent background (no dark backing, wave progress bar or purple card metrics): stage, wave, average DPS, kills, timer. The font is fitted to the field width (11px → 8.5px).
+
+## Battle cards, levels and pips (2026-11-10)
+
+Rules (code: `src/js/07-cards.js`, `genCards`/`applyCard` in `src/js/07-ui.js`):
+
+| Rule | Value |
+|---|---|
+| Unit level | 1–3 (`MAX_RUN_LV`); a built turret and the Guardian start at Lv.1 |
+| Pips | 4 per level (`PIPS_PER_LV`): normal unit cards and combos fill pips 1–3; the purple card fills pip 4 and levels the unit up |
+| Purple card | appears only at 3 pips, then is forced into every draft (up to 2 per draft) until taken; survives a reroll |
+| Level-up bonus | unit damage ×1.25 (`BALANCE.levelUpDmg`) |
+| Lv.1 purple | the unit's evolution card, no R&D requirement |
+| Lv.2 purple | the unit's SUPER, R&D ≥ `rdTierUnlock` (10–18) |
+| Level-2 normal cards | unit Lv.≥2 and R&D 6/10/14 |
+| Draft weights | new turret as before; each unit's normal cards share ≈18 weight (min 3 per card), level-2 cards ×1.2; modules 3 |
+| Empty draft guard | "Field Patch" (+120 HP, repeatable) fills the draft only when nothing else is left |
+
+Secondary-damage numbers the reference does not state (our values): Impact Reinforcement small missile = 50% of the missile's damage, impact only; Wasp II = +50% sting; Electro-Wasps shock = 60% of the sting, Electric type, up to 2 enemies within 80px; Shotgun Evolution bullets = full bullet damage; Flame Bullet = the standard burn (50% of the hit over 3 s); Energy Surge deflected lasers = 50% of a tick; Laser Reflection = 0.8^k of a tick for the k-th reflection; High-Energy Pulse doubles the damaging band `(r+8)×2`.
+
+Full card list (generated from `CARDS`):
+
+**Sky Guard** ([Fire])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Volley Missile | 1 | normal | 1 | 2 | Missiles +1, DMG -15%. |
+| Explosion Spread | 1 | normal | 1 | 2 | Explosion range +30%. |
+| Impact Reinforcement | 1 | normal | 1 | 1 | After a hit, the missile launches 3 small missiles that deal impact damage only. |
+| Impact Multiplier | 1 | evolution (purple) | 1 | 1 | All Sky Guard missiles: Impact DMG +200%. |
+| Thermal Warhead | 2 | normal | 14 | 1 | Missile explosions set enemies on fire. |
+| Rocket Barrage | 2 | SUPER (purple) | 14 | 1 | +2 rockets per volley and +40% fire rate. |
+
+**Laser** ([Energy])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Laser Amplification | 1 | normal | 1 | 2 | Laser DMG +50%. |
+| Laser Reflection | 1 | normal | 1 | 3 | DMG -20% per reflection. Reflections +1. |
+| Energy Surge | 1 | normal | 1 | 1 | Fires 2 additional deflected lasers. |
+| Stable Energy | 1 | normal | 1 | 2 | Laser duration +40%. |
+| Additional Sweep | 1 | normal | 1 | 2 | Fires 1 additional sweeping laser at the toughest remaining enemy. |
+| Refracting Lens | 1 | normal | 1 | 1 | The beam refracts at the target: two side branches hit nearby enemies for 50% damage. |
+| High-Energy Pulse | 1 | evolution (purple) | 1 | 1 | The laser hits a twice wider band. Laser DMG range +100%. |
+| Slow Laser | 2 | normal | 6 | 1 | Enemies hit by deflected, reflected and sweeping lasers get [Slow] (30%). |
+| Vulnerability Mark | 1 | normal | 2 | 1 | Repeated laser hits make enemies [Vulnerable]: up to +30% incoming damage. |
+| Mirror Resonator | 2 | SUPER (purple) | 18 | 1 | The beam gains reflection and refraction at once, +60% damage. |
+
+**Disruption Drone** ([Force field])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Cryo Core | 1 | normal | 1 | 2 | Slow +12%. |
+| Pulse Overclock | 1 | normal | 1 | 2 | Pulse rate +20%. |
+| Field Saturation | 1 | normal | 2 | 1 | Field area +20%. |
+| Defense Breach | 1 | evolution (purple) | 1 | 1 | Field pulses inflict [Vulnerable]. |
+| Disruption Stasis | 2 | normal | 6 | 1 | Slow +15%. |
+| Stasis Field | 2 | SUPER (purple) | 18 | 1 | Slow increased to 70%, pulses gain a slowing splash. |
+
+**Aeroblast** ([Physical])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Impact Enhancement | 1 | normal | 1 | 2 | Knockback +50%, DMG +30%. |
+| Rapid Blast | 1 | normal | 1 | 2 | Fire rate +20%. |
+| Compression | 1 | normal | 2 | 1 | Knockback +20%, Impact radius +20%. |
+| Air Storm | 1 | evolution (purple) | 1 | 1 | Impact area +50%, DMG +20%. |
+| Shockwave | 2 | normal | 6 | 1 | Air pellets +1. |
+| Hurricane | 2 | SUPER (purple) | 14 | 1 | Knockback is three times stronger, blasts gain a large splash. |
+
+**Thunderbolt** ([Electric])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Double Chain | 1 | normal | 1 | 3 | Chain targets +1. |
+| Storm Capacitor | 1 | normal | 1 | 2 | Fire rate +20%. |
+| Paralyzing Discharge | 1 | evolution (purple) | 1 | 1 | Lightning inflicts [Slow]. |
+| Discharge Storm | 2 | normal | 14 | 1 | Fire rate +25%. |
+| Thunderstorm | 2 | SUPER (purple) | 18 | 1 | +3 chain lightning targets and +50% damage. |
+
+**Beam** ([Energy])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| High-Frequency Beam | 1 | normal | 1 | 3 | Beam cooldown speed +30%. |
+| Beam Refraction | 1 | normal | 1 | 1 | On hit, the beam spawns refracted beams at nearby enemies. Refractions +2. |
+| Beam Resonance | 1 | normal | 1 | 2 | Beam series duration +35%. |
+| Beam Focus | 1 | normal | 2 | 1 | Repeated hits on the same target build damage up to +80%. |
+| Beam Penetration | 1 | evolution (purple) | 1 | 1 | All beams inflict [Vulnerable] on their targets. |
+| Stacking Damage | 2 | normal | 6 | 1 | The accumulated focus bonus is kept when switching targets. |
+| Concentrated Stream | 2 | normal | 14 | 1 | Focus cap raised to +300%. |
+| Annihilator | 2 | SUPER (purple) | 18 | 1 | +150% damage and +20% crit chance. |
+
+**Firewheel Drone** ([Fire])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Firewheel Stabilizer | 1 | normal | 1 | 3 | Disc flight time +2 s. |
+| Second Firefly | 1 | normal | 1 | 1 | Keeps two fire discs on the field instead of one. |
+| Flame Trail | 1 | evolution (purple) | 1 | 1 | The disc leaves burning areas behind it. |
+| Blazing Trail | 2 | normal | 6 | 1 | Disc DMG +25%. |
+| Extended Trail | 2 | normal | 14 | 1 | Disc flight time +3 s. |
+| Inferno | 2 | SUPER (purple) | 10 | 1 | Burning is 3 times stronger, ignite gains a splash. |
+
+**Hive** ([Force field])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Dense Swarm | 1 | normal | 1 | 2 | Wasps +2, DMG -15%. |
+| Rapid Barrage | 1 | normal | 1 | 3 | Wasp attack count +2. |
+| Swarm Assault | 1 | normal | 1 | 2 | Wasp DMG +50%. |
+| Swarm Echo | 1 | normal | 2 | 1 | On a kill, a wasp spawns 1 Echo Wasp I (50% DMG, max 1 per wasp). |
+| Wasp Evolution II | 1 | evolution (purple) | 1 | 1 | A Wasp I evolves into Wasp II (+50% DMG) after 3 attacks. |
+| Electro-Wasps | 2 | normal | 6 | 1 | Each wasp attack has a 50% chance to release a high-voltage shock at up to 2 nearby enemies (60% of the sting, Electric DMG). |
+| Echo Upgrade II | 2 | normal | 6 | 1 | Echo wasps evolve into Echo Wasp II (75% DMG). |
+| Echo Upgrade III | 2 | normal | 10 | 1 | Echo wasps deal full damage. |
+| Mother Swarm | 2 | SUPER (purple) | 18 | 1 | Drones are released in pairs and deal double damage. |
+
+**Railgun** ([Physical])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Armor Piercer | 1 | normal | 1 | 2 | Pierce +2. |
+| Rail Capacitor | 1 | normal | 1 | 2 | DMG +20%. |
+| Explosive Shells | 1 | evolution (purple) | 1 | 1 | Piercing projectiles explode over a small area. |
+| Piercing Impact | 2 | normal | 6 | 1 | Pierce +2. |
+| Shock Rail | 2 | normal | 14 | 1 | DMG +30%, Pierce +1. |
+| Piercing Volley | 2 | SUPER (purple) | 14 | 1 | The projectile pierces ALL enemies on its line, +80% damage. |
+
+**Tesla Coil** ([Electric])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Electro Chain | 1 | normal | 1 | 3 | Bounces +1, DMG -15%. |
+| Electro Acceleration | 1 | normal | 1 | 2 | Tesla cooldown speed +30%. |
+| Trap Matrix | 1 | evolution (purple) | 1 | 1 | A discharge leaves an electric matrix that damages enemies over time. |
+| Enhanced Matrix | 2 | normal | 6 | 1 | The matrix lasts longer and hits harder. |
+| Matrix Thunderbolt | 2 | normal | 10 | 1 | The matrix periodically paralyzes enemies. |
+| Overvoltage | 2 | SUPER (purple) | 18 | 1 | The discharge bounces across 6 targets, +60% damage. |
+
+**Gravity Vortex Gun** ([Force field])
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Field Amplifier | 1 | normal | 1 | 2 | Field DMG +30%. |
+| Event Horizon | 1 | normal | 1 | 2 | Field size +20%. |
+| Small Black Hole | 1 | evolution (purple) | 1 | 1 | Pull duration +1.2 s. |
+| Black Hole Expansion | 2 | normal | 6 | 1 | Radius +35%, Pull +20%. |
+| Destructive Black Hole | 2 | normal | 14 | 1 | The field inflicts [Vulnerable]. |
+| Black Singularity | 2 | SUPER (purple) | 10 | 1 | Field radius +50%, pull +35%, +40% field damage. |
+
+**Soldier "Bastion"** (Guardian = the reference bullet turret)
+
+| Card | Lv | Kind | R&D | Max | Effect |
+|---|---:|---|---:|---:|---|
+| Bullets Boost | 1 | normal | 1 | 2 | Bullet DMG +50%. |
+| Volley Shot | 1 | normal | 1 | 2 | Bullets +1, DMG -15%. |
+| Piercing Bullet | 1 | normal | 1 | 2 | Bullet penetration +1. |
+| Shotgun Evolution | 1 | evolution (purple) | 1 | 1 | Each shot scatters into 2 additional bullets in a real spread. |
+| Flame Bullet | 2 | normal | 6 | 1 | Bullets become flame bullets and deal extra fire damage over time on hit. |
+| Explosive Rounds | 2 | normal | 6 | 1 | Bullets deal area damage. |
+| Guardian Overdrive | 2 | normal | 14 | 1 | Fire rate +25%. |
+| Legendary Marksman | 2 | SUPER (purple) | 18 | 1 | +100% damage, +25% crit chance and +1 projectile per burst, across the whole field. |
+
+### Stage 1 balance after the card rework (`node tests/balance.cjs`, fresh R&D 1, 12 seeds)
+
+| Build | Sensible picks: wins / first victory | First card: wins / first victory | Mean breaches (sensible / first) |
+|---|---:|---:|---:|
+| Before the rework (`1433fde`, old cards, growth 0.06) | 0/12 / — | 0/12 / — | 27.6 / 35.0 |
+| New cards, old enemies (growth 0.06) | 9/12 / 2nd | 8/12 / 1st | 9.3 / 18.5 |
+| New cards, **growth 0.14 (current)** | **4/12 / 3rd** | **2/12 / 8th** | 23.9 / 31.3 |
+
+A wider 36-seed check (not in CI) gave sensible 27/36 → 11/36 and first-card 16/36 → 7/36 for growth 0.06 → 0.14; 0.12–0.16 all land at 7–18/36, the measurement is noisy. Outcomes are bimodal: runs either collapse on waves 5–9 or win cleanly, and early-wave pressure should be checked by hand. Spot checks with developed meta (6 seeds, sensible picks, growth 0.14): Stage 4 R&D 12 — 5/6 victories, Stage 9 R&D 30 — 5/6, Stage 12 R&D 45 — 5/6 (0.06: 6/6, 5/6, 6/6).
 
 ## Aeroblast usefulness check (round 5)
 
@@ -91,7 +263,7 @@ Running the tests from a **clean checkout**:
 node tests/smoke.cjs
 ```
 
-The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **55 tests**, including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
+The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **70 tests** (2026-11-10), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
 
 ## Known limitations and next iterations
 

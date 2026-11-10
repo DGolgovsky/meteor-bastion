@@ -122,7 +122,7 @@ function killEnemy(e){
  /* a golem mother splits into two shards on death (like the Alien Golem in Galaxy Defense) */
  if(e.cfg.id==="splitter"){
    var mini=ENEMIES.filter(function(x){return x.id==="mini";})[0];
-   var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*0.78*0.8;
+   var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*BALANCE.enemyHpMul*0.8;
    [-16,16].forEach(function(off){
      if(B.enemies.length>=MAX_ENEMIES)return;
       B.enemies.push({cfg:mini,kind:mini.kind,x:Math.max(16,Math.min(W-16,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
