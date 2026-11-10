@@ -431,6 +431,33 @@ test("Guardian: Piercing Bullet, Flame Bullet and Shotgun Evolution (the documen
   assert.ok(e.burnT > 0 && e.burnDps > 0, "Flame Bullet ignites the target");
 });
 
+test("draft shows the 5-slot level/pip row; Selected Cards overview opens from draft, pause and results", () => {
+  const { game: c, element } = harness();
+  c.META.music = false; c.META.sfx = false;
+  cardBattle(c);
+  const hive = c.mkUnit(c.TURRETS.find(t => t.id === "hive"), c.TURRET_X[0], 0, false);
+  c.B.turrets = [hive]; c.B.usedTypes.hive = 1;
+  c.B.pendingDrafts = 2; c.B.waveState = "draft";
+  c.applyCard({ kind: "card", u: hive, def: c.cardById("hive", "denseSwarm") });
+  const row = element("lu-build").innerHTML;
+  assert.equal((row.match(/class="slot/g) || []).length, 5, "five slots");
+  assert.equal((row.match(/class="slot empty/g) || []).length, 3, "three empty turret slots");
+  assert.equal((row.match(/pip p/g) || []).length, 5, "the 4th pip of each slot is purple");
+  assert.equal((row.match(/pip on/g) || []).length, 1, "one earned pip");
+  assert.ok(element("lu-cards") !== null);
+  c.openCardsOverview();
+  assert.ok(element("ov-cards").classList.contains("on"));
+  const grid = element("cards-grid").innerHTML;
+  assert.ok(grid.includes("Dense Swarm") && grid.includes("Wasps +2, DMG -15%") && grid.includes('class="mcard teal"'));
+  hive.pips = 3; c.B.pendingDrafts = 1;
+  c.applyCard({ kind: "card", u: hive, def: c.cardById("hive", "waspEvolution") });
+  c.openCardsOverview();
+  assert.ok(element("cards-grid").innerHTML.includes('class="mcard purple"'), "purple cards have a purple border");
+  assert.ok(shell.includes('id="btn-lu-cards"') && shell.includes('id="btn-pause-cards"') && shell.includes('id="btn-res-cards"'));
+  /* the field draws pips under every unit */
+  c.draw();
+});
+
 test("final boss appears even after the regular spawn queue is empty", () => {
   g.B = g.newBattle(g.STAGES[0]);
   g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);

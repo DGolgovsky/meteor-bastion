@@ -326,11 +326,18 @@ function drawUnit(t){
  if(t.isSoldier)drawGuardian(t,col);
  else(TURRET_DRAW[t.cfg.id]||drawGenericTurret)(t,col);
  ctx.restore();
- /* level under the unit, inside the field */
- ctx.fillStyle="#0a1420";ctx.fillRect(t.x-14,t.y+16,28,5);
- ctx.fillStyle=t.cfg.color;ctx.fillRect(t.x-14,t.y+16,28*Math.min(1,t.runLv/10),5);
+ /* level and the 4 card pips under the unit (3 teal + 1 purple, filled = earned) */
+ drawUnitPips(t);
  ctx.font="700 9px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#cfe8e2";
- ctx.fillText("Lv."+t.runLv,t.x,t.y+30);
+ ctx.fillText("Lv."+t.runLv,t.x,t.y+31);
+}
+function drawUnitPips(t){
+ var n=PIPS_PER_LV,step=7,x0=t.x-(n-1)*step/2,y=t.y+19;
+ for(var i=0;i<n;i++){
+  var cx=x0+i*step,last=i===n-1,on=i<(t.pips||0),col=last?"#a06bff":"#2ee6c8";
+  ctx.beginPath();ctx.moveTo(cx,y-3);ctx.lineTo(cx+3,y);ctx.lineTo(cx,y+3);ctx.lineTo(cx-3,y);ctx.closePath();
+  ctx.fillStyle=on?col:"#0a1420";ctx.fill();ctx.lineWidth=1;ctx.strokeStyle=col;ctx.stroke();
+ }
 }
 /* Battle HUD: a single row on a transparent background, with no backing or bars.
    Left to right: mode/stage, wave, average DPS, kills; the timer is on the right.

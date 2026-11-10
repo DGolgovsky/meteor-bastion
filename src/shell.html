@@ -102,6 +102,35 @@ canvas#cv{display:block;width:100%;height:auto;aspect-ratio:420/760;touch-action
 .ucard .ud{color:var(--muted);font-size:12.5px;margin-top:2px;line-height:1.35}
 .ucard .ud b{color:var(--text)}
 .cur-build{display:flex;gap:5px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+/* Card levels (reference "Selected Cards Overview"): teal = normal card, purple = evolution/SUPER */
+.ucard.teal{border-color:var(--teal)}
+.ucard.purple{border-color:var(--violet);background:linear-gradient(180deg,rgba(76,45,140,.35),var(--panel));box-shadow:0 0 14px rgba(160,107,255,.35)}
+.ucard.module{border-color:#5b7a8c}
+.ucard.purple .utag{background:#2c1c4d;color:#cdb2ff}
+.ucard .uicw{position:relative;flex:0 0 auto;width:52px;text-align:center}
+.ucard .uicw .uic{width:auto}
+.lvb{position:absolute;right:-2px;bottom:-2px;min-width:17px;height:17px;border-radius:5px;background:#0b2a2a;border:1px solid var(--teal);color:var(--teal);font-size:11px;font-weight:900;line-height:15px;text-align:center}
+.purple .lvb,.mcard.purple .lvb{border-color:var(--violet);color:#d8c4ff;background:#24163f}
+.ucard .uunit{display:block;font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:0 0 12px}
+.slot{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px 2px 5px;text-align:center;position:relative}
+.slot.empty{opacity:.45}
+.slot .sic{font-size:24px;line-height:28px}
+.slot .slv{position:absolute;left:4px;top:3px;font-size:11px;font-weight:900;color:var(--gold)}
+.slot .snm{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+.pips{display:flex;gap:3px;justify-content:center;margin-top:3px}
+.pip{width:8px;height:8px;transform:rotate(45deg);border:1.5px solid var(--teal);background:transparent;border-radius:1px}
+.pip.on{background:var(--teal)}
+.pip.p{border-color:var(--violet)} .pip.p.on{background:var(--violet)}
+.cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+.mcard{position:relative;background:var(--panel);border:2px solid var(--teal);border-radius:11px;padding:6px 5px 7px;text-align:center;min-height:118px}
+.mcard.purple{border-color:var(--violet);box-shadow:0 0 10px rgba(160,107,255,.3)}
+.mcard.module{border-color:#5b7a8c}
+.mcard .mt{font-size:11px;font-weight:800;line-height:1.15;min-height:26px;display:flex;align-items:center;justify-content:center}
+.mcard .mic{font-size:24px;line-height:30px;position:relative;display:inline-block;padding:0 8px}
+.mcard .md{font-size:9.5px;color:var(--muted);line-height:1.25}
+.mcard .mn{position:absolute;right:4px;top:3px;font-size:10px;font-weight:900;color:var(--gold)}
+.cempty{color:var(--muted);text-align:center;font-size:12px;grid-column:1/-1;padding:16px 0}
 .bchip{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:5px 8px;font-size:11.5px}
 .rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 #loop-error{display:none;position:fixed;left:8px;right:8px;top:8px;z-index:9999;background:#7f1d1d;color:#fff;font:12px monospace;padding:8px;border-radius:8px;white-space:pre-wrap;word-break:break-word}
@@ -366,7 +395,10 @@ table.stats td:first-child{text-align:left;font-weight:700}
     <p class="csub" id="lu-sub">Choose one of three upgrades</p>
     <div class="cur-build" id="lu-build"></div>
     <div id="lu-cards"></div>
-    <button class="btn" id="btn-reroll" style="width:100%">🔄 Reroll options (once per battle)</button>
+    <div class="btnrow">
+      <button class="btn" id="btn-reroll">🔄 Reroll (once per battle)</button>
+      <button class="btn" id="btn-lu-cards">📋 Selected cards</button>
+    </div>
   </div>
 </div>
 
@@ -380,6 +412,7 @@ table.stats td:first-child{text-align:left;font-weight:700}
     <p class="csub" style="margin-bottom:4px;font-weight:800;color:var(--text)">📊 Damage and average DPS</p>
     <table class="stats"><thead><tr><th>Unit</th><th>DMG</th><th>DPS</th></tr></thead><tbody id="res-stats"></tbody></table>
     <div class="btnrow">
+      <button class="btn" id="btn-res-cards">📋 Selected cards</button>
       <button class="btn" id="btn-res-back">← Back to base</button>
     </div>
   </div>
@@ -393,8 +426,20 @@ table.stats td:first-child{text-align:left;font-weight:700}
     <div id="pause-body"></div>
     <div class="btnrow" style="margin-top:10px">
       <button class="btn primary" id="btn-resume">▶ Resume</button>
+      <button class="btn" id="btn-pause-cards">📋 Cards</button>
       <button class="btn" id="btn-quit">Surrender</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ SELECTED CARDS OVERVIEW (from draft, pause and results) ============ -->
+<div class="overlay" id="ov-cards" style="z-index:60">
+  <div class="sheet">
+    <h2 style="color:var(--teal)">Selected Cards Overview</h2>
+    <p class="csub" id="cards-sub">Turret levels and every card picked in this battle</p>
+    <div class="slots" id="cards-slots"></div>
+    <div class="cgrid" id="cards-grid"></div>
+    <button class="btn primary" id="btn-cards-close" style="width:100%">Close</button>
   </div>
 </div>
 

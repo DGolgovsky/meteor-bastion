@@ -83,7 +83,7 @@ function renderCards(){
  curCards.forEach(function(c){
    var h=cardHTML(c);
    var b=document.createElement("button");b.className="ucard "+h.cls;
-   b.innerHTML='<span class="uic">'+h.icon+'</span><span><span class="un">'+h.name+'<span class="utag">'+h.tag+'</span></span><div class="ud">'+h.desc+'</div></span>';
+   b.innerHTML='<span class="uicw"><span class="uic">'+h.icon+'</span>'+(h.lvl?'<span class="lvb">'+h.lvl+'</span>':'')+'</span><span><span class="uunit">'+h.unit+'</span><span class="un">'+h.name+'<span class="utag">'+h.tag+'</span></span><div class="ud">'+h.desc+'</div></span>';
    b.addEventListener("click",function(){applyCard(c);});
    box.appendChild(b);
  });
@@ -133,12 +133,38 @@ function applyCard(c){
  else B.waveState="fighting";
  lastTs=performance.now();
 }
-/* Temporary build row (phase 1); replaced by the 5-slot level/pip row in the UI phase. */
-function renderSlotRow(el){
- el.innerHTML="";
- allFighters().forEach(function(t){var s=document.createElement("span");s.className="bchip";s.innerHTML=t.cfg.icon+" "+t.cfg.name+" <b>Lv."+t.runLv+"</b> "+pipText(t);el.appendChild(s);});
+/* 5-slot level/pip row, in field order: far left, center left, Guardian, center right, far right. */
+var SLOT_ROW_ORDER=[0,2,"soldier",3,1];
+function pipsHTML(t){
+ var h='<div class="pips">';
+ for(var i=0;i<PIPS_PER_LV;i++)h+='<i class="pip'+(i===PIPS_PER_LV-1?' p':'')+(i<t.pips?' on':'')+'"></i>';
+ return h+'</div>';
 }
+function slotRowHTML(){
+ return SLOT_ROW_ORDER.map(function(k){
+  var t=k==="soldier"?B.soldier:B.turrets.filter(function(u){return u.slot===k;})[0];
+  if(!t)return '<div class="slot empty"><div class="slv">&nbsp;</div><div class="sic">＋</div><div class="snm">Empty slot</div>'+pipsHTML({pips:0})+'</div>';
+  return '<div class="slot"><div class="slv">'+t.runLv+'</div><div class="sic">'+t.cfg.icon+'</div><div class="snm">'+t.cfg.name+'</div>'+pipsHTML(t)+'</div>';
+ }).join("");
+}
+function renderSlotRow(el){el.className="slots";el.innerHTML=slotRowHTML();}
 function pipText(t){var s="";for(var i=0;i<PIPS_PER_LV;i++)s+=i<t.pips?"◆":"◇";return s;}
+function openCardsOverview(){
+ if(!B)return;
+ renderSlotRow($("cards-slots"));
+ var list=B.picked||[];
+ $("cards-sub").textContent="Cards taken: "+B.drafts+" · unique: "+list.length;
+ $("cards-grid").innerHTML=list.length?list.map(function(p){
+  var cls=p.unit==="fortress"?"module":p.rare?"purple":"teal";
+  return '<div class="mcard '+cls+'">'+(p.n>1?'<span class="mn">×'+p.n+'</span>':'')+'<div class="mt">'+p.name+'</div>'+
+   '<div class="mic">'+p.icon+(p.lvl?'<span class="lvb">'+p.lvl+'</span>':'')+'</div><div class="md">'+p.desc+'</div></div>';
+ }).join(""):'<div class="cempty">No cards picked yet.</div>';
+ $("ov-cards").classList.add("on");
+}
+$("btn-cards-close").addEventListener("click",function(){$("ov-cards").classList.remove("on");lastTs=performance.now();});
+$("btn-lu-cards").addEventListener("click",openCardsOverview);
+$("btn-pause-cards").addEventListener("click",openCardsOverview);
+$("btn-res-cards").addEventListener("click",openCardsOverview);
 
 /* ==================== RESULTS ==================== */
 var lastRewards=null;
