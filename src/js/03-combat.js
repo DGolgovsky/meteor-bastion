@@ -215,7 +215,8 @@ function fireLaser(t,dt){
    B.enemies.forEach(function(e){if(!inRange(t,e)||seen.indexOf(e)>=0)return;var d=Math.hypot(e.x-cur.x,e.y-cur.y);if(d<dist){dist=d;nx=e;}});
    if(!nx)break;
    beamFx(cur.x,cur.y,nx.x,nx.y,"#86efac",2);
-   dealDamage(t,nx,t.cfg.damage*0.65*(t.laserPower||1),opts);
+   /* Laser Reflection: each further reflection deals 20% less (0.8, 0.64, 0.51 of a tick) */
+   dealDamage(t,nx,t.cfg.damage*tickCount*Math.pow(0.8,z+1)*(t.laserPower||1),opts);
    seen.push(nx);cur=nx;
   }
  }
@@ -223,15 +224,16 @@ function fireLaser(t,dt){
   var others=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
   if(others.length){var e2=others[0];beamFx(ox,oy,e2.x,e2.y,"#4ade80",2);dealDamage(t,e2,t.cfg.damage*0.7,opts);}
  }
+ /* Energy Surge: laserDeflect deflected lasers, each at a different enemy off the main line */
  if(t.laserDeflect>0){
-  var def=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;})[0];
-  if(def){beamFx(ox,oy,def.x,def.y,"#4ade80",1.8);dealDamage(t,def,t.cfg.damage*0.5,opts);}
+  var defl=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;}).slice(0,t.laserDeflect);
+  defl.forEach(function(d){beamFx(ox,oy,d.x,d.y,"#4ade80",1.8);dealDamage(t,d,t.cfg.damage*0.5,opts);});
  }
  if(t.laserSweep>0&&Math.random()<0.25){
-  /* the sweeping beam hits the second target DETERMINISTICALLY, the toughest
-     of the remaining ones rather than a random one, so the fire does not turn into scatter */
-  var candidate=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
-  if(candidate.length){var sw=candidate.reduce(function(a,b){return b.maxHp>a.maxHp?b:a;});beamFx(ox,oy,sw.x,sw.y,"#a7f3d0",2);dealDamage(t,sw,t.cfg.damage*0.8,opts);}
+  /* the sweeping beams hit DETERMINISTICALLY the toughest remaining targets
+     rather than random ones, so the fire does not turn into scatter (Additional Sweep: +1 beam) */
+  var candidate=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;}).sort(function(a,b){return b.maxHp-a.maxHp;}).slice(0,t.laserSweep);
+  candidate.forEach(function(sw){beamFx(ox,oy,sw.x,sw.y,"#a7f3d0",2);dealDamage(t,sw,t.cfg.damage*0.8,opts);});
  }
 }
 function fireFocusedBeam(t,dt){
@@ -259,7 +261,8 @@ function fireFocusedBeam(t,dt){
   t.angle=Math.atan2(target.y-t.y,target.x-t.x);
   var cap=t.beamFocusCap||0;
   var ramp=cap?1+Math.min(cap,t.beamRamp):1;
-  var opts=t.beamSlow?{slow:true,slowPow:0.3,vulnerable:!!t.laserVulnerable}:{vulnerable:!!t.laserVulnerable};
+  var bvul=!!(t.laserVulnerable||t.beamVulnerable);
+  var opts=t.beamSlow?{slow:true,slowPow:0.3,vulnerable:bvul}:{vulnerable:bvul};
   dealDamage(t,target,t.cfg.damage*1.45*(t.beamPower||1)*ramp,opts);
   beamFx(t.x,t.y-14,target.x,target.y,"#38bdf8",4);
   if(cap)t.beamRamp+=0.09;
@@ -269,9 +272,12 @@ function fireFocusedBeam(t,dt){
    beamFx(t.x,t.y-10,alt.x,alt.y,"#7dd7ff",1.8);
    dealDamage(t,alt,t.cfg.damage*0.75,{});
   }
-  if(t.refract){
-   var other=B.enemies.filter(function(e){return e!==target&&inRange(t,e);}).slice(0,2);
-   other.forEach(function(e){beamFx(target.x,target.y,e.x,e.y,"#38bdf8",1.5);dealDamage(t,e,t.cfg.damage*0.55,{});});
+  /* Beam Refraction: refracted beams jump from the target to the nearest other enemies */
+  var nref=t.beamRefractions||(t.refract?2:0);
+  if(nref>0){
+   var other=B.enemies.filter(function(e){return e!==target&&inRange(t,e);})
+    .sort(function(a,b){return Math.hypot(a.x-target.x,a.y-target.y)-Math.hypot(b.x-target.x,b.y-target.y);}).slice(0,nref);
+   other.forEach(function(e){beamFx(target.x,target.y,e.x,e.y,"#38bdf8",1.5);dealDamage(t,e,t.cfg.damage*0.55,{vulnerable:!!t.beamVulnerable});});
   }
  }
 }

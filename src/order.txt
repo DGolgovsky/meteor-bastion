@@ -7,5 +7,6 @@
 03-combat.js
 05-update.js
 06-render.js
+07-cards.js
 07-ui.js
 08-main.js

@@ -28,7 +28,7 @@ window.addEventListener("orientationchange",function(){setTimeout(fitCanvas,80);
 var B=null, raf=null, lastTs=0;
 function mkUnit(cfg,x,slot,isSoldier){
  var lv=META.levels[cfg.id],secondary=metaSecondary(lv),area={rocket:32,charge:42,knockback:40,slow:34};
- return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,cd:Math.random()*0.2,laserActive:0,angle:-Math.PI/2,recoil:0,handAlt:false,
+ return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,pips:0,cards:{},cd:Math.random()*0.2,laserActive:0,angle:-Math.PI/2,recoil:0,handAlt:false,
   metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:metaDamage(lv)*(isSoldier?1:BALANCE.turretBasePower)*(isSoldier?1:1+0.03*META.chips.core),haste:1+0.02*META.chips.speed,extraProj:0,
   pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?Math.floor((secondary-1)*5):0),
   chain:(cfg.effect==="chain"?2:0)+(cfg.id==="thunder"?Math.floor((secondary-1)*2):0),
@@ -36,7 +36,7 @@ function mkUnit(cfg,x,slot,isSoldier){
   beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:12,aeroPellets:5,
   laserTicks:0,laserTickT:0,laserTarget:null,beamTicks:0,beamTickT:0,beamTarget:null,beamRamp:0,
   chargeT:0,hiveCount:3,hiveAttacks:Math.round(7*secondary),wheelHits:Math.round(50*secondary),gravityRadius:Math.round(70*secondary),gravityPull:65,gravityDuration:3.5,gravityPower:1.0,
-  laserDeflect:0,laserSweep:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false,wheelMax:1};
+  laserDeflect:0,laserSweep:0,beamRefractions:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false,wheelMax:1};
 }
 function newBattle(stage){
  return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:!!stage.elite,championsKilled:0,championsSpawned:0,guardianGoalX:SOLDIER_X,
@@ -49,7 +49,7 @@ function newBattle(stage){
      (the first enemies of wave 1 are meteors worth 1 point each), then the pace slows with the waves. */
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
   enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],
-  shake:0,baseFlashT:0,baseHitTextT:0,waveDensity:{},maxUpwardOwn:0,pendingSuper:[],drafts:0,waveState:"intro",introT:1.2,
+  shake:0,baseFlashT:0,baseHitTextT:0,waveDensity:{},maxUpwardOwn:0,picked:[],drafts:0,waveState:"intro",introT:1.2,
   allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }
 function startBattle(){refillEnergy();

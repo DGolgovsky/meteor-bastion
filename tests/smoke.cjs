@@ -162,7 +162,7 @@ test("Firewheel spawns airborne bouncing discs", () => {
   assert.ok(g.B.wheels[0].life >= 9, "disc should live ~10s, got " + g.B.wheels[0].life);
   for (let i = 0; i < 5; i++) g.unitFire(u, 0.8);
   assert.equal(g.B.wheels.length, 1);
-  g.applyCard({ kind: "mod", u, mod: "wheelCount" });
+  g.applyCard({ kind: "card", u, def: g.cardById("firewheel", "wheelCount") });
   g.unitFire(u, 0.8);
   assert.equal(g.B.wheels.length, 2);
 });
@@ -199,46 +199,135 @@ test("Hive launches repeated-attack wasps", () => {
   assert.ok(g.B.drones[0].hits > 1);
 });
 
-test("every specialist card renders and applies without exceptions", () => {
-  const mods = {
-    laser: ["laserSweep", "laserDeflect", "laserDuration"],
-    beam: ["beamDuration", "beamFocus"],
-    tesla: ["teslaMatrix", "teslaMatrixPlus", "teslaBounce"],
-    hive: ["hiveCount", "hiveAttacks"],
-    firewheel: ["wheelDuration", "wheelCount"]
-  };
-  for (const [id, names] of Object.entries(mods)) {
-    for (const mod of names) {
-      g.B = g.newBattle(g.STAGES[0]);
-      g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
-      const u = g.mkUnit(g.TURRETS.find(t => t.id === id), 52, 0, false);
-      u.runLv = 3;
-      g.B.turrets = [u];
-      g.B.wave = 1;
-      g.B.waveState = "draft";
-      g.B.pendingDrafts = 1;
-      const card = { kind: "mod", u, mod };
-      assert.ok(g.cardHTML(card).desc, mod);
-      g.applyCard(card);
-      assert.ok(u.mods.includes(mod), mod);
+test("every declarative card renders and applies without exceptions", () => {
+  const { game: c } = harness();
+  c.META.music = false; c.META.sfx = false;
+  for (const id of Object.keys(c.META.levels)) c.META.levels[id] = 45;
+  for (const def of c.CARDS) {
+    c.B = c.newBattle(c.STAGES[0]);
+    c.B.soldier = c.mkUnit(c.SOLDIER_CFG, 210, -1, true);
+    const u = def.unit === "soldier" ? c.B.soldier : c.mkUnit(c.TURRETS.find(t => t.id === def.unit), 52, 0, false);
+    if (def.unit !== "soldier") c.B.turrets = [u];
+    u.runLv = def.lvl; u.pips = def.rare ? 3 : 0;
+    (def.req || []).forEach(r => u.mods.push(r));
+    c.B.wave = 1; c.B.waveState = "draft"; c.B.pendingDrafts = 1;
+    assert.ok(c.cardEligible(u, def), def.unit + ":" + def.id + " must be eligible");
+    const card = { kind: "card", u, def };
+    const h = c.cardHTML(card);
+    assert.ok(h.desc && h.name && h.tag, def.id);
+    assert.equal(h.cls, def.rare ? "purple" : "teal");
+    c.applyCard(card);
+    assert.equal(u.cards[def.id], 1, def.id);
+    if (def.rare) assert.equal(u.runLv, def.lvl + 1, def.id + " must level the unit up");
+  }
+});
+
+test("card text is generated from the same fx ops that apply the effect", () => {
+  for (const def of g.CARDS) {
+    const desc = g.cardDesc(def);
+    for (const op of def.fx) {
+      if (op.mul !== undefined) assert.ok(desc.includes(Math.abs(Math.round((op.mul - 1) * 100)) + "%"), def.id + ": " + desc);
+      if (op.add !== undefined && op.l) assert.ok(desc.includes(op.pct ? Math.round(op.add * 100) + "%" : String(op.add)), def.id + ": " + desc);
     }
   }
+  const t = g.cardById("hive", "denseSwarm");
+  assert.equal(g.cardDesc(t), "Wasps +2, DMG -15%.");
+  assert.equal(g.cardDesc(g.cardById("skyguard", "volleyMissile")), "Missiles +1, DMG -15%.");
+  assert.equal(g.cardDesc(g.cardById("laser", "laserAmplification")), "Laser DMG +50%.");
+});
+
+test("generic cards and SUPER-every-5-levels are gone; every unit has a level-1 purple at R&D 1", () => {
+  assert.equal(typeof g.CARD_CHAINS, "undefined");
+  assert.equal(typeof g.gainLevel, "undefined");
+  assert.ok(!/kind:"up"|kind:"mod"|kind:"chain"/.test(source), "old card kinds must be removed");
+  for (const cfg of g.allUnitsCfg()) {
+    const purple1 = g.CARDS.filter(d => d.unit === cfg.id && d.rare && d.lvl === 1);
+    const supers = g.CARDS.filter(d => d.unit === cfg.id && d.isSuper);
+    assert.equal(supers.length, 1, cfg.id + " SUPER");
+    assert.equal(supers[0].lvl, 2);
+    assert.equal(g.cardRd(supers[0]), g.rdTierUnlock(cfg.id));
+    const normal1 = g.CARDS.filter(d => d.unit === cfg.id && !d.rare && d.lvl === 1 && (d.rd || 1) <= 1);
+    const slots = normal1.reduce((s, d) => s + (d.max || 1), 0);
+    assert.ok(slots >= 3, cfg.id + " needs at least 3 level-1 pips reachable at R&D 1, has " + slots);
+    if (purple1.length) assert.ok(purple1.every(d => (d.rd || 1) <= 1), cfg.id + " level-1 purple must not need R&D");
+  }
+});
+
+test("pips: 3 normal cards force the purple card; it levels up; max level is 3", () => {
+  const { game: c } = harness();
+  c.META.music = false; c.META.sfx = false;
+  c.B = c.newBattle(c.STAGES[0]);
+  c.B.soldier = c.mkUnit(c.SOLDIER_CFG, 210, -1, true);
+  const u = c.mkUnit(c.TURRETS.find(t => t.id === "tesla"), 52, 0, false);
+  c.B.turrets = [u]; c.B.usedTypes.tesla = 1;
+  const take = def => { c.B.pendingDrafts = 1; c.B.waveState = "draft"; c.applyCard({ kind: "card", u, def }); };
+  assert.equal(u.runLv, 1); assert.equal(u.pips, 0);
+  assert.equal(c.purpleFor(u), null, "no purple before 3 pips");
+  take(c.cardById("tesla", "electroChain"));
+  take(c.cardById("tesla", "electroChain"));
+  assert.equal(u.pips, 2);
+  assert.ok(c.genCards().every(x => !(x.kind === "card" && x.def.rare)), "purple cards are never random");
+  take(c.cardById("tesla", "electroAcceleration"));
+  assert.equal(u.pips, 3);
+  const purple = c.purpleFor(u);
+  assert.equal(purple.id, "trapMatrix");
+  for (let i = 0; i < 20; i++) {
+    const cards = c.genCards();
+    assert.ok(cards.some(x => x.kind === "card" && x.u === u && x.def.id === "trapMatrix"), "purple card must be guaranteed");
+  }
+  take(c.cardById("tesla", "electroAcceleration"));
+  assert.equal(u.pips, 3, "pips do not overflow past 3 before the purple card");
+  const dmg = u.dmgMul;
+  take(purple);
+  assert.equal(u.runLv, 2); assert.equal(u.pips, 0);
+  assert.ok(Math.abs(u.dmgMul / dmg - (1 + c.BALANCE.levelUpDmg)) < 1e-9, "level-up damage bonus");
+  assert.ok(u.teslaMatrix);
+  /* level-2 cards need R&D 6; the SUPER needs rdTierUnlock */
+  assert.equal(c.cardEligible(u, c.cardById("tesla", "enhancedMatrix")), false);
+  c.META.levels.tesla = 6;
+  assert.equal(c.cardEligible(u, c.cardById("tesla", "enhancedMatrix")), true);
+  u.pips = 3;
+  assert.equal(c.purpleFor(u), null, "SUPER is gated by rdTierUnlock");
+  c.META.levels.tesla = c.rdTierUnlock("tesla");
+  assert.equal(c.purpleFor(u).isSuper, true);
+  take(c.purpleFor(u));
+  assert.equal(u.runLv, 3); assert.equal(u.pips, 4);
+  assert.equal(c.purpleFor(u), null, "level 3 is the maximum");
+  take(c.cardById("tesla", "enhancedMatrix"));
+  assert.equal(u.runLv, 3); assert.equal(u.pips, 4);
+  assert.ok(c.B.picked.length >= 4 && c.B.picked.find(p => p.id === "electroChain").n === 2, "picked cards are grouped with counts");
 });
 
 test("random three-card drafts always have valid display data", () => {
   for (const cfg of g.TURRETS) {
-    g.B = g.newBattle(g.STAGES[0]);
-    g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
-    const u = g.mkUnit(cfg, 52, 0, false);
-    u.runLv = 4;
-    g.B.turrets = [u];
-    g.B.usedTypes[cfg.id] = 1;
-    for (let i = 0; i < 100; i++) {
-      const cards = g.genCards();
-      assert.equal(cards.length, 3);
-      for (const card of cards) assert.ok(g.cardHTML(card).desc);
+    for (const lv of [1, 2, 3]) {
+      g.B = g.newBattle(g.STAGES[0]);
+      g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+      const u = g.mkUnit(cfg, 52, 0, false);
+      u.runLv = lv; u.pips = 3;
+      g.B.turrets = [u];
+      g.B.usedTypes[cfg.id] = 1;
+      for (let i = 0; i < 40; i++) {
+        const cards = g.genCards();
+        assert.equal(cards.length, 3);
+        for (const card of cards) assert.ok(g.cardHTML(card).desc);
+      }
     }
   }
+});
+
+test("a draft is never empty once every unit card is taken", () => {
+  g.B = g.newBattle(g.STAGES[0]);
+  g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
+  g.B.turrets = [0, 1, 2, 3].map(i => g.mkUnit(g.TURRETS[i], g.TURRET_X[i], i, false));
+  g.B.turrets.forEach(u => { g.B.usedTypes[u.cfg.id] = 1; });
+  g.allFighters().forEach(u => { u.runLv = 3; u.pips = 4; g.CARDS.forEach(d => { if (d.unit === u.cfg.id) u.cards[d.id] = 9; }); });
+  ["boost", "healm", "regenm", "jam"].forEach(m => { g.B.modulesUsed[m] = 1; });
+  const cards = g.genCards();
+  assert.equal(cards.length, 3);
+  assert.ok(cards.every(c => c.kind === "module" && c.modId === "patch"));
+  g.B.baseHp = 500; g.B.pendingDrafts = 1; g.applyCard(cards[0]);
+  assert.equal(g.B.baseHp, 620);
 });
 
 test("final boss appears even after the regular spawn queue is empty", () => {
@@ -414,27 +503,28 @@ test("12 campaign stages, 20/25/30 waves and saved progress", () => {
   assert.equal(late.B.bossSpawned,true,"stage 12 boss must spawn on wave 30");
 });
 
-test("R&D unlocks T1, T2 and T3 sequentially", () => {
+test("R&D gates migrated tier cards: T1 at R&D 2, level-2 cards at R&D 6/10 and in order", () => {
   const {game:rnd}=harness();
   rnd.META.music=false;rnd.META.sfx=false;
   rnd.startBattle();
-  const t=rnd.mkUnit(rnd.TURRETS.find(t=>t.id==="gravity"),52,0,false);
-  t.runLv=2;rnd.B.turrets=[t];rnd.B.pendingDrafts=1;
-  assert.equal(rnd.chainCandidates(t).length,0,"tier cards must not appear at R&D 1");
-  rnd.META.levels.gravity=2;
-  const t1=rnd.chainCandidates(t);
-  assert.equal(t1.length,1);assert.equal(t1[0].tier,1);
-  rnd.applyCard(t1[0]);
-  assert.equal(t.mods.includes("smallBlackHole"),true);
-  rnd.META.levels.gravity=6;
-  const t2=rnd.chainCandidates(t);
-  assert.equal(t2.length,1);assert.equal(t2[0].tier,2);
-  rnd.B.pendingDrafts=1;rnd.applyCard(t2[0]);
-  rnd.META.levels.gravity=14;
-  const t3=rnd.chainCandidates(t);
-  assert.equal(t3.length,1);assert.equal(t3[0].tier,3);
-  rnd.B.pendingDrafts=1;rnd.applyCard(t3[0]);
-  assert.ok(t.gravityShred);
+  const t=rnd.mkUnit(rnd.TURRETS.find(t=>t.id==="hive"),52,0,false);
+  rnd.B.turrets=[t];
+  const ids=()=>rnd.unitCards(t).map(d=>d.id);
+  assert.ok(!ids().includes("swarmEcho"),"Swarm Echo needs R&D 2");
+  rnd.META.levels.hive=2;
+  assert.ok(ids().includes("swarmEcho"));
+  rnd.B.pendingDrafts=1;rnd.applyCard({kind:"card",u:t,def:rnd.cardById("hive","swarmEcho")});
+  assert.equal(t.hiveEcho,1);
+  t.runLv=2;t.pips=0;
+  assert.ok(!ids().includes("echoUpgrade2"),"level-2 cards need R&D 6");
+  rnd.META.levels.hive=6;
+  assert.ok(ids().includes("echoUpgrade2"));
+  assert.ok(!ids().includes("echoUpgrade3"),"Echo III needs Echo II and R&D 10");
+  rnd.B.pendingDrafts=1;rnd.applyCard({kind:"card",u:t,def:rnd.cardById("hive","echoUpgrade2")});
+  rnd.META.levels.hive=10;
+  assert.ok(ids().includes("echoUpgrade3"));
+  t.runLv=1;
+  assert.ok(!ids().includes("echoUpgrade3"),"level-2 cards never appear on a level-1 unit");
 });
 
 test("Gravity Vortex creates damaging fields that pull enemies", () => {

@@ -57,6 +57,8 @@ var BALANCE={
  waveStart:24,waveGrowth:8.4,
  spawnBase:0.20,spawnReduction:0.002,spawnMin:0.06,formationCd:1.33,
  waveHpGrowth:0.06,bossHpGrowth:0.07,turretBasePower:1.6,
+ /* a purple card raises the unit level (max 3); each level-up multiplies its damage */
+ levelUpDmg:0.25,
  eliteHp:1.68,eliteSpeed:1.10,eliteContact:1.18,
  eliteWaveBase:6,eliteWaveGrowth:0.84,
  eliteChampionBaseChance:0.095,eliteChampionWaveChance:0.004,eliteChampionMaxChance:0.21,

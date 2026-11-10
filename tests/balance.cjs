@@ -109,13 +109,14 @@ function chooseCard(cards,policy){
  if(policy==="first")return cards[0];
  const ranks={skyguard:85,laser:82,tesla:81,hive:79,firewheel:76,aeroblast:73,beam:73,gravity:70,railgun:68,thunder:68,disruption:59};
  function value(c){
-  if(c.kind==="super")return 120;
+  if(c.kind==="card"&&c.def.rare)return 120; /* purple: evolution / SUPER, levels the unit up */
   if(c.kind==="new")return ranks[c.cfg.id]||65;
-  if(c.kind==="module")return c.modId==="healm"?83:30;
-  if(c.kind==="chain")return 84+(c.tier||0)*2;
+  if(c.kind==="module")return c.modId==="healm"?83:c.modId==="patch"?10:30;
   if(c.kind==="combo")return 75;
-  if(c.kind==="up")return 40+Math.min(40,c.u.totalDmg/700)+(c.u.isSoldier?4:0);
-  if(c.kind==="mod")return c.mod==="dmg"?60+Math.min(35,c.u.totalDmg/700):c.mod==="proj"?62:c.mod==="haste"?58:34;
+  if(c.kind==="card"){
+   const f=c.def.fx.find(op=>op.k==="dmgMul"&&op.mul>1);
+   return (c.def.lvl===2?70:50)+(f?12:0)+Math.min(35,c.u.totalDmg/700)+(c.u.isSoldier?4:0);
+  }
   return 20;
  }
  return cards.slice().sort((a,b)=>value(b)-value(a))[0];
