@@ -77,6 +77,8 @@ var TURRET_X=[52,368,128,292], SOLDIER_X=210, LINE_Y=720, BASEY=720, W=420, H=76
    line are not targeted; spawning (y=-30) is unchanged: an enemy becomes a target
    as soon as it drops below the line. */
 var VIS_TOP=30;
+/* How long (seconds) update() keeps a projectile's position history for its rendered trail; each weapon draws a shorter slice of it. */
+var PROJ_TRAIL_T=0.34;
 /* damage types per the Galaxy Defense wiki: Fire / Energy / Force-field / Physical / Electric */
 var DTYPES={skyguard:"fire",laser:"energy",disruption:"force",aeroblast:"phys",thunder:"electric",beam:"energy",firewheel:"fire",hive:"force",railgun:"phys",tesla:"electric",gravity:"force",soldier:"phys"};
 TURRETS.concat([SOLDIER_CFG]).forEach(function(t){t.dtype=DTYPES[t.id];});

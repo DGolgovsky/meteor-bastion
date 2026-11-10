@@ -221,6 +221,12 @@ function update(dt){
    }
    var p0x=pr.x,p0y=pr.y;
    pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
+   /* trail history for rendering only (x,y,t triplets): a point per ~3px of travel, pruned by AGE so the trail has the same length at any frame rate / game speed; consumes no RNG.
+      The last triplet is a "live head" that always sits exactly on the projectile (at 120 Hz a shot moves <3px per frame, so it is moved in place until it has travelled far enough to commit). */
+   var trh=pr.tr||(pr.tr=[]),trn=trh.length;
+   if(trn>=6&&Math.abs(trh[trn-6]-pr.x)+Math.abs(trh[trn-5]-pr.y)<3){trh[trn-3]=pr.x;trh[trn-2]=pr.y;trh[trn-1]=B.t;}
+   else trh.push(pr.x,pr.y,B.t);
+   while(trh.length>6&&B.t-trh[5]>PROJ_TRAIL_T)trh.splice(0,3);
    if(pr.src.cfg.effect==="rocket"&&Math.random()<dt*55)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.26,t:0,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2.2});
    if(pr.src.cfg.effect==="charge"&&Math.random()<dt*50)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*14-7,vy:Math.random()*14-7,life:0.24,t:0,color:"#a06bff",r:1.9});
    /* projectile trails: each type has its own */

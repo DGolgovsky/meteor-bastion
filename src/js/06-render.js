@@ -16,6 +16,50 @@ function tint(hex,amt){var key=hex+"|"+amt;if(_tintCache[key])return _tintCache[
  function f(c){return Math.max(0,Math.min(255,Math.round(amt<0?c*(1+amt):c+(255-c)*amt)));}
  return(_tintCache[key]="rgb("+f(R)+","+f(G)+","+f(Bl)+")");}
 function glowDot(x,y,r,c,blur){ctx.save();ctx.shadowColor=c;ctx.shadowBlur=blur||r*2.4;ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.fill();ctx.restore();}
+/* ---------- projectile rendering: tapered motion trails and gradient glows ----------
+   Glows are radial gradients instead of shadowBlur (crisper at high DPR, much cheaper on phones).
+   Trails come from p.tr, the position history recorded by update() (flat x,y,t triplets, pruned by age,
+   so the length does not depend on frame rate). A projectile without history yet (just fired) falls back
+   to a short straight streak along its velocity. Nothing here uses Math.random: flicker is a function of B.t. */
+var _glowCache={};
+function glowRgba(hex,a){var key=hex+"|"+a;if(_glowCache[key])return _glowCache[key];
+ if(!/^#[0-9a-f]{6}$/i.test(hex))return hex;
+ var n=parseInt(hex.slice(1),16);return(_glowCache[key]="rgba("+(n>>16)+","+((n>>8)&255)+","+(n&255)+","+a+")");}
+/* comet tail: widest at the projectile, tapering to nothing over `dur` seconds; w = full width at the head,
+   col = body colour, core = colour of a thin bright centre line (or falsy for none) */
+function projTrail(p,dur,w,col,core){
+ var tr=p.tr,pts;
+ if(tr&&tr.length>=6)pts=tr;else{var k=dur*0.6;pts=[p.x-p.vx*k,p.y-p.vy*k,B.t-k,p.x,p.y,B.t];}
+ var m=pts.length/3,s=0,i;
+ while(s<m-2&&B.t-pts[3*s+5]>=dur)s++; /* drop expired points, keeping one anchor so the tail has no visible cut */
+ var n=m-s,xs=[],ys=[],nx=[],ny=[],hw=[];
+ for(i=0;i<n;i++){
+  var a=3*(s+Math.max(i-1,0)),b=3*(s+Math.min(i+1,n-1)),dx=pts[b]-pts[a],dy=pts[b+1]-pts[a+1],d=Math.sqrt(dx*dx+dy*dy)||1;
+  xs.push(pts[3*(s+i)]);ys.push(pts[3*(s+i)+1]);nx.push(-dy/d);ny.push(dx/d);
+  hw.push(Math.max(0,1-(B.t-pts[3*(s+i)+2])/dur));
+ }
+ var hx=xs[n-1],hy=ys[n-1];
+ if(Math.abs(hx-xs[0])+Math.abs(hy-ys[0])<1.5)return;
+ var gc=ctx.createLinearGradient(xs[0],ys[0],hx,hy);gc.addColorStop(0,glowRgba(col,0));gc.addColorStop(1,glowRgba(col,1));
+ function ribbon(scale,style,alpha){
+  ctx.globalAlpha=alpha;ctx.fillStyle=style;ctx.beginPath();
+  for(i=0;i<n;i++){var h=w*0.5*scale*hw[i];if(i===0)ctx.moveTo(xs[i]+nx[i]*h,ys[i]+ny[i]*h);else ctx.lineTo(xs[i]+nx[i]*h,ys[i]+ny[i]*h);}
+  for(i=n-1;i>=0;i--){var h2=w*0.5*scale*hw[i];ctx.lineTo(xs[i]-nx[i]*h2,ys[i]-ny[i]*h2);}
+  ctx.closePath();ctx.fill();
+  if(scale<=1){ctx.beginPath();ctx.arc(hx,hy,w*0.5*scale,0,6.29);ctx.fill();} /* round head (solid layers only) */
+ }
+ ribbon(2.4,gc,0.18);ribbon(1,gc,0.88);
+ if(core){var gw=ctx.createLinearGradient(xs[0],ys[0],hx,hy);gw.addColorStop(0,glowRgba(core,0));gw.addColorStop(1,glowRgba(core,1));ribbon(0.38,gw,0.95);}
+ ctx.globalAlpha=1;
+}
+/* glowing head: soft radial halo, solid disc, bright centre */
+function projOrb(x,y,r,col,core){
+ var g=ctx.createRadialGradient(x,y,0,x,y,r*2.7);
+ g.addColorStop(0,glowRgba(col,0.6));g.addColorStop(0.4,glowRgba(col,0.22));g.addColorStop(1,glowRgba(col,0));
+ ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r*2.7,0,6.29);ctx.fill();
+ ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,r,0,6.29);ctx.fill();
+ if(core){ctx.fillStyle=core;ctx.beginPath();ctx.arc(x,y,r*0.45,0,6.29);ctx.fill();}
+}
 /* metal panel: vertical gradient, accent outline and a highlight along the top edge */
 function metal(x,y,w,h,col,r,lw){
  rrPath(x,y,w,h,r===undefined?1.6:r);
@@ -639,46 +683,59 @@ function draw(){
  B.wheels.forEach(function(w){ctx.save();ctx.translate(w.x,w.y);ctx.rotate(B.t*12);ctx.shadowColor="#ff8a3c";ctx.shadowBlur=18;ctx.strokeStyle="#ffb03c";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,14,0,6.29);ctx.stroke();for(var i=0;i<3;i++){var a=i*2.094;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);ctx.stroke();}ctx.restore();});
  allFighters().forEach(drawUnit);
  drawBaseHp();
- /* projectiles: each turret type has its own silhouette and glow */
+ /* projectiles: each weapon keeps its own silhouette; all share tapered trails and gradient glows */
  B.projs.forEach(function(p){
    var id=p.src.cfg.id,col=p.src.cfg.color;
-   ctx.save();ctx.shadowColor=col;
-   if(id==="skyguard"){ /* rocket: body along the flight path, nose cone and fiery exhaust */
+   ctx.save();ctx.lineCap="round";
+   if(id==="skyguard"){ /* rocket: smoky trail, flame cone, body along the flight path, nose cone */
+     projTrail(p,0.30,5.4,"#ff8a3c","#ffe08a");
+     var fl=0.5+0.5*Math.sin(B.t*70+p.x*0.37);
      ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy,p.vx));
-     ctx.shadowBlur=8;ctx.fillStyle="#e5edf5";ctx.fillRect(-7,-2.6,13,5.2);
+     ctx.fillStyle="#ff8a3c";ctx.beginPath();ctx.moveTo(-7,-3.2);ctx.lineTo(-15-fl*6,0);ctx.lineTo(-7,3.2);ctx.closePath();ctx.fill();
+     ctx.fillStyle="#ffe08a";ctx.beginPath();ctx.moveTo(-7,-1.8);ctx.lineTo(-11.5-fl*3,0);ctx.lineTo(-7,1.8);ctx.closePath();ctx.fill();
+     ctx.fillStyle="#e5edf5";ctx.fillRect(-7,-2.6,13,5.2);
      ctx.fillStyle="#ff5470";ctx.beginPath();ctx.moveTo(6,-2.6);ctx.lineTo(11,0);ctx.lineTo(6,2.6);ctx.closePath();ctx.fill();
      ctx.fillStyle="#5b7a8c";ctx.fillRect(-7,-4.6,3.4,2);ctx.fillRect(-7,2.6,3.4,2);
-     ctx.shadowColor="#ff8a3c";ctx.shadowBlur=12;ctx.fillStyle="#ffb03c";ctx.beginPath();ctx.arc(-8.6,0,3.4+Math.random()*1.3,0,6.29);ctx.fill();
-   }else if(id==="tesla"){ /* flying energy charge: a purple sphere with a white core and sparks */
-     ctx.shadowColor="#a06bff";ctx.shadowBlur=16;ctx.fillStyle="#a06bff";ctx.beginPath();ctx.arc(p.x,p.y,5.8,0,6.29);ctx.fill();
-     ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.3,0,6.29);ctx.fill();
+     projOrb(-8,0,2.6+fl*0.8,"#ffb03c","#fff1b0");
+   }else if(id==="tesla"){ /* flying energy charge: purple plasma ribbon, a sphere with a white core and sparks */
+     projTrail(p,0.20,6,"#a06bff","#e9d5ff");
+     projOrb(p.x,p.y,5.8,"#a06bff","#ffffff");
      ctx.strokeStyle="rgba(216,180,254,.8)";ctx.lineWidth=1.5;ctx.beginPath();
      ctx.moveTo(p.x-p.vx*.04,p.y-p.vy*.04);
      ctx.lineTo(p.x-p.vx*.027+Math.sin(B.t*40)*3,p.y-p.vy*.027);
      ctx.lineTo(p.x-p.vx*.014-Math.sin(B.t*45)*3,p.y-p.vy*.014);
      ctx.lineTo(p.x,p.y);ctx.stroke();
-     ctx.strokeStyle="rgba(216,180,254,.9)";ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(p.x-3,p.y-6);ctx.lineTo(p.x+1,p.y-10-Math.random()*3);ctx.moveTo(p.x+4,p.y+3);ctx.lineTo(p.x+8+Math.random()*3,p.y+6);ctx.stroke();
-   }else if(id==="railgun"){ /* long pink trail streak and a white core */
-     ctx.lineWidth=3.5;ctx.shadowBlur=10;ctx.strokeStyle=col;
-     ctx.beginPath();ctx.moveTo(p.x-p.vx*0.12,p.y-p.vy*0.12);ctx.lineTo(p.x,p.y);ctx.stroke();
-     ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,6.29);ctx.fill();
-   }else if(id==="disruption"){ /* pulsing impulse ring */
-     ctx.lineWidth=2;ctx.shadowBlur=8;ctx.strokeStyle=col;
-     ctx.globalAlpha=Math.max(.25,p.life/2.6);ctx.beginPath();ctx.arc(p.x,p.y,4+(2.6-p.life)/2.6*8,0,6.29);ctx.stroke();
+     ctx.strokeStyle="rgba(216,180,254,.9)";ctx.lineWidth=1.1;ctx.beginPath();
+     ctx.moveTo(p.x-3,p.y-6);ctx.lineTo(p.x+1,p.y-10-1.5*(1+Math.sin(B.t*61+p.y)));
+     ctx.moveTo(p.x+4,p.y+3);ctx.lineTo(p.x+8+1.5*(1+Math.sin(B.t*53+p.x)),p.y+6);ctx.stroke();
+   }else if(id==="railgun"){ /* long pink streak tapering to nothing, white-hot core */
+     projTrail(p,0.13,6,col,"#ffffff");
+     projOrb(p.x,p.y,2.8,col,"#ffffff");
+   }else if(id==="disruption"){ /* pulsing impulse ring with a soft fill and a faint wake */
+     var dr=4+(2.6-p.life)/2.6*8,dg=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,dr);
+     projTrail(p,0.14,3,col,false);
+     dg.addColorStop(0,glowRgba(col,0));dg.addColorStop(1,glowRgba(col,0.3));
+     ctx.globalAlpha=Math.max(.25,p.life/2.6);
+     ctx.fillStyle=dg;ctx.beginPath();ctx.arc(p.x,p.y,dr,0,6.29);ctx.fill();
+     ctx.lineWidth=2;ctx.strokeStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,dr,0,6.29);ctx.stroke();
      ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,2,0,6.29);ctx.fill();
-   }else if(id==="aeroblast"){ /* spinning air arc vortex */
-     ctx.lineWidth=2.6;ctx.shadowBlur=6;ctx.strokeStyle=col;
-     var a0=B.t*18+p.x*0.05;ctx.beginPath();ctx.arc(p.x,p.y,6.5,a0,a0+4.2);ctx.stroke();
-   }else if(id==="beam"){ /* heavy energy charge with a white core */
-     ctx.shadowBlur=16;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,5.6+Math.min(2,p.src.beamRamp||0)*1.5,0,6.29);ctx.fill();
-     ctx.shadowBlur=0;ctx.fillStyle="#ffffff";ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,6.29);ctx.fill();
-   }else if(id==="firewheel"){ /* fireball */
-     ctx.shadowColor="#ff8a3c";ctx.shadowBlur=13;ctx.fillStyle="#ffb03c";ctx.beginPath();ctx.arc(p.x,p.y,4.6,0,6.29);ctx.fill();
-     ctx.shadowBlur=0;ctx.fillStyle="#ff8a3c";ctx.beginPath();ctx.arc(p.x,p.y,2.4,0,6.29);ctx.fill();
-   }else{ /* tracers: Sky Guard yellow, soldier gold, shorter/longer */
-     ctx.lineWidth=id==="soldier"?3.2:2;ctx.shadowBlur=id==="soldier"?10:6;ctx.strokeStyle=id==="soldier"?"#ffd34d":col;
-     var tl=id==="soldier"?0.07:0.03;
-     ctx.beginPath();ctx.moveTo(p.x-p.vx*tl,p.y-p.vy*tl);ctx.lineTo(p.x,p.y);ctx.stroke();
+   }else if(id==="aeroblast"){ /* spinning air arc vortex with a speed-line wake */
+     projTrail(p,0.14,4,col,false);
+     var a0=B.t*18+p.x*0.05;
+     ctx.lineWidth=2.6;ctx.strokeStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,6.5,a0,a0+4.2);ctx.stroke();
+     ctx.lineWidth=1;ctx.strokeStyle="#ffffff";ctx.globalAlpha=.75;ctx.beginPath();ctx.arc(p.x,p.y,6.5,a0+1.4,a0+3.2);ctx.stroke();
+   }else if(id==="beam"){ /* heavy energy charge with a white core; grows with the ramp */
+     var br=5.6+Math.min(2,p.src.beamRamp||0)*1.5;
+     projTrail(p,0.16,br*1.5,col,"#ffffff");
+     projOrb(p.x,p.y,br,col,"#ffffff");
+   }else if(id==="firewheel"){ /* fireball with a flame tail */
+     var ff=0.5+0.5*Math.sin(B.t*55+p.x*0.5+p.y*0.3);
+     projTrail(p,0.22,7,"#ff8a3c","#ffe08a");
+     projOrb(p.x,p.y,4.4+ff*0.6,"#ffb03c","#fff1b0");
+   }else{ /* tracers: soldier gold (long, bold), other bullets shorter */
+     var sol=id==="soldier",tc=sol?"#ffd34d":col;
+     projTrail(p,sol?0.10:0.06,sol?4.8:2.8,tc,"#ffffff");
+     projOrb(p.x,p.y,sol?2.3:1.5,tc,"#ffffff");
    }
    ctx.restore();
  });

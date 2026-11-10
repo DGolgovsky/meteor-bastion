@@ -945,6 +945,18 @@ test("results show every material grant, biggest first", () => {
   assert.ok(!html.includes("Materials: Hive"),"zero grant must stay hidden");
 });
 
+test("a throwing frame does not kill the game loop", () => {
+  const {game:h,element}=harness();h.startBattle();
+  var orig=h.update;
+  h.update=function(){throw new Error("boom-test");};
+  h.loop(16);h.loop(32);
+  assert.ok(h.B.loopError&&h.B.loopError.indexOf("boom-test")>=0,"loop must record the error");
+  assert.ok(element("loop-error").textContent.indexOf("boom-test")>=0,"error banner must show the error");
+  h.update=orig;
+  h.loop(48); /* must not throw: the loop survives and keeps running */
+  assert.ok(h.B.loopError&&h.B.loopError.indexOf("boom-test")>=0,"error stays recorded until dismissed");
+});
+
 /* ---------- model rendering ---------- */
 function drawScene(game,setup){
   game.B=game.newBattle(game.STAGES[0]);game.B.waveState="fighting";game.B.wave=3;game.B.t=1.7;
@@ -999,6 +1011,63 @@ test("Ordinary enemies of the same type do not share one identical silhouette", 
   drawScene(h,g2=>{for(let i=0;i<6;i++){const m=enemyOf(g2,"meteor",40+i*60,200);m.phase=0.9+i*1.07;g2.B.enemies.push(m);}});
   const shapes=new Set(h.B.enemies.map(e=>JSON.stringify(e.shp)));
   assert.ok(shapes.size>=5,"meteors must vary in shape, got "+shapes.size+" distinct");
+});
+
+/* ---------- projectile rendering ---------- */
+function projScene(h,withHistory){
+  h.B=h.newBattle(h.STAGES[0]);h.B.waveState="fighting";h.B.wave=3;h.B.t=1.7;h.B.draftNeed=1e9;
+  h.B.soldier=h.mkUnit(h.SOLDIER_CFG,210,-1,true);
+  const cfgs=h.TURRETS.concat([h.SOLDIER_CFG]);
+  cfgs.forEach((cfg,i)=>{
+    const u=h.mkUnit(cfg,40+i*30,i%4,cfg===h.SOLDIER_CFG);
+    for(const a of [-2.9,-1.57,-0.4,0]){
+      const sp=cfg.projSpeed||300,vx=Math.cos(a)*sp,vy=Math.sin(a)*sp,x=60+i*28,y=300+a*20;
+      const pr={x,y,vx,vy,src:u,dmg:1,pierce:0,hitSet:[],life:2,tgt:null};
+      if(withHistory===true)pr.tr=[x-vx*.2,y-vy*.2,h.B.t-.2, x-vx*.1,y-vy*.1,h.B.t-.1, x,y,h.B.t];
+      if(withHistory==="one")pr.tr=[x,y,h.B.t];     /* a single point: not enough for a ribbon */
+      if(withHistory==="empty")pr.tr=[];
+      h.B.projs.push(pr);
+    }
+  });
+  /* a stationary projectile and one with an expired-only history must not break the ribbon maths */
+  const u0=h.mkUnit(h.TURRETS[0],100,0,false);
+  h.B.projs.push({x:50,y:50,vx:0,vy:0,src:u0,dmg:1,pierce:0,hitSet:[],life:2,tgt:null,tr:[50,50,0, 50,50,0.1]});
+}
+
+test("Every projectile type draws with a full, partial, empty or missing trail history", () => {
+  const {game:h}=harness();
+  for(const mode of [true,"one","empty",false]){projScene(h,mode);h.draw();h.draw();}
+});
+
+test("Projectile trail history is recorded by update(), bounded, and the same length at any frame rate", () => {
+  const spanAt=dt=>{
+    const {game:h}=harness();
+    h.B=h.newBattle(h.STAGES[0]);h.B.draftNeed=1e9;
+    h.B.soldier=h.mkUnit(h.SOLDIER_CFG,210,-1,true);
+    h.startWave(1);h.B.waveState="fighting";
+    const u=h.mkUnit(h.TURRETS.find(t=>t.id==="railgun"),100,0,false);
+    const pr={x:20,y:700,vx:0,vy:-300,src:u,dmg:1,pierce:0,hitSet:[],life:5,tgt:null};
+    h.B.projs.push(pr);
+    for(let i=0;i<Math.round(1/dt);i++)h.update(dt);
+    assert.ok(h.B.projs.includes(pr),"the test projectile must still be in flight");
+    assert.equal(pr.tr.length%3,0,"history is x,y,t triplets");
+    assert.ok(pr.tr.length/3<=60,"history must stay bounded, got "+pr.tr.length/3+" points");
+    assert.equal(pr.tr[pr.tr.length-3],pr.x,"the newest point is the projectile itself");
+    assert.equal(pr.tr[pr.tr.length-2],pr.y);
+    return pr.tr[pr.tr.length-1]-pr.tr[2];
+  };
+  const T=harness().game.PROJ_TRAIL_T,spans=[1/30,1/60,1/120].map(spanAt);
+  spans.forEach(sp=>assert.ok(sp>=T-1e-6&&sp<=T+0.1,"history span "+sp+" should be ~"+T));
+  assert.ok(Math.max(...spans)-Math.min(...spans)<0.1,"span must not depend on frame rate: "+spans);
+});
+
+test("Drawing projectiles consumes no random numbers (flicker is a function of time)", () => {
+  const {game:h}=harness();
+  const orig=h.Math.random;let calls=0;h.Math.random=()=>{calls++;return orig();};
+  projScene(h,true);h.B.projs.length=0;calls=0;h.draw();const baseline=calls;
+  projScene(h,true);calls=0;h.draw();
+  assert.ok(h.B.projs.length>40);
+  assert.equal(calls,baseline,"projectile drawing must not call Math.random");
 });
 
 console.log("\n" + tests.length + " smoke tests passed.");
