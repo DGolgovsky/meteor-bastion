@@ -672,10 +672,13 @@ function draw(){
  B.drones.forEach(function(d){
    var flap=Math.sin(B.t*46+d.x*0.7)*0.5;
    ctx.save();ctx.translate(d.x,d.y);
+   /* evolved wasps (Wasp II / Echo Wasp II) are larger and orange-tinted */
+   var evo=d.evolved||(d.isEcho&&d.src&&d.src.hiveEcho>=2);
+   if(evo)ctx.scale(1.25,1.25);
    ctx.fillStyle="rgba(220,240,255,.8)";
    ctx.beginPath();ctx.ellipse(-3,-4.6,4.8,2.1,-0.7-flap*0.35,0,6.29);ctx.fill();
    ctx.beginPath();ctx.ellipse(3,-4.6,4.8,2.1,0.7+flap*0.35,0,6.29);ctx.fill();
-   ctx.fillStyle=d.isEcho?"#b7baff":"#facc15";ctx.beginPath();ctx.ellipse(0,0,7.1,4.4,0,0,6.29);ctx.fill();
+   ctx.fillStyle=d.isEcho?(evo?"#c7b2ff":"#b7baff"):(d.evolved?"#fb923c":"#facc15");ctx.beginPath();ctx.ellipse(0,0,7.1,4.4,0,0,6.29);ctx.fill();
    ctx.fillStyle="#191919";ctx.fillRect(-3,-4.1,2.3,8.2);ctx.fillRect(0.9,-4.1,2.3,8.2);
    ctx.fillStyle="#fff7cc";ctx.beginPath();ctx.arc(5.2,0,1.7,0,6.29);ctx.fill();ctx.strokeStyle="#e5ba39";ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(-10,1.5);ctx.stroke();
    ctx.restore();
@@ -690,7 +693,7 @@ function draw(){
    if(id==="skyguard"){ /* rocket: smoky trail, flame cone, body along the flight path, nose cone */
      projTrail(p,0.30,5.4,"#ff8a3c","#ffe08a");
      var fl=0.5+0.5*Math.sin(B.t*70+p.x*0.37);
-     ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy,p.vx));
+     ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy,p.vx));if(p.mini)ctx.scale(0.6,0.6);
      ctx.fillStyle="#ff8a3c";ctx.beginPath();ctx.moveTo(-7,-3.2);ctx.lineTo(-15-fl*6,0);ctx.lineTo(-7,3.2);ctx.closePath();ctx.fill();
      ctx.fillStyle="#ffe08a";ctx.beginPath();ctx.moveTo(-7,-1.8);ctx.lineTo(-11.5-fl*3,0);ctx.lineTo(-7,1.8);ctx.closePath();ctx.fill();
      ctx.fillStyle="#e5edf5";ctx.fillRect(-7,-2.6,13,5.2);

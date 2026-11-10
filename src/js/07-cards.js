@@ -34,6 +34,8 @@ var CARDS=[
  /* ---- Sky Guard (Fire) ---- */
  {id:"volleyMissile",unit:"skyguard",name:"Volley Missile",lvl:1,max:2,fx:[{k:"extraProj",add:1,l:"Missiles"},{k:"dmgMul",mul:0.85,l:"DMG"}]},
  {id:"explosionSpread",unit:"skyguard",name:"Explosion Spread",lvl:1,max:2,fx:[{k:"splash",mul:1.3,l:"Explosion range"}]},
+ {id:"impactReinforcement",unit:"skyguard",name:"Impact Reinforcement",lvl:1,text:"After a hit, the missile launches 3 small missiles that deal impact damage only.",fx:[{k:"impactReinforce",set:3}]},
+ {id:"impactMultiplier",unit:"skyguard",name:"Impact Multiplier",lvl:1,rare:true,text:"All Sky Guard missiles:",fx:[{k:"impactMul",add:2,pct:1,base:1,l:"Impact DMG"}]},
  {id:"thermalWarhead",unit:"skyguard",name:"Thermal Warhead",lvl:2,rd:14,text:"Missile explosions set enemies on fire.",fx:[{k:"rocketBurn",set:true}]},
  /* ---- Laser (Energy) ---- */
  {id:"laserAmplification",unit:"laser",name:"Laser Amplification",lvl:1,max:2,fx:[{k:"dmgMul",mul:1.5,l:"Laser DMG"}]},
@@ -42,6 +44,8 @@ var CARDS=[
  {id:"stableEnergy",unit:"laser",name:"Stable Energy",lvl:1,max:2,fx:[{k:"laserDurationMul",add:0.4,pct:1,base:1,l:"Laser duration"}]},
  {id:"additionalSweep",unit:"laser",name:"Additional Sweep",lvl:1,max:2,text:"Fires 1 additional sweeping laser at the toughest remaining enemy.",fx:[{k:"laserSweep",add:1,cap:2}]},
  {id:"refractingLens",unit:"laser",name:"Refracting Lens",lvl:1,text:"The beam refracts at the target: two side branches hit nearby enemies for 50% damage.",fx:[{k:"refract",set:true}]},
+ {id:"highEnergyPulse",unit:"laser",name:"High-Energy Pulse",lvl:1,rare:true,text:"The laser hits a twice wider band.",fx:[{k:"laserBandMul",add:1,pct:1,base:1,l:"Laser DMG range"}]},
+ {id:"slowLaser",unit:"laser",name:"Slow Laser",lvl:2,rd:6,text:"Enemies hit by deflected, reflected and sweeping lasers get [Slow] (30%).",fx:[{k:"laserSlow",set:true}]},
  {id:"laserVulnerable",unit:"laser",name:"Vulnerability Mark",lvl:1,rd:2,text:"Repeated laser hits make enemies [Vulnerable]: up to +30% incoming damage.",fx:[{k:"laserVulnerable",set:true}]},
  /* ---- Beam (Energy) ---- */
  {id:"highFrequencyBeam",unit:"beam",name:"High-Frequency Beam",lvl:1,max:3,fx:[{k:"haste",mul:1.3,l:"Beam cooldown speed"}]},
@@ -56,6 +60,8 @@ var CARDS=[
  {id:"rapidBarrage",unit:"hive",name:"Rapid Barrage",lvl:1,max:3,fx:[{k:"hiveAttacks",add:2,l:"Wasp attack count"}]},
  {id:"swarmAssault",unit:"hive",name:"Swarm Assault",lvl:1,max:2,fx:[{k:"dmgMul",mul:1.5,l:"Wasp DMG"}]},
  {id:"swarmEcho",unit:"hive",name:"Swarm Echo",lvl:1,rd:2,text:"On a kill, a wasp spawns 1 Echo Wasp I (50% DMG, max 1 per wasp).",fx:[{k:"hiveEcho",set:1}]},
+ {id:"waspEvolution",unit:"hive",name:"Wasp Evolution II",lvl:1,rare:true,text:"A Wasp I evolves into Wasp II (+50% DMG) after 3 attacks.",fx:[{k:"waspEvolve",set:3}]},
+ {id:"electroWasps",unit:"hive",name:"Electro-Wasps",lvl:2,rd:6,text:"Each wasp attack has a 50% chance to release a high-voltage shock at up to 2 nearby enemies (60% of the sting, Electric DMG).",fx:[{k:"electroWasps",set:true}]},
  {id:"echoUpgrade2",unit:"hive",name:"Echo Upgrade II",lvl:2,rd:6,req:["swarmEcho"],text:"Echo wasps evolve into Echo Wasp II (75% DMG).",fx:[{k:"hiveEcho",set:2}]},
  {id:"echoUpgrade3",unit:"hive",name:"Echo Upgrade III",lvl:2,rd:10,req:["echoUpgrade2"],text:"Echo wasps deal full damage.",fx:[{k:"hiveEcho",set:3}]},
  /* ---- Tesla Coil (Electric) ---- */
@@ -103,6 +109,8 @@ var CARDS=[
  {id:"bulletsBoost",unit:"soldier",name:"Bullets Boost",lvl:1,max:2,fx:[{k:"dmgMul",mul:1.5,l:"Bullet DMG"}]},
  {id:"volleyShot",unit:"soldier",name:"Volley Shot",lvl:1,max:2,fx:[{k:"extraProj",add:1,l:"Bullets"},{k:"dmgMul",mul:0.85,l:"DMG"}]},
  {id:"piercingBullet",unit:"soldier",name:"Piercing Bullet",lvl:1,max:2,fx:[{k:"pierce",add:1,l:"Bullet penetration"}]},
+ {id:"shotgunEvolution",unit:"soldier",name:"Shotgun Evolution",lvl:1,rare:true,text:"Each shot scatters into 2 additional bullets in a real spread.",fx:[{k:"shotgunSpread",set:2}]},
+ {id:"flameBullet",unit:"soldier",name:"Flame Bullet",lvl:2,rd:6,text:"Bullets become flame bullets and deal extra fire damage over time on hit.",fx:[{k:"flameBullet",set:true}]},
  {id:"guardianExplosion",unit:"soldier",name:"Explosive Rounds",lvl:2,rd:6,text:"Bullets deal area damage.",fx:[{k:"splash",set:34}]},
  {id:"guardianOverdrive",unit:"soldier",name:"Guardian Overdrive",lvl:2,rd:14,fx:[{k:"haste",mul:1.25,l:"Fire rate"}]}
 ];

@@ -330,6 +330,107 @@ test("a draft is never empty once every unit card is taken", () => {
   assert.equal(g.B.baseHp, 620);
 });
 
+function cardBattle(c) {
+  c.B = c.newBattle(c.STAGES[0]);
+  c.B.soldier = c.mkUnit(c.SOLDIER_CFG, 210, -1, true);
+  c.B.wave = 3; c.B.waveState = "fighting"; c.B.waveQueue = 1; c.B.spawnT = 999;
+}
+test("Impact Multiplier triples only the missile impact; Impact Reinforcement launches 3 impact-only small missiles", () => {
+  cardBattle(g);
+  const sg = g.mkUnit(g.TURRETS.find(t => t.id === "skyguard"), 52, 0, false);
+  sg.critBonus = -1; sg.dmgMul = 1; g.B.turrets = [sg];
+  const a = sampleEnemy(g, 400), far = sampleEnemy(g, 400); far.x = 400;
+  g.B.enemies = [a, far];
+  g.applyHit({ src: sg, dmg: 100 }, a);
+  const base = 1000 - a.hp;
+  a.hp = 1000;
+  g.applyCardDef(g.cardById("skyguard", "impactMultiplier"), sg);
+  assert.equal(sg.impactMul, 3);
+  g.applyHit({ src: sg, dmg: 100 }, a);
+  const boosted = 1000 - a.hp;
+  const r = g.ENEMIES[0].res.fire;
+  assert.ok(Math.abs((boosted - base) - 100 * 0.55 * 2 * r) < 1e-6, "only the impact part grows: " + base + " -> " + boosted);
+  g.applyCardDef(g.cardById("skyguard", "impactReinforcement"), sg);
+  const before = g.B.projs.length;
+  g.applyHit({ src: sg, dmg: 100 }, a);
+  const minis = g.B.projs.slice(before);
+  assert.equal(minis.length, 3);
+  assert.ok(minis.every(m => m.mini && Math.abs(m.dmg - 50) < 1e-9));
+  const hp = far.hp, n = g.B.projs.length;
+  g.applyHit(minis[0], far);
+  assert.equal(g.B.projs.length, n, "small missiles never spawn more missiles");
+  assert.ok(Math.abs((hp - far.hp) - 50 * 0.55 * 3 * r) < 1e-6, "small missile = impact damage only");
+});
+
+test("Wasp Evolution II evolves a wasp after 3 attacks; Electro-Wasps shock nearby enemies with Electric damage", () => {
+  cardBattle(g);
+  const hive = g.mkUnit(g.TURRETS.find(t => t.id === "hive"), 52, 0, false);
+  g.B.turrets = [hive];
+  hive.waspEvolve = 3; hive.electroWasps = true;
+  const tgt = sampleEnemy(g, 500); tgt.hp = tgt.maxHp = 1e6;
+  const near = sampleEnemy(g, 500); near.x = tgt.x + 40; near.hp = near.maxHp = 1e6;
+  g.B.enemies = [tgt, near];
+  const dr = { x: tgt.x, y: tgt.y + 2, src: hive, life: 9, tgt, hitT: 0, hits: 20, boost: 1, echoed: false, isEcho: false, launchT: 0, vx: 0, vy: 0 };
+  g.B.drones = [dr];
+  for (let i = 0; i < 3; i++) { dr.hitT = 0; dr.x = tgt.x; dr.y = tgt.y + 6; dr.tgt = tgt; g.update(0.01); }
+  assert.equal(dr.evolved, true, "wasp must evolve after 3 attacks");
+  assert.equal(dr.boost, 1.5);
+  for (let i = 0; i < 12; i++) { dr.hitT = 0; dr.x = tgt.x; dr.y = tgt.y + 6; dr.tgt = tgt; g.update(0.01); }
+  assert.ok(near.hp < near.maxHp, "electro shock must reach the neighbour");
+  assert.ok(g.B.beams.some(b => b.arc && b.color === "#a5f3fc"));
+});
+
+test("High-Energy Pulse doubles the laser band; Slow Laser slows deflected targets; Energy Surge fires 2 deflected lasers", () => {
+  cardBattle(g);
+  const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 52, 0, false);
+  g.B.turrets = [laser];
+  const main = sampleEnemy(g, 400); main.x = 52;
+  const side = sampleEnemy(g, 400); side.x = 52 + main.r + 8 + 10;
+  const o1 = sampleEnemy(g, 300); o1.x = 300;
+  const o2 = sampleEnemy(g, 250); o2.x = 360;
+  g.B.enemies = [main, side, o1, o2];
+  laser.cd = 0; g.unitFire(laser, 0.2);
+  assert.equal(side.hp, 1000, "a normal laser misses an enemy 10px outside its band");
+  g.applyCardDef(g.cardById("laser", "highEnergyPulse"), laser);
+  g.applyCardDef(g.cardById("laser", "energySurge"), laser);
+  g.applyCardDef(g.cardById("laser", "slowLaser"), laser);
+  assert.equal(laser.laserBandMul, 2); assert.equal(laser.laserDeflect, 2);
+  laser.cd = 0; laser.laserActive = 0; laser.laserTickT = 0; g.unitFire(laser, 0.2);
+  assert.ok(side.hp < 1000, "a doubled band hits it");
+  assert.ok(o1.hp < 1000 && o2.hp < 1000, "two deflected lasers hit two other enemies");
+  assert.ok(o1.slowFactor < 1 && o2.slowFactor < 1, "deflected lasers slow");
+});
+
+test("Beam Refraction adds 2 refracted beams, Beam Penetration makes every beam hit Vulnerable", () => {
+  cardBattle(g);
+  const beam = g.mkUnit(g.TURRETS.find(t => t.id === "beam"), 52, 0, false);
+  g.B.turrets = [beam];
+  const t1 = sampleEnemy(g, 400); t1.maxHp = 5000; t1.hp = 5000;
+  const n1 = sampleEnemy(g, 420), n2 = sampleEnemy(g, 440), n3 = sampleEnemy(g, 470);
+  g.B.enemies = [t1, n1, n2, n3];
+  g.applyCardDef(g.cardById("beam", "beamRefraction"), beam);
+  g.applyCardDef(g.cardById("beam", "beamPenetration"), beam);
+  beam.cd = 0; g.unitFire(beam, 0.05);
+  assert.ok(t1.vulnerableStacks > 0, "main beam inflicts Vulnerable");
+  assert.ok(n1.hp < 1000 && n2.hp < 1000 && n3.hp === 1000, "exactly the 2 nearest enemies are refracted to");
+  assert.ok(n1.vulnerableStacks > 0);
+});
+
+test("Guardian: Piercing Bullet, Flame Bullet and Shotgun Evolution (the documented real-spread exception)", () => {
+  cardBattle(g);
+  const s = g.B.soldier; g.B.turrets = [];
+  const e = sampleEnemy(g, 300); e.x = 210; g.B.enemies = [e];
+  ["piercingBullet", "flameBullet", "shotgunEvolution"].forEach(id => g.applyCardDef(g.cardById("soldier", id), s));
+  let shots = null;
+  for (let i = 0; i < 20 && !shots; i++) { const before = g.B.projs.length; g.unitFire(s, 0.3); if (g.B.projs.length > before) shots = g.B.projs.slice(before); }
+  assert.equal(shots.length, 3, "1 bullet + 2 scattered");
+  const angles = shots.map(p => Math.atan2(p.vy, p.vx));
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.2, "Shotgun Evolution must truly spread");
+  assert.ok(shots.every(p => p.pierce === 1), "Piercing Bullet +1 penetration");
+  g.applyHit(shots[0], e);
+  assert.ok(e.burnT > 0 && e.burnDps > 0, "Flame Bullet ignites the target");
+});
+
 test("final boss appears even after the regular spawn queue is empty", () => {
   g.B = g.newBattle(g.STAGES[0]);
   g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);

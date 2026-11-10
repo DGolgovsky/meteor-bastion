@@ -73,7 +73,8 @@ function dealDamage(src,e,baseDmg,opts){
  var cm=crit?(src?src.cfg.critMul:1.8)*(1+totalCritBonus()/100):1;
  /* the enemy's resistance/vulnerability to the attacker's damage type (a Galaxy Defense mechanic) */
  var rm=1;
- if(src&&src.cfg.dtype&&e.cfg.res&&e.cfg.res[src.cfg.dtype])rm=e.cfg.res[src.cfg.dtype];
+ var dtp=opts.dtype||(src&&src.cfg.dtype);
+ if(dtp&&e.cfg.res&&e.cfg.res[dtp])rm=e.cfg.res[dtp];
  if(e.champion)rm=Math.min(1,rm);
  var dmg=baseDmg*(src?src.dmgMul:1)*(src&&B?B.allDmgMul:1)*cm*rm*(1-(e.armor||0))*(1+(e.vulnerableStacks||0)*0.10);
  e.hp-=dmg; e.flash=0.08;
@@ -178,7 +179,8 @@ function fireLaser(t,dt){
    if(!inRange(t,e))return;
    var px=e.x-ox,py=e.y-oy,pr=px*dx+py*dy;
    if(pr<=0)return;
-   if(Math.abs(px*dy-py*dx)<=e.r+8){hits.push(e);far=Math.max(far,pr);}
+   /* High-Energy Pulse doubles the damaging band around the locked line */
+   if(Math.abs(px*dy-py*dx)<=(e.r+8)*(t.laserBandMul||1)){hits.push(e);far=Math.max(far,pr);}
  });
  /* the beam goes from the turret through the target to the edge of the field in the firing direction;
     damage does not change (it is computed from hits), only the visual length changes */
@@ -188,13 +190,15 @@ function fireLaser(t,dt){
  if(dy>1e-6)edgeT=Math.min(edgeT,(H-oy)/dy);
  if(dy<-1e-6)edgeT=Math.min(edgeT,(0-oy)/dy);
  var len=isFinite(edgeT)?edgeT:Math.max(350,far+28);
- beamFx(ox,oy,ox+dx*len,oy+dy*len,"#4ade80",3+(t.laserWidth||0));
+ beamFx(ox,oy,ox+dx*len,oy+dy*len,"#4ade80",3*(t.laserBandMul||1)+(t.laserWidth||0));
  t.laserTickT-=dt;
  var tickCount=0;
  while(t.laserTickT<=0&&tickCount<4){t.laserTickT+=0.12;tickCount++;}
  if(!tickCount)return;
  var opts=t.beamSlow?{slow:true,slowPow:0.3,vulnerable:!!t.laserVulnerable}:{vulnerable:!!t.laserVulnerable};
  hits.forEach(function(e){dealDamage(t,e,t.cfg.damage*tickCount*(t.laserPower||1),opts);});
+ /* Slow Laser: secondary lasers (deflected, reflected, swept) also slow their targets */
+ var opts2=t.laserSlow?{slow:true,slowPow:0.3,vulnerable:opts.vulnerable}:opts;
  if(t.refract&&hits.length){
   [-0.34,0.34].forEach(function(a){
    var ang=t.angle+a,vx=Math.cos(ang),vy=Math.sin(ang);
@@ -216,7 +220,7 @@ function fireLaser(t,dt){
    if(!nx)break;
    beamFx(cur.x,cur.y,nx.x,nx.y,"#86efac",2);
    /* Laser Reflection: each further reflection deals 20% less (0.8, 0.64, 0.51 of a tick) */
-   dealDamage(t,nx,t.cfg.damage*tickCount*Math.pow(0.8,z+1)*(t.laserPower||1),opts);
+   dealDamage(t,nx,t.cfg.damage*tickCount*Math.pow(0.8,z+1)*(t.laserPower||1),opts2);
    seen.push(nx);cur=nx;
   }
  }
@@ -227,13 +231,13 @@ function fireLaser(t,dt){
  /* Energy Surge: laserDeflect deflected lasers, each at a different enemy off the main line */
  if(t.laserDeflect>0){
   var defl=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;}).slice(0,t.laserDeflect);
-  defl.forEach(function(d){beamFx(ox,oy,d.x,d.y,"#4ade80",1.8);dealDamage(t,d,t.cfg.damage*0.5,opts);});
+  defl.forEach(function(d){beamFx(ox,oy,d.x,d.y,"#4ade80",1.8);dealDamage(t,d,t.cfg.damage*0.5,opts2);});
  }
  if(t.laserSweep>0&&Math.random()<0.25){
   /* the sweeping beams hit DETERMINISTICALLY the toughest remaining targets
      rather than random ones, so the fire does not turn into scatter (Additional Sweep: +1 beam) */
   var candidate=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;}).sort(function(a,b){return b.maxHp-a.maxHp;}).slice(0,t.laserSweep);
-  candidate.forEach(function(sw){beamFx(ox,oy,sw.x,sw.y,"#a7f3d0",2);dealDamage(t,sw,t.cfg.damage*0.8,opts);});
+  candidate.forEach(function(sw){beamFx(ox,oy,sw.x,sw.y,"#a7f3d0",2);dealDamage(t,sw,t.cfg.damage*0.8,opts2);});
  }
 }
 function fireFocusedBeam(t,dt){
@@ -371,6 +375,15 @@ function unitFire(t,dt){
      var off=k-(n-1)/2;
      B.projs.push({x:t.x+px*(off*3+hand),y:t.y-10+py*(off*3+hand),vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:target});
    }
+   /* Shotgun Evolution (owner decision 2026-11-10): the documented EXCEPTION to the
+      "extra projectiles fly parallel" rule. Every shot scatters into shotgunSpread
+      additional bullets in a real angular spread (±0.12 rad steps) around the aim line. */
+   if(t.shotgunSpread>0){
+     for(var sg=1;sg<=t.shotgunSpread;sg++){
+       var sa=t.angle+(sg%2?1:-1)*0.12*Math.ceil(sg/2);
+       B.projs.push({x:t.x+px*hand,y:t.y-10+py*hand,vx:Math.cos(sa)*cfg.projSpeed,vy:Math.sin(sa)*cfg.projSpeed,src:t,dmg:cfg.damage,pierce:t.pierce,hitSet:[],life:2.6,tgt:null,scatter:true});
+     }
+   }
  }else{
    var px2=-Math.sin(t.angle),py2=Math.cos(t.angle);
    for(var k2=0;k2<n;k2++){
@@ -418,7 +431,10 @@ function applyHit(p,e){
  }
  if(cfg.effect==="rocket"){
    /* Sky Guard missile has separate impact and explosion damage, including the impact target. */
-   dealDamage(p.src,e,p.dmg*0.55,p.src.rocketBurn?{burn:true}:{});
+   /* Impact Multiplier scales only the impact part; small Impact Reinforcement missiles deal impact only */
+   dealDamage(p.src,e,p.dmg*0.55*(p.src.impactMul||1),p.src.rocketBurn&&!p.mini?{burn:true}:{});
+   if(p.mini){burst(e.x,e.y,6,"#ff8a3c");return;}
+   if(p.src.impactReinforce>0)launchMiniMissiles(p,e);
    var r=Math.max(24,p.src.splash);
    B.enemies.forEach(function(o){
      if(o.dead||o.hp<=0||Math.hypot(o.x-e.x,o.y-e.y)>r)return;
@@ -434,6 +450,8 @@ function applyHit(p,e){
  if(cfg.effect==="slow"){opts={slow:true,slowPow:p.src.slowPow,vulnerable:!!p.src.fieldExpose};if(B.fields.length<32)B.fields.push({kind:"slow",x:e.x,y:e.y,r:Math.max(30,p.src.splash),life:2.2,age:0,seed:Math.random()*1000,src:p.src,tick:0.1});}
  if(cfg.effect==="knockback")opts={knock:p.src.knock};
  if(cfg.effect==="burn")opts={burn:true};
+ /* Flame Bullet: Guardian bullets ignite their target (extra fire damage over time) */
+ if(p.src.flameBullet)opts.burn=true;
  dealDamage(p.src,e,p.dmg,opts);
  if(cfg.id==="railgun"&&p.src.railExplosive){
    B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=45)dealDamage(p.src,o,p.dmg*0.25,{});});
@@ -457,6 +475,17 @@ function applyHit(p,e){
  burst(e.x,e.y,3,cfg.color);
 }
 
+/* Impact Reinforcement: after a hit, 3 small missiles (50% of the missile's damage, impact only)
+   fly out and home in on the enemies nearest to the impact point. */
+function launchMiniMissiles(p,e){
+ var near=B.enemies.filter(function(o){return o!==e&&o.hp>0&&!o.dead&&o.y>=VIS_TOP;})
+  .sort(function(a,b){return Math.hypot(a.x-e.x,a.y-e.y)-Math.hypot(b.x-e.x,b.y-e.y);});
+ var sp=p.src.cfg.projSpeed*0.9;
+ for(var i=0;i<p.src.impactReinforce&&B.projs.length<260;i++){
+  var a=-Math.PI/2+(i-(p.src.impactReinforce-1)/2)*0.9;
+  B.projs.push({x:e.x,y:e.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,src:p.src,dmg:p.dmg*0.5,pierce:0,hitSet:[e],life:1.6,tgt:near.length?near[i%near.length]:null,mini:true});
+ }
+}
 /* Segment-circle hit test: detects targets crossed between fast projectile frames. */
 function sweptContact(x0,y0,x1,y1,cx,cy,r){
  var dx=x1-x0,dy=y1-y0,den=dx*dx+dy*dy;

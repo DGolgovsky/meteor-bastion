@@ -135,7 +135,18 @@ function update(dt){
     /* the wasp strikes while UNDER the enemy: touching its bottom edge (distance to the center
        less than the enemy radius + 4), not reaching its center */
     if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
-      dealDamage(dr.src,dr.tgt,dr.src.cfg.damage*0.65*dr.boost,dr.src.hiveBurn?{burn:true}:{});
+      var sting=dr.src.cfg.damage*0.65*dr.boost;
+      dealDamage(dr.src,dr.tgt,sting,dr.src.hiveBurn?{burn:true}:{});
+      /* Electro-Wasps: 50% chance per attack of a high-voltage shock at up to 2 nearby enemies */
+      if(dr.src.electroWasps&&Math.random()<0.5){
+        var hitE=dr.tgt;
+        B.enemies.filter(function(o){return o!==hitE&&!o.dead&&o.hp>0&&Math.hypot(o.x-hitE.x,o.y-hitE.y)<=80;})
+         .sort(function(a,b){return Math.hypot(a.x-hitE.x,a.y-hitE.y)-Math.hypot(b.x-hitE.x,b.y-hitE.y);}).slice(0,2)
+         .forEach(function(o){arcFx(hitE.x,hitE.y,o.x,o.y,"#a5f3fc");dealDamage(dr.src,o,sting*0.6,{dtype:"electric"});});
+      }
+      /* Wasp Evolution II: an ordinary wasp evolves into Wasp II (+50% DMG) after waspEvolve attacks */
+      dr.attacks=(dr.attacks||0)+1;
+      if(dr.src.waspEvolve&&!dr.isEcho&&!dr.evolved&&dr.attacks>=dr.src.waspEvolve){dr.evolved=true;dr.boost*=1.5;burst(dr.x,dr.y,6,"#fb923c");}
       /* Swarm Echo T1–T3: an ordinary wasp that kills an enemy releases one echo.
          Echo wasps never multiply again, avoiding an exponential swarm. */
       if(dr.tgt.dead&&dr.src.hiveEcho&&!dr.isEcho&&!dr.echoed&&B.drones.length<90){
