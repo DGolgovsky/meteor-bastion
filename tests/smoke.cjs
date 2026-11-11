@@ -42,7 +42,7 @@ function harness(legacySave) {
     if (nodes.has(id)) return nodes.get(id);
     const classes = new Set();
     const value = {
-      id, style: {}, dataset: {}, clientWidth: 420, width: 420, height: 760,
+      id, style: {}, dataset: {}, clientWidth: 420, width: 420, height: 820,
       innerHTML: "", textContent: "", disabled: false,
       classList: {
         add(name) { classes.add(name); },
@@ -55,10 +55,11 @@ function harness(legacySave) {
           return on;
         }
       },
-      getBoundingClientRect() { return { top: 0, left: 0, width: 420, height: 760 }; },
+      getBoundingClientRect() { return { top: 0, left: 0, width: 420, height: 820 }; },
       getContext() { return canvasContext; },
       setPointerCapture() {},
-      addEventListener() {},
+      listeners: {},
+      addEventListener(name, fn) { (value.listeners[name] ||= []).push(fn); },
       appendChild() {},
       querySelector() { return element("_child:" + id); },
       querySelectorAll() { return []; }
@@ -1194,6 +1195,84 @@ test("drawing a ring with a negative radius does not throw", () => {
   const {game:h}=harness();h.startBattle();
   h.B.rings.push({x:210,y:300,r:-0.338,vr:90,t:0,life:0.35,color:"#ff9f2e"});
   h.draw(); /* must not throw: the ring arc clamps its radius */
+});
+
+/* ---------- fortress layout and rendering regressions ---------- */
+test("Turret cards build compact mirrored pairs in the original four-slot order", () => {
+  const {game:h}=harness();h.startBattle();
+  for(let i=0;i<4;i++){
+    h.B.pendingDrafts=1;h.applyCard({kind:"new",cfg:h.TURRETS[i]});
+    assert.equal(h.B.turrets[i].slot,i);
+    assert.equal(h.B.turrets[i].x,h.TURRET_X[i]);
+    assert.equal(h.B.turrets[i].y,h.LINE_Y);
+  }
+  assert.equal(h.freeSlot(),-1,"four slots, never a fifth turret");
+  const [left,right,innerLeft,innerRight]=h.TURRET_X;
+  assert.equal(left+right,h.W);assert.equal(innerLeft+innerRight,h.W);
+  assert.ok(innerLeft-left>=40&&innerLeft-left<=48,"paired turrets need sprite clearance and a compact gap");
+  assert.ok(h.SOLDIER_X-innerLeft>=100,"the bunker/Guardian lane must remain open");
+  assert.equal(h.BASEY,720,"scenery must not shorten enemy travel");
+});
+
+test("Native-resolution canvas preserves the whole fortress and touch mapping after resize", () => {
+  const {game:h,element}=harness();h.startBattle();
+  for(const [cssW,dpr] of [[280,1],[400,2.625],[448,4]]){
+    h.cv.clientWidth=cssW;h.window.devicePixelRatio=dpr;h.fitCanvas();
+    assert.equal(h.cv.width,Math.round(cssW*Math.min(dpr,3)));
+    assert.equal(h.cv.height,Math.round(h.cv.width*h.H/h.W));
+    assert.ok(h.FORTRESS.deckY+70<h.H,"the underground structure must fit");
+    h.cv.getBoundingClientRect=()=>({left:12,top:20,width:cssW,height:cssW*h.H/h.W});
+    const ev={clientX:12+cssW*.75,clientY:20+cssW*(h.BASEY-50)/h.W,pointerId:7,preventDefault(){}};
+    element("cv").listeners.pointerdown[0](ev);
+    assert.equal(h.B.guardianGoalX,h.W*.75);
+    element("cv").listeners.pointerup[0](ev);
+    assert.equal(h.guardianPointerId,null);
+    ev.clientY=20+cssW*300/h.W;
+    element("cv").listeners.pointerdown[0](ev);
+    assert.equal(h.guardianPointerId,null,"touches above the control area must not move the Guardian");
+  }
+  assert.ok(shell.includes('aspect-ratio:420/820'),"CSS and logical canvas must agree");
+});
+
+test("HUD reserves the timer column even for late-stage damage and kill totals", () => {
+  const {game:h}=harness();h.startBattle();
+  for(const elite of [false,true])for(const elapsed of [9,600,60000]){
+    h.B.elite=elite;h.B.stage=h.STAGES[11];h.B.wave=30;h.B.elapsed=elapsed;
+    h.B.kills=99999;h.B.soldier.totalDmg=987654321;
+    const layout=h.combatHudLayout();
+    const span=layout.widths.reduce((a,b)=>a+b,0)+layout.gap*3;
+    assert.ok(layout.left+span*layout.scale+layout.gap<=h.W-10-layout.timeWidth+1e-6,
+      "metrics must end before the timer begins");
+    assert.ok(layout.font>=9);assert.ok(layout.scale>0&&layout.scale<=1);
+    h.drawCombatHud();
+  }
+});
+
+test("Battle timers keep two-digit minutes after ten minutes and allow long runs", () => {
+  assert.equal(g.mmss(-1),"00:00");assert.equal(g.mmss(59.9),"00:59");
+  assert.equal(g.mmss(60),"01:00");assert.equal(g.mmss(599),"09:59");
+  assert.equal(g.mmss(600),"10:00");assert.equal(g.mmss(3600),"60:00");
+  assert.equal(g.mmss(60000),"1000:00");
+});
+
+test("Recoil decays with simulation time and stays frozen on paused redraws", () => {
+  const remaining=frames=>{
+    const {game:h}=harness();h.startBattle();
+    h.B.waveState="fighting";h.B.waveQueue=1;h.B.spawnT=999;
+    h.B.soldier.cd=999;h.B.soldier.recoil=6;
+    for(let i=0;i<frames;i++)h.update(.05/frames);
+    const recoil=h.B.soldier.recoil;h.B.paused=true;
+    for(let i=0;i<10;i++)h.draw();
+    assert.equal(h.B.soldier.recoil,recoil,"redraws must not change recoil");
+    return recoil;
+  };
+  for(const frames of [1,3,6])assert.ok(Math.abs(remaining(frames)-2.7)<1e-9);
+});
+
+test("A shaken fortress redraw consumes no gameplay randomness", () => {
+  const {game:h}=harness();h.startBattle();h.B.shake=8;h.B.t=3;
+  const random=h.Math.random;let calls=0;h.Math.random=()=>{calls++;return random();};
+  h.draw();h.draw();assert.equal(calls,0,"rendering must not change seeded battle outcomes");
 });
 
 /* ---------- model rendering ---------- */

@@ -38,7 +38,7 @@ function harness(legacySave) {
     if (nodes.has(id)) return nodes.get(id);
     const classes = new Set();
     const value = {
-      id, style: {}, dataset: {}, clientWidth: 420, width: 420, height: 760,
+      id, style: {}, dataset: {}, clientWidth: 420, width: 420, height: 820,
       innerHTML: "", textContent: "", disabled: false,
       classList: {
         add(name) { classes.add(name); },
@@ -51,7 +51,7 @@ function harness(legacySave) {
           return on;
         }
       },
-      getBoundingClientRect() { return { top: 0, left: 0, width: 420, height: 760 }; },
+      getBoundingClientRect() { return { top: 0, left: 0, width: 420, height: 820 }; },
       getContext() { return canvasContext; },
       setPointerCapture() {},
       addEventListener() {},

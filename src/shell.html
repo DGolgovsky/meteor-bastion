@@ -72,13 +72,14 @@ button{font-family:inherit;cursor:pointer;border:none;color:var(--text)}
 .wavebar{flex:1;height:9px;background:#12202e;border-radius:5px;overflow:hidden}
 .wavebar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--cyan));transition:width .2s}
 .lvchip{color:var(--teal);font-weight:800;font-size:13px;white-space:nowrap}
-#cvwrap{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#04060c}
+#scr-battle{align-items:center;justify-content:center;flex:none;height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 10px)}
+#cvwrap{position:relative;width:100%;max-width:calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 10px)*420/820);overflow:hidden;background:#191c1e}
 .field-ui{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:5}
 .field-ui .ibtn{background:rgba(10,20,34,.82)}
-/* The field takes the full available screen width; JS picks the canvas's physical size
+/* The field fits both viewport dimensions without cropping; JS picks its physical size
    (canvas.width/height) to match the device's devicePixelRatio;
    see fitCanvas() below. The CSS size is always 100% of the width. */
-canvas#cv{display:block;width:100%;height:auto;aspect-ratio:420/760;touch-action:none}
+canvas#cv{display:block;width:100%;height:auto;aspect-ratio:420/820;touch-action:none}
 @media (max-width:480px){
   /* On phones (Pixel 10a: CSS width ~412 px) shrink the side padding
      so the field gets as much of the screen width as possible */
@@ -222,8 +223,8 @@ table.stats td:first-child{text-align:left;font-weight:700}
 .hq-stage-info-cell{padding:11px;background:#132735;border:1px solid #325460;border-radius:8px;font-size:12px}
 .hq-stage-info-cell b{display:block;color:#e7f9f7;margin:3px 0}
 .hq-stage-info-cell span{color:#9db6c3}
-#scr-battle .field-ui{left:7px;right:auto;top:6px}
-#scr-battle .field-ui .ibtn{height:30px;min-width:34px;background:rgba(9,20,31,.91);border-color:#315560;font-size:13px;border-radius:6px;padding:0 6px}
+#scr-battle .field-ui{left:1.7%;right:auto;top:.8%;width:29%;gap:4%}
+#scr-battle .field-ui .ibtn{flex:1;min-width:0;aspect-ratio:1;height:auto;background:rgba(15,27,28,.8);border-color:#436e69;color:#7bd7c6;font-size:clamp(10px,3vw,13px);border-radius:50%;padding:0}
 @media (max-height:690px){
  .hq-scene{min-height:155px}
  .hq-planet-orbit{height:175px;width:175px}
@@ -368,7 +369,7 @@ table.stats td:first-child{text-align:left;font-weight:700}
   <!-- ============ BATTLE ============ -->
   <section class="screen" id="scr-battle">
     <div id="cvwrap">
-      <canvas id="cv" width="420" height="760"></canvas>
+      <canvas id="cv" width="420" height="820"></canvas>
       <div class="field-ui">
         <button class="ibtn" id="btn-pause" aria-label="Pause">⏸</button>
         <button class="ibtn" id="btn-speed">×1</button>

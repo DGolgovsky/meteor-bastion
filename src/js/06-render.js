@@ -78,13 +78,10 @@ function pedestal(col,w1,w2,h){
 function aimed(t,px,py,fn){ctx.save();ctx.translate(px,py);ctx.rotate(t.angle+Math.PI/2);ctx.translate(0,Math.min(4,t.recoil*.7));fn();ctx.restore();}
 /* landing pad */
 function drawPad(col){
- ctx.fillStyle="rgba(0,0,0,.38)";ctx.beginPath();ctx.ellipse(0,14.6,24,6.6,0,0,6.2832);ctx.fill();
- ctx.fillStyle="#0c1626";ctx.strokeStyle="rgba(120,160,190,.5)";ctx.lineWidth=1;
- ctx.beginPath();ctx.ellipse(0,13,22,6,0,0,6.2832);ctx.fill();ctx.stroke();
- ctx.fillStyle="#152741";ctx.beginPath();ctx.ellipse(0,12.7,17,4.5,0,0,6.2832);ctx.fill();
- ctx.strokeStyle=col;ctx.globalAlpha=0.6;ctx.lineWidth=1.3;
- ctx.beginPath();ctx.ellipse(0,12.7,17,4.5,0,0.2,Math.PI-0.2);ctx.stroke();ctx.globalAlpha=1;
- ctx.fillStyle="#6f8ea3";[-19,19].forEach(function(bx){ctx.beginPath();ctx.arc(bx,13.4,1.1,0,6.2832);ctx.fill();});
+ ctx.fillStyle="rgba(0,0,0,.5)";ctx.beginPath();ctx.ellipse(0,14.6,23,4,0,0,6.2832);ctx.fill();
+ ctx.fillStyle="#101617";ctx.beginPath();ctx.moveTo(-21,15);ctx.lineTo(-16,10);ctx.lineTo(16,10);ctx.lineTo(21,15);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#394644";ctx.fillRect(-15,10,30,1.4);
+ ctx.fillStyle=col;ctx.globalAlpha=.38;ctx.fillRect(-10,11.8,20,1);ctx.globalAlpha=1;
 }
 
 /* ---------- Guardian: a fighter with a helmet, body armor, arms and a rifle ---------- */
@@ -319,7 +316,6 @@ function drawGenericTurret(t,col){
 }
 function drawUnit(t){
  var col=t.isSoldier?liveryCol():t.cfg.color;
- t.recoil=Math.max(0,(t.recoil||0)-1.1);
  ctx.save();ctx.translate(t.x,t.y);
  ctx.scale(0.88,0.88); /* turrets and the soldier are slightly smaller; the level label below is outside save/restore and is not scaled */
  drawPad(col);
@@ -339,53 +335,111 @@ function drawUnitPips(t){
   ctx.fillStyle=on?col:"#0a1420";ctx.fill();ctx.lineWidth=1;ctx.strokeStyle=col;ctx.stroke();
  }
 }
-/* Battle HUD: a single row on a transparent background, with no backing or bars.
-   Left to right: mode/stage, wave, average DPS, kills; the timer is on the right.
-   The DOM buttons (pause/×2/build) take up the left ~130px of the field, so the text starts at x=140.
-   The font size is picked from the measured width so that everything fits in 420px. */
-function drawCombatHud(){
- ctx.save();
- var left=140,gap=9,y=18;
- var stage=(B.elite?"ELITE":"NORMAL")+" STAGE "+B.stage.n;
- var wave="WAVE "+B.wave+" / "+finalWave();
+/* Compact single-row HUD. Shorten labels before shrinking text; reserve a measured
+   timer column so long late-run values can never paint over it. */
+function combatHudLayout(){
  var dps=Math.round(allFighters().reduce(function(sum,t){return sum+t.totalDmg;},0)/Math.max(1,B.elapsed));
- var items=[stage,wave,"AVG DPS "+fmt(dps),"KILL "+B.kills];
- var timeS=mmss(B.elapsed);
- var fs=11,tw=0,total=0,ws=[];
- function measure(){
-   ctx.font="800 "+fs+"px 'Segoe UI',sans-serif";
-   ws=items.map(function(s){return ctx.measureText(s).width;});
-   ctx.font="800 "+(fs+1)+"px 'Segoe UI',sans-serif";
-   tw=ctx.measureText(timeS).width;
-   total=ws[0]+ws[1]+ws[2]+ws[3]+gap*3;
- }
+ var stage=(B.elite?"ELITE":"NORMAL")+" "+B.stage.n;
+ var items=[stage,"W"+B.wave+"/"+finalWave(),"DPS "+fmt(dps),"K "+fmt(B.kills)];
+ var fs=10.5,gap=7,left=136,time=mmss(B.elapsed),widths=[],timeWidth=0;
+ function measure(){ctx.font="800 "+fs+"px 'Segoe UI',sans-serif";widths=items.map(function(s){return ctx.measureText(s).width;});timeWidth=ctx.measureText(time).width;}
  measure();
- while(fs>8.5&&left+total+8+tw>W-10){fs-=0.5;measure();}
- ctx.font="800 "+fs+"px 'Segoe UI',sans-serif";ctx.textAlign="left";
- ctx.fillStyle=B.elite?"#e6b2ff":"#9df8e6";
- ctx.fillText(items[0],left,y);
- var x=left+ws[0]+gap;
- ctx.fillStyle="#e5f2f4";ctx.fillText(items[1],x,y);x+=ws[1]+gap;
- ctx.fillStyle="#a6bfca";ctx.fillText(items[2],x,y);x+=ws[2]+gap;
- ctx.fillStyle="#e5f2f4";ctx.fillText(items[3],x,y);
- ctx.font="800 "+(fs+1)+"px 'Segoe UI',sans-serif";ctx.textAlign="right";ctx.fillStyle="#d4e6e8";
- ctx.fillText(timeS,W-10,y);
+ function total(){return widths.reduce(function(sum,w){return sum+w;},0)+gap*3;}
+ if(total()+timeWidth+gap>W-10-left){items[0]=(B.elite?"E":"N")+B.stage.n;measure();}
+ while(fs>9&&total()+timeWidth+gap>W-10-left){fs-=.5;measure();}
+ var available=W-10-left-timeWidth-gap;
+ return {items:items,widths:widths,font:fs,gap:gap,left:left,time:time,timeWidth:timeWidth,
+  scale:Math.min(1,available/Math.max(1,total()))};
+}
+function drawCombatHud(){
+ ctx.save();var h=combatHudLayout();
+ ctx.font="800 "+h.font+"px 'Segoe UI',sans-serif";ctx.textAlign="left";
+ ctx.save();ctx.translate(h.left,0);ctx.scale(h.scale,1);
+ var x=0;
+ h.items.forEach(function(s,i){ctx.fillStyle=i===0?(B.elite?"#e6b2ff":"#85deca"):i===2?"#a6bfba":"#d3e3df";ctx.fillText(s,x,18);x+=h.widths[i]+h.gap;});
+ ctx.restore();ctx.textAlign="right";ctx.fillStyle="#a2e6d7";ctx.fillText(h.time,W-10,18);ctx.restore();
+}
+/* Charcoal sky, distant city silhouettes and a low bank of illuminated fog.
+   All scenery is deterministic: drawing must not advance combat's random stream. */
+function drawBattleBackdrop(){
+ var hue=B.elite?["#19171d","#302a33"]:({classic:["#191b1c","#303334"],arctic:["#161c22","#2a353d"],ember:["#211b1a","#3b302c"]}[META.livery]||["#191b1c","#303334"]);
+ ctx.fillStyle=shade(hue[0],hue[1],0,0,0,FORTRESS.deckY);ctx.fillRect(-14,-14,W+28,H+28);
+ var cloud=ctx.createRadialGradient(W*.28,BASEY*.38,10,W*.28,BASEY*.38,W*.9);
+ cloud.addColorStop(0,"rgba(180,185,182,.065)");cloud.addColorStop(1,"rgba(0,0,0,0)");ctx.fillStyle=cloud;ctx.fillRect(0,0,W,FORTRESS.deckY);
+ for(var layer=0;layer<3;layer++){
+  ctx.fillStyle=["rgba(21,24,26,.18)","rgba(15,19,21,.24)","rgba(10,14,16,.36)"][layer];
+  for(var i=0;i<12;i++){
+   var x=i*39-25+layer*13,w=20+hrand(layer+7,i)*26,ht=45+hrand(layer+11,i)*150+layer*15,y=FORTRESS.deckY-ht;
+   ctx.fillRect(x,y,w,ht);
+   if(i%3===0){ctx.beginPath();ctx.moveTo(x-3,y);ctx.lineTo(x+w*.5,y-26);ctx.lineTo(x+w+3,y);ctx.closePath();ctx.fill();}
+   if(i%4===1)ctx.fillRect(x+w*.45,y-42,1.5,42);
+  }
+ }
+ var haze=ctx.createLinearGradient(0,BASEY-155,0,FORTRESS.deckY);
+ haze.addColorStop(0,"rgba(149,160,158,0)");haze.addColorStop(.65,"rgba(149,160,158,.06)");haze.addColorStop(1,"rgba(181,192,187,.24)");
+ ctx.fillStyle=haze;ctx.fillRect(0,BASEY-155,W,169);
+}
+function drawFortress(){
+ var deck=FORTRESS.deckY,cx=W/2;
+ var dome=B.baseFlashT>0?"#ff6a78":B.elite?"#b2a2c5":"#b9d6d7";
+ ctx.save();
+ var dg=ctx.createLinearGradient(0,deck-FORTRESS.domeRy,0,deck);
+ dg.addColorStop(0,glowRgba(dome,.10));dg.addColorStop(.22,glowRgba(dome,.025));dg.addColorStop(1,glowRgba(dome,.12));
+ ctx.beginPath();ctx.ellipse(cx,deck,FORTRESS.domeRx,FORTRESS.domeRy,0,Math.PI,Math.PI*2);ctx.closePath();ctx.fillStyle=dg;ctx.fill();
+ ctx.strokeStyle=glowRgba(dome,B.baseFlashT>0?.65:.23);ctx.lineWidth=2;
+ ctx.beginPath();ctx.ellipse(cx,deck,FORTRESS.domeRx,FORTRESS.domeRy,0,Math.PI,Math.PI*2);ctx.stroke();
+ /* Five passive emitter fittings follow the dome. These are scenery, not slots. */
+ for(var i=0;i<5;i++){
+  var x=W*(.14+i*.18),q=(x-cx)/FORTRESS.domeRx,y=deck-FORTRESS.domeRy*Math.sqrt(1-q*q)-24;
+  ctx.fillStyle="#080d0d";ctx.beginPath();ctx.arc(x,y,11,0,6.29);ctx.fill();
+  ctx.strokeStyle="#405f59";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,7,0,6.29);ctx.stroke();
+  ctx.beginPath();ctx.arc(x,y,3,0,6.29);ctx.stroke();
+  for(var n=0;n<3;n++){var a=n*2.094-Math.PI/2;ctx.fillStyle="#0b1412";ctx.beginPath();ctx.arc(x+Math.cos(a)*7,y+Math.sin(a)*7,2.2,0,6.29);ctx.fill();}
+ }
+ var halo=ctx.createRadialGradient(cx,deck-14,4,cx,deck-14,130);
+ halo.addColorStop(0,"rgba(220,233,216,.34)");halo.addColorStop(.4,"rgba(202,218,207,.13)");halo.addColorStop(1,"rgba(202,218,207,0)");ctx.fillStyle=halo;ctx.fillRect(0,deck-144,W,144);
+ /* Central bunker: layered roof, buttresses, lit windows, recessed door. */
+ ctx.fillStyle="#323b39";ctx.fillRect(cx-29,deck-29,58,29);
+ ctx.fillStyle="#202826";ctx.fillRect(cx-32,deck-22,6,22);ctx.fillRect(cx+26,deck-22,6,22);
+ ctx.fillStyle="#3f4945";ctx.beginPath();ctx.moveTo(cx-34,deck-29);ctx.lineTo(cx-26,deck-39);ctx.lineTo(cx+26,deck-39);ctx.lineTo(cx+34,deck-29);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#626d64";ctx.fillRect(cx-25,deck-38,50,1.5);
+ ctx.fillStyle="#161e1b";ctx.fillRect(cx-7,deck-14,14,14);
+ ctx.fillStyle="#c2d4ad";ctx.globalAlpha=.65;
+ [-19,0,19].forEach(function(x){ctx.fillRect(cx+x-3,deck-25,6,4);});
+ [-19,19].forEach(function(x){ctx.fillRect(cx+x-3,deck-12,6,4);});ctx.globalAlpha=1;
+ /* Dark cross-section under the deck, with structural ribs and utility pipes. */
+ ctx.fillStyle=shade("#101313","#07090a",0,deck,0,H);ctx.fillRect(0,deck,W,H-deck);
+ ctx.fillStyle="#202624";ctx.beginPath();ctx.moveTo(0,deck-2);
+ for(var j=0;j<=28;j++){var px=j*W/28;ctx.lineTo(px,deck-2-hrand(29,j)*2);}
+ ctx.lineTo(W,deck+5);ctx.lineTo(0,deck+5);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#070b0b";ctx.fillRect(0,deck+5,W,8);
+ for(var s=0;s<5;s++){
+  var bx=s*103-8;ctx.fillStyle="#141918";ctx.fillRect(bx,deck+13,12,H-deck);
+  ctx.fillStyle="#1c2220";ctx.fillRect(bx+1,deck+15,2,H-deck-15);
+  ctx.beginPath();ctx.moveTo(bx+10,deck+14);ctx.lineTo(bx+45,deck+14);ctx.lineTo(bx+10,deck+49);ctx.closePath();ctx.fill();
+ }
+ ctx.strokeStyle="#191e1c";ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(38,H);ctx.lineTo(38,deck+58);ctx.quadraticCurveTo(38,deck+27,78,deck+27);ctx.lineTo(139,deck+27);ctx.quadraticCurveTo(165,deck+27,165,deck+52);ctx.lineTo(165,H);ctx.stroke();
+ ctx.strokeStyle="#0a0d0d";ctx.lineWidth=3;ctx.stroke();
+ /* Empty mounts have soft floodlights; occupied mounts share the same deck anchors. */
+ TURRET_X.forEach(function(x,i){
+  var empty=!B.turrets.some(function(t){return t.slot===i;});
+  if(empty){var light=ctx.createLinearGradient(0,deck-28,0,deck);light.addColorStop(0,"rgba(234,244,231,0)");light.addColorStop(1,"rgba(234,244,231,.24)");ctx.fillStyle=light;ctx.beginPath();ctx.moveTo(x-19,deck-28);ctx.lineTo(x+19,deck-28);ctx.lineTo(x+9,deck);ctx.lineTo(x-9,deck);ctx.closePath();ctx.fill();}
+  ctx.fillStyle="#080c0c";ctx.beginPath();ctx.moveTo(x-19,deck+1);ctx.lineTo(x-14,deck-5);ctx.lineTo(x+14,deck-5);ctx.lineTo(x+19,deck+1);ctx.closePath();ctx.fill();
+  ctx.fillStyle=empty?"#adb9ad":"#48574f";ctx.fillRect(x-11,deck-4,22,1.6);
+ });
  ctx.restore();
 }
-/* Fortress base: a 120-degree, r112 HP arc; no shield mechanic. */
+/* Compact 120-degree HP arc above the bunker, safely below the dome apex. */
 function drawBaseHp(){
- var ratio=Math.max(0,Math.min(1,B.baseHp/B.baseMax));
- var livery=B.elite?"#bc8ee3":({classic:"#2ee6c8",arctic:"#90d5ff",ember:"#ff995e"}[META.livery]||"#2ee6c8");
- var color=ratio<0.25?"#ff5470":ratio<=0.5?"#ffd34d":livery;
- var alpha=ratio<0.25?0.7+0.3*Math.sin(B.t*6):1;
- ctx.save();ctx.globalAlpha=Math.max(0.4,alpha);
- ctx.lineWidth=7;ctx.lineCap="round";
- ctx.strokeStyle="rgba(130,165,175,.22)";ctx.beginPath();ctx.arc(W/2,BASEY+22,112,Math.PI*7/6,Math.PI*11/6);ctx.stroke();
- if(ratio>0){ctx.strokeStyle=B.baseFlashT>0?"#ffffff":color;ctx.beginPath();ctx.arc(W/2,BASEY+22,112,Math.PI*1.5-Math.PI/3*ratio,Math.PI*1.5+Math.PI/3*ratio);ctx.stroke();}
- ctx.font="800 "+(B.baseHitTextT>0?16:14)+"px 'Segoe UI',sans-serif";
- ctx.textAlign="center";ctx.lineWidth=2.8;ctx.strokeStyle=color;ctx.strokeText(Math.ceil(B.baseHp),W/2,BASEY-118);
- ctx.fillStyle=B.baseHitTextT>0?"#ff5470":"#f6ffff";ctx.fillText(Math.ceil(B.baseHp),W/2,BASEY-118);
- ctx.restore();
+ var ratio=Math.max(0,Math.min(1,B.baseHp/B.baseMax)),r=FORTRESS.hpRadius,cy=FORTRESS.deckY;
+ var livery=B.elite?"#bc8ee3":liveryCol();
+ var color=ratio<.25?"#ff5470":ratio<=.5?"#ffd34d":livery;
+ ctx.save();ctx.globalAlpha=ratio<.25?.7+.3*Math.sin(B.t*6):1;ctx.lineWidth=5;ctx.lineCap="round";
+ ctx.strokeStyle="rgba(130,165,150,.25)";ctx.beginPath();ctx.arc(W/2,cy,r,Math.PI*7/6,Math.PI*11/6);ctx.stroke();
+ if(ratio>0){ctx.strokeStyle=B.baseFlashT>0?"#ffffff":color;ctx.beginPath();ctx.arc(W/2,cy,r,Math.PI*1.5-Math.PI/3*ratio,Math.PI*1.5+Math.PI/3*ratio);ctx.stroke();}
+ ctx.font="800 "+(B.baseHitTextT>0?14:12)+"px 'Segoe UI',sans-serif";ctx.textAlign="center";
+ ctx.lineWidth=2.5;ctx.strokeStyle="#182420";ctx.strokeText(Math.ceil(B.baseHp),W/2,cy-r-11);
+ ctx.fillStyle=B.baseHitTextT>0?"#ff8991":color;ctx.fillText(Math.ceil(B.baseHp),W/2,cy-r-11);ctx.restore();
 }
 /* Visual-only Disruption strips use circular collision fields unchanged. All fields draw below enemies. */
 function drawBattleFields(){
@@ -625,53 +679,12 @@ function drawEnemy(e){
  }
 }
 function draw(){
- /* render in physical screen pixels while drawing in 420×700 logical coordinates */
- ctx.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
- ctx.clearRect(0,0,W,H);
- var sx=B.shake?(Math.random()*B.shake-B.shake/2):0, sy=B.shake?(Math.random()*B.shake-B.shake/2):0;
+ /* Draw in native device pixels using W×H logical coordinates. */
+ ctx.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);ctx.clearRect(0,0,W,H);
+ /* Screen shake must not consume gameplay randomness or change on a paused redraw. */
+ var sx=B.shake?Math.sin(B.t*137)*B.shake*.5:0,sy=B.shake?Math.sin(B.t*173+1)*B.shake*.5:0;
  ctx.save();ctx.translate(sx,sy);ctx.lineJoin="round";
- /* Three-layer dusk background: sky gradient, distant ruins and low mist. */
- var sky=ctx.createLinearGradient(0,0,0,BASEY);
- var hue=B.elite?["#0d0714","#261020"]:({classic:["#04060c","#11202a"],arctic:["#050b18","#122538"],ember:["#110b11","#31211d"]}[META.livery]||["#04060c","#11202a"]);
- sky.addColorStop(0,hue[0]);sky.addColorStop(1,hue[1]);
- ctx.fillStyle=sky;ctx.fillRect(-14,-14,W+28,H+28);
- ctx.fillStyle="rgba(140,180,220,.36)";
- for(var i=0;i<28;i++){var px=(i*67)%W,py=((i*131)+(B.t*2*(1+i%3))%H)%H;ctx.fillRect(px,py,1.1,1.1);}
- for(var s=0;s<11;s++){
-  var bw=24+(s*17)%20,bh=20+(s*29)%43,bx=s*41-8;
-  ctx.fillStyle="#05080f";ctx.globalAlpha=.9;ctx.fillRect(bx,BASEY+10-bh,bw,bh);
-  if(s%3!==0){ctx.fillStyle="rgba(255,200,100,.5)";ctx.fillRect(bx+7,BASEY+16-bh+10,1.5,1.5);}
- }
- ctx.globalAlpha=1;
- var haze=ctx.createLinearGradient(0,BASEY-95,0,BASEY+20);
- haze.addColorStop(0,"rgba(55,88,100,0)");haze.addColorStop(1,"rgba(82,115,120,.11)");
- ctx.fillStyle=haze;ctx.fillRect(0,BASEY-95,W,115);
- /* HUD is drawn last, over enemies and projectiles. */
- /* Visual-only atmosphere: a wide low ellipse, translucent over the fortress. */
- var tint=B.elite?[188,142,227]:({classic:[46,230,200],arctic:[144,213,255],ember:[255,153,94]}[META.livery]||[46,230,200]);
- var domeColor=B.baseFlashT>0?[255,84,112]:tint;
- function rgba(c,a){return "rgba("+c.join(",")+","+a+")";}
- ctx.save();
- var dg=ctx.createLinearGradient(0,BASEY-48,0,BASEY+14);
- dg.addColorStop(0,rgba(domeColor,B.baseFlashT>0?.11:.06));
- dg.addColorStop(1,rgba(domeColor,B.baseFlashT>0?.18:.14));
- ctx.beginPath();ctx.moveTo(W/2-205,BASEY+14);ctx.ellipse(W/2,BASEY+14,205,62,0,Math.PI,Math.PI*2);ctx.closePath();
- ctx.fillStyle=dg;ctx.fill();
- ctx.strokeStyle=rgba(domeColor,B.baseFlashT>0?.65:.35);ctx.lineWidth=1.5;ctx.shadowColor=rgba(domeColor,.35);ctx.shadowBlur=8;
- ctx.beginPath();ctx.ellipse(W/2,BASEY+14,205,62,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
- /* base deck: turrets and the soldier STAND on it, level with the base */
- ctx.fillStyle="#101c2e";ctx.fillRect(0,BASEY+14,W,H-(BASEY+14));
- ctx.fillStyle="rgba(46,230,200,.4)";ctx.fillRect(0,BASEY+14,W,2);
- ctx.fillStyle="#16283e";ctx.fillRect(0,BASEY+14,W,8);
- ctx.font="26px serif";ctx.textAlign="center";ctx.fillText("🏰",W/2,BASEY+12);
- /* HP arc is drawn over the units; see drawBaseHp(). */
- /* empty turret slots */
- TURRET_X.forEach(function(x,i){
-   if(!B.turrets.some(function(t){return t.slot===i;})){
-     ctx.strokeStyle="rgba(143,168,181,.35)";ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,LINE_Y,15,0,6.29);ctx.stroke();ctx.setLineDash([]);
-     ctx.font="8.5px 'Segoe UI',sans-serif";ctx.fillStyle="rgba(143,168,181,.8)";ctx.textAlign="center";ctx.fillText("SLOT",x,LINE_Y+26);
-   }
- });
+ drawBattleBackdrop();drawFortress();
  drawBattleFields();
  /* enemies */
  B.enemies.forEach(drawEnemy);
@@ -768,7 +781,7 @@ function draw(){
  ctx.restore();
  drawCombatHud();
 }
-function mmss(s){s=Math.max(0,Math.floor(s));return "0"+Math.floor(s/60)+":"+("0"+(s%60)).slice(-2);}
+function mmss(s){s=Math.max(0,Math.floor(s));var m=Math.floor(s/60);return (m<10?"0":"")+m+":"+("0"+(s%60)).slice(-2);}
 function syncHud(){ /* all battle metrics are drawn directly on the canvas inside the field (draw) */ }
 $("btn-speed").addEventListener("click",function(){if(!B)return;B.speed=B.speed===1?2:1;this.textContent="×"+B.speed;this.classList.toggle("on",B.speed===2);SFX.pick();});
 $("btn-pause").addEventListener("click",function(){if(!B||B.over)return;B.paused=true;openPause("⏸ Pause");});

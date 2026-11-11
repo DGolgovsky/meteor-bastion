@@ -113,7 +113,7 @@ function update(dt){
  /* Guardian movement at a capped velocity, while auto-firing. */
  if(B.soldier&&B.guardianGoalX!==undefined){var delta=B.guardianGoalX-B.soldier.x;B.soldier.x+=Math.max(-480*dt,Math.min(480*dt,delta));}
  /* units */
- allFighters().forEach(function(t){unitFire(t,dt);});
+ allFighters().forEach(function(t){t.recoil=Math.max(0,(t.recoil||0)-66*dt);unitFire(t,dt);});
  /* Persistent multi-hit wasps, retargeting instead of exploding at first contact. */
  for(var j=B.drones.length-1;j>=0;j--){
    var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);

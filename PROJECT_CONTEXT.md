@@ -1,6 +1,6 @@
 # Meteor Bastion — project context for a new session
 
-> Updated 2026-11-08. When starting a new session, **always fetch the HEAD of the `master` branch again**: the information below is a recorded snapshot, not a substitute for checking the current repository. After round 5 and the rollout of the screenshot plan, new checks were added; always get the exact SHA from GitHub, not from this snapshot.
+> Updated 2026-11-11. When starting a new session, **always fetch the HEAD of the `master` branch again**: the information below is a recorded snapshot, not a substitute for checking the current repository. After round 5 and the rollout of the screenshot plan, new checks were added; always get the exact SHA from GitHub, not from this snapshot.
 
 ## 1. Goal and scope
 
@@ -15,10 +15,10 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **HTML5 + CSS + plain JavaScript, Canvas 2D.** The game release is **a single self-contained `index.html`**. No npm, Vite, webpack, Phaser, TS compilation, Unity/Godot/APK for this project without a separate decision by the user.
 - The code is now **modular**: `src/shell.html`, `src/js/*.js`, `src/order.txt`. The **`python3 build.py`** script assembles a single `index.html`.
 - The built `index.html` is **not stored in Git** (excluded via `.gitignore`). **Edit only `src/`**; don't try to fix the missing `index.html` through GitHub.
-- Running tests: **`node tests/smoke.cjs`** (72 tests) and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
+- Running tests: **`node tests/smoke.cjs`** (78 tests) and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
 - `BALANCE.md` holds the current numeric parameters, `README.md` the overview. In case of contradictions, **the source of truth is the current `src/js/00-config.js` and the other sources**, then the tests, then the documentation. Update the documents when things change.
 
-**Concatenation order from `src/order.txt`:** `00-config.js` → `01-state.js` → `02-units.js` → `04-waves.js` → `03-combat.js` → `05-update.js` → `06-render.js` → `07-ui.js` → `08-main.js`. **Do not sort** the modules by name.
+**Concatenation order from `src/order.txt`:** `00-config.js` → `01-state.js` → `02-units.js` → `04-waves.js` → `03-combat.js` → `05-update.js` → `06-render.js` → `07-cards.js` → `07-ui.js` → `08-main.js`. **Do not sort** the modules by name.
 
 ## 3. The current game (verify against HEAD)
 
@@ -37,8 +37,8 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **Hive is a critical invariant:** the hive's range limits **only the release of wasps**. Released wasps move and look for enemies **across the whole field**, even outside the turret's range, with correct retargeting. Don't bring back single-use kamikaze wasps.
 - **Laser:** a time-limited pulse, **the direction is locked at the moment of firing**; the beam visually reaches the edge of the field, but only damages along its line; the base CD is currently **7.8 s** (check the current code).
 - **Beam** differs from Laser: sequential focused ticks on a target, with damage stacking and upgrades; **Sky Guard** has separate impact and explosion; **Firewheel** is a long-lived bouncing disc, not a regular projectile; **Gravity** is a field that pulls enemies in and deals tick damage; **Disruption** is control/fields.
-- **Current parameters in `src/js/00-config.js` at the last check (×3, 2026-11-09):** `waveStart:24`, `waveGrowth:8.4`, `spawnBase:0.20`, `spawnReduction:0.002`, `spawnMin:0.06`, `formationCd:1.33`, `waveHpGrowth:0.14` (0.06 before the 2026-11-10 card rework), `turretBasePower:1.6`, `MAX_ENEMIES:330`; field `420×760`, bottom base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
-- The latest `BALANCE.md` states that the base has **1000 HP and no separate shield until Chips** — this has changed compared with earlier versions. Always check the current values against `newBattle()`.
+- **Current parameters in `src/js/00-config.js` at the last check (×3, 2026-11-09):** `waveStart:24`, `waveGrowth:8.4`, `spawnBase:0.20`, `spawnReduction:0.002`, `spawnMin:0.06`, `formationCd:1.33`, `waveHpGrowth:0.14` (0.06 before the 2026-11-10 card rework), `turretBasePower:1.6`, `MAX_ENEMIES:330`; field `420×820` including underground scenery, unchanged combat/base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
+- The latest `BALANCE.md` states that the base has **1000 HP and no separate shield; Chips add max HP** — this has changed compared with earlier versions. Always check the current values against `newBattle()`.
 
 ## 5. What was found about the original and how to use it
 
@@ -48,7 +48,7 @@ Gameplay reference points of the original discussed in the chat: the Guardian is
 
 ## 6. Verification status and priorities for the next session
 
-- After the plan rollout, `tests/smoke.cjs` has **53 regression tests**; **don't claim they all pass** until a test run has been done on the **newest** state.
+- After the plan rollout, `tests/smoke.cjs` has **78 regression tests**; **don't claim they all pass** until a test run has been done on the **newest** state.
 - Check **`python3 build.py`**, **`node tests/smoke.cjs`**, the absence of JS errors and behavior in a mobile browser. If no runtime is available, honestly separate syntax checks, headless simulations and live mobile testing.
 - Main unfinished directions: **mass balance simulations** across the 12 stages and Elite (including several R&D profiles), measuring win rate, number of breaches, cards received, wave times and DPS; **manual visual checks** on Android, of the interface and FPS; further comparison with the exact version of the original.
 - The player should **sometimes take base damage already in the early waves**, but not lose by default before defensive turrets unlock. At high stages real meta progression matters. Avoid both extremes ("all enemies die at the spawn" and "defeat on wave 2 with any build").
@@ -62,7 +62,7 @@ Gameplay reference points of the original discussed in the chat: the Guardian is
 - Results screen shows every material grant, biggest first (2026-11-09 fix): the old first-3-in-line-order hid grants (Hive's 40 of 134 in the owner's Stage 1 win); zero grants stay hidden.
 - Game loop hardened (2026-11-09): a frame that throws no longer kills the RAF loop (the next RAF was scheduled only after update+draw returned, so one bad frame froze the field forever with no error shown — reported by the owner mid-battle, HUD missing from the frozen frame). The error is now recorded in B.loopError and shown in a dismissible red banner. The trigger was NOT reproduced: 25 headless full battles (fresh + developed accounts, all 11 turrets, Elite, boss waves, x2 speed, draw() every frame) ran clean, and every while-loop in the code is bounded. First live catch 2026-11-11 (cloud app, owner's screenshot): IndexSizeError, arc radius -0.338 — a backward RAF timestamp (app switch / vsync restart) made the frame delta negative, and a shockwave ring's radius went negative with it. Fixed: frame delta clamped at 0 in loop(), ring arc radius clamped at 0.01 in draw(); the smoke harness arc now throws on a negative radius like a real canvas, with two regression tests (72 total).
 - The Aeroblast range of 540 and adaptive spread from round 5 are kept; Hive, Firewheel, Laser and the `meteor-bastion-save-v1` save format have no regressions.
-- CI: [GitHub Actions](https://github.com/DGolgovsky/meteor-bastion/actions) runs smoke 55, two sets of 12 headless runs and `build.py`. Observation over 12 seeds (master 72766b32): the first victory for the sensible draft comes on attempt 3, for "first card" on attempt 4. With ×3 (2026-11-09): 0 victories out of 12 for either strategy.
+- CI: [GitHub Actions](https://github.com/DGolgovsky/meteor-bastion/actions) runs 78 smoke checks, two sets of 12 headless runs and `build.py`. Observation over 12 seeds (master 72766b32): the first victory for the sensible draft comes on attempt 3, for "first card" on attempt 4. With ×3 (2026-11-09): 0 victories out of 12 for either strategy.
 - **Open balance issue:** density ×3 meets the targets (14.0/29.6 visible on waves 1/10 versus ≥8/≥28). Fresh-account headless sims say Stage 1 is unwinnable (0 victories out of 24, sensible strategy dies on waves 6–11) — but the owner cleared it on the FIRST attempt himself (2026-11-09: 2521 kills, 8:24, 31 cards), so the sims understate a developed account plus human drafts. Scratch-copy compensations: a 2000 HP base does not help (0/12); +50% turret power (2.4) restores victories, first one on the 6th–7th attempt. The owner approved ×3 as-is. On the Pixel 10a phone, FPS checks and screenshot acceptance are still needed.
 - Don't start phase 6 (crab, mines, ×1.5 speed, active abilities) without separate agreement.
 
@@ -95,3 +95,12 @@ Gameplay reference points of the original discussed in the chat: the Guardian is
 ## 8. Handy prompt for a new chat
 
 > Continue developing Meteor Bastion. First read `PROJECT_CONTEXT.md`, then the current `README.md`, `BALANCE.md`, `src/` and the latest `master` commit at `https://github.com/DGolgovsky/meteor-bastion`. Don't use the old document "Meteor Bastion — current mechanics.md" as a current source. Check the current state and move on to the next task; change code in `src/`, run the tests and, after verification, push to `master`.
+
+
+## Fortress screenshot pass, 2026-11-11
+
+- `TURRET_X=[52,368,96,324]`: same outer-left/outer-right/inner-left/inner-right build order, now two 44px turret pairs. The Guardian is still free to move horizontally.
+- `W=420,H=820,LINE_Y=BASEY=720`. The additional 60px is underground scenery, not extra enemy travel. CSS and backing-store fitting use the same aspect ratio, and the canvas is constrained by viewport height as well as width. Pointer activation uses logical y rather than a fraction of the extended canvas.
+- `FORTRESS` is the source of deck/dome/HP geometry. Canvas bunker replaces the castle emoji; charcoal city, broad pale dome, five passive emitter fittings, empty-mount floodlights and dark structural ribs match the supplied reference's base composition. The emitters are decorative and add no gameplay slots or abilities. HP keeps its 120° arc, now radius 48 above the bunker, inside the dome.
+- Fixed HUD text/timer overlap and minute formatting from 10:00 onward. Recoil is advanced by `update(dt)`, not `drawUnit`, and paused redraws leave it unchanged. Screen shake no longer calls `Math.random()` during rendering. Hive/Beam/Firewheel descriptions now describe their actual mechanics; README's stale shield-reserve wording and BALANCE's stale wave/cap table were corrected.
+- Verification: 78 smoke checks; 24 seeded Stage 1 runs before and after (sensible 4→5 wins/12; first-card 2→2/12); build/syntax checks and native Canvas raster inspection. Android performance and browser viewport acceptance remain device checks.

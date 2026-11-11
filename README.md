@@ -28,7 +28,7 @@ The suite assembles the script from `src/` in memory and runs on plain Node.js w
 - **11 enemy types**: meteor, fast meteor, armored, flyer, golem mother, golem shard, regeneration star, elite, phantom scout, assault meteor and the boss. There are damage resistances, cloaking, accelerating dashes and ally support.
 - **Pick-1-of-3 battle cards** earned with battle points, reworked 2026-11-10 after the reference "Selected Cards Overview" screen: every turret and the Guardian have their own cards (82 in total, one declarative `CARDS` table), **unit levels 1–3 with 4 pips** (3 teal cards fill 3 pips, then the purple evolution card is guaranteed in every draft and raises the level; the level-2 purple card is the SUPER), R&D-gated level-2 cards, combos and fortress modules. A **Selected Cards Overview** screen (from the draft, pause and results) shows the 5-slot level/pip row and every card taken.
 - **Permanent upgrades** for every unit up to R&D Lv.45; the cost rises with level. Early R&D levels unlock specialized cards, and separate thresholds unlock Super Mode and combos.
-- **Chips**: three purchase lines paid with components — turret damage, fire rate, shield reserve, five levels each. **Liveries**: Classic / Arctic / Ember, cosmetic only.
+- **Chips**: three purchase lines paid with components — turret damage, fire rate, base HP reserve, five levels each. **Liveries**: Classic / Arctic / Ember, cosmetic only.
 - Resources, patrol, regenerating energy, rewards and the results screen, a mobile stage menu and the battle HUD.
 - Progress saving in **`localStorage` under the key `meteor-bastion-save-v1`, schema `v:1`**, with support for reading older saves.
 
@@ -69,5 +69,7 @@ node tests/smoke.cjs
 ```
 
 Also manually check one full run in a mobile browser: Guardian smoothness, HUD readability, correct boss appearance in waves 20/25/30, enemies' ability to damage the base, and saves after a restart.
+
+The fortress scene was updated on 2026-11-11: a charcoal city backdrop, a wide misty dome, a window-lit bunker, dark underground supports and floodlit empty mounts. Turrets stand in mirrored pairs with 44px between neighbors (previously 76px); the four-slot order and the movable Guardian are preserved. The canvas is now `420×820`, with the same combat/base line at `y=720`; the added bottom area is scenery. The field fits both viewport dimensions. The HP arc remains 120°, now compact above the bunker. HUD metrics reserve space for the timer, and recoil advances in simulation time instead of on each redraw.
 
 The battle mode was reworked following the screenshot plan of 2026-11-08: dense enemy formations, custom trajectories with hovering, a city panorama, the dome and base HP, Disruption bands, more expressive turrets and shots. Details and coefficients are in [BALANCE.md](BALANCE.md).

@@ -7,14 +7,14 @@ var TURRETS=[
  {id:"disruption",name:"Disruption Drone",icon:"🛸",dmgType:"Force field",damage:7,attackSpeed:1.1,range:180,projSpeed:340,crit:0.05,critMul:1.7,target:"closestBase",effect:"slow",rarity:"rare",color:"#38c8ff",desc:"Force-field pulses slow enemies by 35%."},
  {id:"aeroblast",name:"Aeroblast",icon:"🌀",dmgType:"Air",damage:10,attackSpeed:0.8,range:540,projSpeed:520,crit:0.06,critMul:1.8,target:"nearest",effect:"knockback",rarity:"common",color:"#7dd7ff",desc:"A medium-range air shotgun: 5 pellets, a tight spread at range and strong knockback up close."},
  {id:"thunder",name:"Thunderbolt",icon:"⚡",dmgType:"Electric",damage:16,attackSpeed:0.8,range:180,projSpeed:0,crit:0.12,critMul:2.0,target:"nearest",effect:"chain",rarity:"rare",color:"#c084fc",desc:"Lightning jumps to nearby enemies."},
- {id:"beam",name:"Beam",icon:"🔷",dmgType:"Energy",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"strongest",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Heavy energy charges against the toughest targets."},
- {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Fire",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Sets enemies on fire: the damage keeps ticking."},
- {id:"hive",name:"Hive",icon:"🐝",dmgType:"Drones",damage:14,attackSpeed:0.5,range:390,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:"#facc15",desc:"Releases autonomous kamikaze drones."},
+ {id:"beam",name:"Beam",icon:"🔷",dmgType:"Energy",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"strongest",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Fires a focused series of energy hits at the toughest targets."},
+ {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Fire",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Releases a long-lived bouncing fire disc that repeatedly hits enemies."},
+ {id:"hive",name:"Hive",icon:"🐝",dmgType:"Drones",damage:14,attackSpeed:0.5,range:390,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:"#facc15",desc:"Releases persistent wasps within range. Released wasps hunt across the whole field and strike repeatedly."},
  {id:"railgun",name:"Railgun",icon:"🎯",dmgType:"Rail",damage:70,attackSpeed:0.45,range:230,projSpeed:900,crit:0.15,critMul:2.4,target:"closestBase",effect:"pierce",rarity:"legend",color:"#f472b6",desc:"The projectile pierces straight through enemies along its line."},
  {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Electric",damage:15,attackSpeed:0.88,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"The charge deals explosive damage and releases chain lightning."},
  {id:"gravity",name:"Gravity Vortex Gun",icon:"🕳️",dmgType:"Gravity",damage:9,attackSpeed:0.48,range:390,projSpeed:0,crit:0.04,critMul:1.65,target:"closestBase",effect:"gravity",rarity:"epic",color:"#8cb5ff",desc:"Creates a gravity field that pulls enemies in and deals damage over time."}
 ];
-var SOLDIER_CFG={id:"soldier",name:"Soldier \"Bastion\"",icon:"🪖",dmgType:"Rifle",damage:12,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Your fighter at the center of the line. Range: the whole field."};
+var SOLDIER_CFG={id:"soldier",name:"Soldier \"Bastion\"",icon:"🪖",dmgType:"Rifle",damage:12,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Your movable fighter on the fortress deck. Range: the whole field."};
 /* res: incoming damage multipliers by type (like the ±50% resistances in Galaxy Defense):
    <1 is resistance, >1 is vulnerability */
 var ENEMIES=[
@@ -76,8 +76,11 @@ function metaCooldown(lv){return 1-0.075*CD_LEVELS.filter(function(x){return lv>
 function metaSecondary(lv){return 1+0.2*SECONDARY_LEVELS.filter(function(x){return lv>=x;}).length;}
 function secondaryName(id){return ({skyguard:"Blast radius",laser:"Beam duration",aeroblast:"Impact radius",beam:"Beam duration",firewheel:"Drone lifetime",hive:"Wasp attacks",railgun:"Pierce",tesla:"Discharge radius",gravity:"Gravity field size",disruption:"Field area",thunder:"Chain targets",soldier:"Shots"})[id]||"Effect strength";}
 
-/* Placement order in a run: far left, far right, center left, center right. */
-var TURRET_X=[52,368,128,292], SOLDIER_X=210, LINE_Y=720, BASEY=720, W=420, H=760;
+/* Placement order: outer left, outer right, inner left, inner right.
+   Each flank is a compact pair, with a clear central bunker/Guardian lane.
+   The extra 60px below the deck is scenery; combat geometry stays at y=720. */
+var TURRET_X=[52,368,96,324], SOLDIER_X=210, LINE_Y=720, BASEY=720, W=420, H=820;
+var FORTRESS={deckY:BASEY+14,domeRx:260,domeRy:112,hpRadius:48};
 /* Top of turret visibility: just below the HUD status row (~24px). Enemies above this
    line are not targeted; spawning (y=-30) is unchanged: an enemy becomes a target
    as soon as it drops below the line. */

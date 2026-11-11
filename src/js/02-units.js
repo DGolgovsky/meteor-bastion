@@ -9,8 +9,8 @@ var cv=$("cv"),ctx=cv.getContext("2d");
    and text), so it is enough to render them directly in physical pixels.
    fitCanvas() sets canvas.width = CSS width × DPR (DPR is capped at 3 for
    performance), and draw() scales the context so the game logic
-   still works in 420×760 coordinates. The fit is automatic: on a
-   Pixel 10a it gives ~1050×1900, on other devices their native resolution. */
+   still works in W×H logical coordinates. The fit is automatic: on a
+   phone it fits the available viewport without stretching the logical field. */
 var RENDER_SCALE=1;
 function fitCanvas(){
   var dpr=Math.min(window.devicePixelRatio||1,3);
@@ -44,7 +44,7 @@ function newBattle(stage){
   wave:0,waveQueue:0,waveTotal:0,waveKilled:0,spawnT:0,bossSpawned:false,
   kills:0,reroll:true,turrets:[],soldier:null,usedTypes:{},
   /* Battle points: kills accumulate points, and a card is granted when a threshold is reached.
-     Threshold balance: 2, 10, 18, 26… (+8 per card and +2 per cleared wave);
+     Opening costs: 2, 4, 6, 9; later costs grow with drafts and cleared waves;
      as in the original, the first card arrives right after the second monster
      (the first enemies of wave 1 are meteors worth 1 point each), then the pace slows with the waves. */
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
@@ -74,7 +74,7 @@ var guardianPointerId=null;
 function guardianPointerX(ev){var rc=cv.getBoundingClientRect();return Math.max(22,Math.min(W-22,(ev.clientX-rc.left)/rc.width*W));}
 cv.addEventListener("pointerdown",function(ev){
  if(!B||B.over||B.paused||B.waveState==="draft")return;
- var rc=cv.getBoundingClientRect();if((ev.clientY-rc.top)/rc.height<0.73)return;
+ var rc=cv.getBoundingClientRect();if((ev.clientY-rc.top)/rc.height*H<BASEY-165)return;
  guardianPointerId=ev.pointerId;B.guardianGoalX=guardianPointerX(ev);
  if(cv.setPointerCapture)cv.setPointerCapture(ev.pointerId);ev.preventDefault();
 });

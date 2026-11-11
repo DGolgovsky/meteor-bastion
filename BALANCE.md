@@ -1,6 +1,6 @@
 # Meteor Bastion — current balance and regression
 
-State after the campaign expansion and the combat system rework, 2026-11-08. **All values below are parameters of our game**. Similarity to Galaxy Defense: Fortress TD does not mean these are the original's official numbers.
+Current parameters updated 2026-11-11; historical measurements below retain their original dates. **All values below are parameters of our game**. Similarity to Galaxy Defense: Fortress TD does not mean these are the original's official numbers.
 
 ## Campaign
 
@@ -16,20 +16,21 @@ In every campaign the boss is in the last wave; stage progress carries over to t
 
 | System | Value |
 |---|---|
-| Field / base | `420×760`, base line `y=720` |
+| Field / base | `420×820` including underground scenery; combat/base line stays `y=720` |
+| Turret positions / order | `x=52,368,96,324`: outer left, outer right, inner left, inner right; 44px between paired turrets |
 | Armament | 4 turret slots + a movable Guardian |
 | Base | 1000 HP, no shield (before Chips bonuses) |
 | Healing | +2 base HP per enemy killed, capped at the maximum |
 | First card thresholds | 2, 4, 6, 9 points; then 14 + 10 per next pick + 2.5 per cleared wave |
-| Waves | `8 + round(2.8 × wave) + (stage−1)×2`; Elite adds enemies |
-| Spawn interval | `max(0.18,0.60 − wave×0.006)` s, then a small random variation |
+| Waves | `24 + round(8.4 × wave) + (stage−1)×6`; Elite adds enemies |
+| Spawn interval | `max(0.06,0.20 − wave×0.002)` s, then a ×0.7–1.3 random variation; formation cooldown 1.33 s |
 | HP multiplier per wave | `0.78 × (1 + (wave−1)×0.14)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; growth was 0.06 before the 2026-11-10 card rework) |
 | Boss HP multiplier per wave | `0.88 × 1.1 × (1 + (wave−1)×0.07)`, on top of the stage |
 | Guardian | 12 damage (−8% from 13, a small round 4 nerf), 4 attacks/s, fires from both hands alternately; the triple burst is a tight group (3px spacing, one hand for the whole burst) |
 | Turret visibility top (VIS_TOP) | y=30 — enemies above the line (just below the HUD row) are not targeted; spawning (y=-30) is unchanged |
 | Turret and Guardian sprite scale | ×0.88 — the level label under the unit is not scaled |
 | Turret damage factor | ×1.60 on the turret's configured damage at R&D 1 (not applied to the Guardian) |
-| Live enemies | at most 72 regular enemies; the queue is not lost when full |
+| Live enemies | at most 330 total enemies (including the boss); the queue is not lost when full |
 | Energy | 5 per run, regenerates 1 per 12 minutes, maximum 30 |
 | Meta R&D | Lv. 1–45, +8% base damage per level, stepped CD and secondary stat |
 | Global Crit DMG bonus | at most +100% |
@@ -54,9 +55,9 @@ For the exact HP/speed of the 11 enemies and the attacks of the 11 turrets, use 
 - **Railgun, Disruption, Thunderbolt:** distinct effects and T1/T2/T3 chains.
 - **Combos:** including Gravity + Firewheel, Gravity + Hive, Railgun + Tesla. R&D requirements are tied to meta progression, not only to random battle cards.
 - **Chips:** levels 0–5 for `core` (+3% turret damage per step), `speed` (+2% fire rate), `fort` (+40 to the base's maximum HP), paid in components using the formula `4 + 4×current level`. Liveries change only the appearance.
-- **Base HP:** a single arc above the dome (same center as the dome: W/2, BASEY+22) — HP (r=112), arc length ∝ the HP fraction, symmetric around the apex. The full arc angle is 120° (±60° from the apex): at full HP the ends are ~48px above the deck and don't drop down between the Guardian and the turrets. The exact HP is shown as a small number centered above the dome. The base has no shield: breaches damage HP directly; the "Fortress Shield" module was replaced by "Fortress Repair" (+250 HP).
+- **Base HP:** a compact arc above the central bunker, inside the dome; center `(W/2, BASEY+14)`, radius 48, angle 120° (±60° from the apex). Arc length is proportional to HP, symmetric around the apex. Exact HP is centered 11px above the arc. The dome is scenery: an ellipse with radii 260/112 at the deck, not a second HP bar. The base has no shield: breaches damage HP directly; the "Fortress Shield" module was replaced by "Fortress Repair" (+250 HP).
 - **Notifications:** there are no pop-up notifications (toasts) in the game — not for super cards, patrol, or boss/champion warnings. The toast element and its styles were removed from the markup.
-- **HUD:** a single row on a transparent background (no dark backing, wave progress bar or purple card metrics): stage, wave, average DPS, kills, timer. The font is fitted to the field width (11px → 8.5px).
+- **HUD:** one transparent row: mode/stage, wave, average DPS, kills, timer. Labels shorten before the font shrinks (10.5 → 9px); the measured timer column is always reserved. Minutes display correctly after 10:00.
 
 ## Battle cards, levels and pips (2026-11-10)
 
@@ -226,7 +227,8 @@ Full card list (generated from `CARDS`):
 |---|---:|---:|---:|
 | Before the rework (`1433fde`, old cards, growth 0.06) | 0/12 / — | 0/12 / — | 27.6 / 35.0 |
 | New cards, old enemies (growth 0.06) | 9/12 / 2nd | 8/12 / 1st | 9.3 / 18.5 |
-| New cards, **growth 0.14 (current)** | **4/12 / 3rd** | **2/12 / 8th** | 23.9 / 31.3 |
+| New cards, growth 0.14 (before the fortress pass) | **4/12 / 3rd** | **2/12 / 8th** | 23.9 / 31.3 |
+| Compact turret pairs, growth 0.14 (2026-11-11) | **5/12 / 3rd** | **2/12 / 1st** | 17.3 / 30.2 |
 
 A wider 36-seed check (not in CI) gave sensible 27/36 → 11/36 and first-card 16/36 → 7/36 for growth 0.06 → 0.14; 0.12–0.16 all land at 7–18/36, the measurement is noisy. Outcomes are bimodal: runs either collapse on waves 5–9 or win cleanly, and early-wave pressure should be checked by hand. Spot checks with developed meta (6 seeds, sensible picks, growth 0.14): Stage 4 R&D 12 — 5/6 victories, Stage 9 R&D 30 — 5/6, Stage 12 R&D 45 — 5/6 (0.06: 6/6, 5/6, 6/6).
 
@@ -263,7 +265,7 @@ Running the tests from a **clean checkout**:
 node tests/smoke.cjs
 ```
 
-The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **72 tests** (2026-11-11), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, a backward RAF timestamp cannot drive ring radii negative, and a ring with a negative radius still draws, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
+The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **78 tests** (2026-11-11), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, a backward RAF timestamp cannot drive ring radii negative, and a ring with a negative radius still draws, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
 
 ## Known limitations and next iterations
 
@@ -311,3 +313,11 @@ Compensations tested on scratch copies (not in the tree): base 1000 → 2000 HP 
 Owner's own playthrough, 2026-11-09 (b56e1e6b): cleared Stage 1 on the FIRST attempt — 2521 kills, 8:24, 31 cards, 1786 HP restored; rewards 626 coins / 16 XP / 2 gems / 10 components (formula check: floor((2521×2.2+220+500)/10)=626 ✓). Headless fresh-account sims (0/24) badly understate a developed account plus human drafts — the "first win on the 3rd attempt" target is a fresh-account target, not the owner's experience. Results-screen fix (2026-11-09): all material grants now shown, biggest first — previously only the first 3 fighters' grants appeared, so Hive's 40 of 134 total materials was invisible; zero grants stay hidden.
 
 **Not verified on a real phone:** Pixel 10a performance with 50 enemies, a minimum fps ≥45, an exact match with the screenshots, working without scrolling. GitHub CI checks code execution and the build, but not mobile rendering.
+
+
+### Fortress screenshot pass, 2026-11-11
+
+- Four turrets now form two 44px pairs (`52/96` and `324/368`), freeing the central bunker lane; placement order, damage, ranges, enemy speeds and breach line are unchanged. Canvas height grows only below the deck (`760 → 820`), and the scene fits the viewport without stretching.
+- Bunker, mount floodlights, passive dome emitters and underground structure use Canvas primitives; no external images or font-dependent castle emoji. Recoil decays at 66 units/s in simulation time. Screen shake uses time-based offsets, so redrawing cannot consume combat randomness.
+- Regression: **78 smoke checks**, including slot construction, native-resolution sizing/touch mapping, HUD bounds, long timers, pause/FPS recoil and random-free rendering. Canvas raster checks cover empty/full mounts, liveries, damaged HP and a busy battlefield; these are not Android/browser layout or FPS measurements.
+- Same R&D 1 Stage 1 Normal benchmark, 12 fixed seeds per policy, before → after: sensible picks **4/12 → 5/12** victories (first victory stays attempt 3), first-card **2/12 → 2/12**. Mean breaches **23.9 → 17.3** / **31.3 → 30.2** respectively. Changing turret coordinates changes targeting, so identical combat outcomes are not expected; no balance coefficients were retuned. These small deterministic samples are calibration, not estimates of human win rate.
