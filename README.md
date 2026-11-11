@@ -26,7 +26,7 @@ The suite assembles the script from `src/` in memory and runs on plain Node.js w
 - **A movable Guardian and 4 turret slots**. The Guardian fires alternately from both hands. There is no turret micromanagement in battle; turrets pick their targets automatically.
 - **11 turrets**: Sky Guard, Laser, Disruption Drone, Aeroblast, Thunderbolt, Beam, Firewheel Drone, Hive, Railgun, Tesla Coil, Gravity Vortex Gun. Aeroblast uses an adaptive shotgun spread and a range of 540 instead of 200, so it can join the fight before enemies reach the fortress.
 - **11 enemy types**: meteor, fast meteor, armored, flyer, golem mother, golem shard, regeneration star, elite, phantom scout, assault meteor and the boss. There are damage resistances, cloaking, accelerating dashes and ally support.
-- **Pick-1-of-3 battle cards** earned with battle points, reworked 2026-11-10 after the reference "Selected Cards Overview" screen: every turret and the Guardian have their own cards (82 in total, one declarative `CARDS` table), **unit levels 1–3 with 4 pips** (3 teal cards fill 3 pips, then the purple evolution card is guaranteed in every draft and raises the level; the level-2 purple card is the SUPER), R&D-gated level-2 cards, combos and fortress modules. A **Selected Cards Overview** screen (from the draft, pause and results) shows the 5-slot level/pip row and every card taken.
+- **Pick-1-of-3 battle cards** earned with battle points: since 2026-11-11 the **full reference card set** from [`docs/turrets-reference.md`](docs/turrets-reference.md) — 270 cards (248 for the 11 turrets, 22 for the Guardian), one declarative `CARDS` table, the shared mechanics (mines, pulse waves, Paralyze/Immobilize, Disruption stacks, teleports, black holes, portals, chain lightning, mini drones, charged states…) in `03b-effects.js`. Star Tier N = in-run unit level N; Extra cards are purple and level the unit up (levels 1–3, then mastery); Super Mode turns on automatically at Lv.3 with enough R&D; 🔒 locks are R&D gates. Combos and fortress modules are kept. A **Selected Cards Overview** screen (from the draft, pause and results) shows the 5-slot level/pip row and every card taken.
 - **Permanent upgrades** for every unit up to R&D Lv.45; the cost rises with level. Early R&D levels unlock specialized cards, and separate thresholds unlock Super Mode and combos.
 - **Chips**: three purchase lines paid with components — turret damage, fire rate, base HP reserve, five levels each. **Liveries**: Classic / Arctic / Ember, cosmetic only.
 - Resources, patrol, regenerating energy, rewards and the results screen, a mobile stage menu and the battle HUD.
@@ -42,18 +42,21 @@ src/js/
   01-state.js      saves, meta progression, Chips, Liveries, menus
   02-units.js      battle initialization, units, Guardian
   04-waves.js      wave composition and enemy spawning
-  03-combat.js     damage, targeting, weapon effects
+  03-combat.js     damage, targeting, weapon firing and hits
+  03b-effects.js   shared card systems (statuses, mines, pulses, bolts, portals, wasps, wheels, fields) and entity caps
   05-update.js     battle simulation, physics, fields, breaches
   06-render.js     Canvas rendering
   07-cards.js      declarative battle cards, unit levels 1–3 and pips
   07-ui.js         draft, Selected Cards Overview, rewards
   08-main.js       initialization
 build.py           build into one standalone index.html
-tests/smoke.cjs    regression checks
+tests/smoke.cjs    regression checks (incl. "every reference card exists with its numbers")
+tests/balance.cjs  headless Stage 1 R&D 1 campaigns, 12 seeds × 2 draft policies
+docs/turrets-reference.md  the reference card set (source of truth for cards)
 BALANCE.md         parameters and the balance testing protocol
 ```
 
-The order in `src/order.txt` intentionally differs from alphabetical sorting: `04-waves.js` comes before `03-combat.js`. Do not sort by name. Make changes in `src/`, not in the generated `index.html`.
+The order in `src/order.txt` intentionally differs from alphabetical sorting: `04-waves.js` comes before `03-combat.js`, then `03b-effects.js`. Do not sort by name. Make changes in `src/`, not in the generated `index.html`.
 
 ## Balance
 
@@ -66,6 +69,7 @@ Compared with the previous build, enemies are noticeably faster and tougher, whi
 ```sh
 python3 build.py
 node tests/smoke.cjs
+node tests/balance.cjs
 ```
 
 Also manually check one full run in a mobile browser: Guardian smoothness, HUD readability, correct boss appearance in waves 20/25/30, enemies' ability to damage the base, and saves after a restart.

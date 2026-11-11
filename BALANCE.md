@@ -24,7 +24,7 @@ In every campaign the boss is in the last wave; stage progress carries over to t
 | First card thresholds | 2, 4, 6, 9 points; then 14 + 10 per next pick + 2.5 per cleared wave |
 | Waves | `24 + round(8.4 × wave) + (stage−1)×6`; Elite adds enemies |
 | Spawn interval | `max(0.06,0.20 − wave×0.002)` s, then a ×0.7–1.3 random variation; formation cooldown 1.33 s |
-| HP multiplier per wave | `0.78 × (1 + (wave−1)×0.14)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; growth was 0.06 before the 2026-11-10 card rework) |
+| HP multiplier per wave | `0.76 × (1 + (wave−1)×0.13)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; 0.78/0.14 before the 2026-11-11 reference card set, growth 0.06 before the 2026-11-10 card rework) |
 | Boss HP multiplier per wave | `0.88 × 1.1 × (1 + (wave−1)×0.07)`, on top of the stage |
 | Guardian | 12 damage (−8% from 13, a small round 4 nerf), 4 attacks/s, fires from both hands alternately; the triple burst is a tight group (3px spacing, one hand for the whole burst) |
 | Turret visibility top (VIS_TOP) | y=30 — enemies above the line (just below the HUD row) are not targeted; spawning (y=-30) is unchanged |
@@ -45,13 +45,13 @@ For the exact HP/speed of the 11 enemies and the attacks of the 11 turrets, use 
 - **Phase scout:** periodically cloaks. Some turrets cannot pick a cloaked target unless it is revealed. Laser/Disruption/Firewheel have ways to reveal it.
 - **Charger:** accelerating dashes toward the fortress.
 - **Sky Guard:** impact and explosion are counted separately; the R&D chain adds thermal damage.
-- **Laser:** a pulse with a 7.8 s cooldown between pulses (was 5.2 s; the cooldown is a constant in `fireLaser`, and the Laser turret's `attackSpeed` does not affect it), reflection/refraction, Deflect/Sweep, stacking vulnerability. The beam goes from the turret through the target to the edge of the field in the firing direction; damage does not depend on the beam length. **The beam does not track its target after firing:** the direction and aim point are locked when the pulse starts (the target's position at the start of the channel) and do not follow it until the channel ends; each tick, damage is computed for enemies on the locked line.
+- **Laser:** a pulse with a 7.8 s cooldown between pulses (was 5.2 s; the cooldown is a constant in `fireLaser`, and the Laser turret's `attackSpeed` does not affect it), reflection/refraction, Deflect/Sweep, stacking vulnerability. The beam goes from the turret through the target to the edge of the field in the firing direction; **every laser, including extra and reflected ones, starts at the turret** (2026-11-11), and the ray width grows with its damage; damage does not depend on the beam length. **The beam does not track its target after firing:** the direction and aim point are locked when the pulse starts (the target's position at the start of the channel) and do not follow it until the channel ends; each tick, damage is computed for enemies on the locked line.
 - **Beam:** ticks of 145% ATK at a 0.2 s interval, base CD 10 s, focusing and Stacking Damage with R&D upgrades.
 - **Aeroblast is a medium-range shotgun.** Activation range **540** (was 200): it now fires at enemies from **y≥180**, not only from y≥520. A volley has 5 pellets of 10 base damage each; projectile speed **520 px/s** (was 380), fire rate 0.8/s, knockback 12 per hit. The spread's angular step is `min(0.14, 14/max(90, dist))` rad: up close the shotgun stays wide, far away neighboring pellets bunch up more tightly (about 14px between trajectories at the target distance). Extra projectiles from cards keep adding pellets to the spread. The "Impact radius" R&D scales the **splash**, not the targeting range. In the original Galaxy Defense, Aeroblast deals a direct hit + a directional cone explosion, and Shotgun Barrage is a separate card; here the current simplified shotgun mechanic is kept, but its ineffectiveness at range is fixed. Source for comparison: https://gd-community.fun/guides/aeroblast .
 - **Hive:** wasps are released within the hive's radius but look for targets on their own across the **whole field**; the Swarm Echo R&D chain limits repeated wasp replication. Wasps fly out in an upward fan from the turret (spread 10–14px from it, a 0.25 s launch phase at 120 px/s), then home in at 240 px/s; damage is dealt on touching the enemy's bottom edge (the wasp is under the enemy, not at its center). **Wasp lifetime 8.5 s** (was 5.5 s), echo wasps 6.5 s (was 4.3 s). **At most 2 wasps per target:** wasps are distributed across targets when choosing and retargeting, the rest take other enemies; if all targets are taken, the least loaded one is chosen.
-- **Firewheel:** a single long-lived bouncing disc (radius 14, lifetime 10 s; a second disc after the "Second Firefly" card, mod `wheelCount`); burning areas and duration.
+- **Firewheel:** a single standalone bouncing disc (radius 20, speed 200, lifetime 10 s); see the reference card set below.
 - **Tesla:** a direct hit (0.8×), an area explosion (0.65×, radius 55), a flash ring of 170, 12 particles; the charge damage is unchanged. **Bounce instead of "double charge":** after a hit, the discharge jumps from the target to the nearest enemy not yet hit within 150px, and so on along the chain (bounces = multiCount−1, 2 by default); bounce damage falls off: 0.7×, 0.5×, 0.35×, 0.25×, 0.2×. The old simultaneous hit on several targets around the first one is removed entirely; the "Secondary Arc" card is replaced by "Discharge Bounce" (one more bounce), and the "Overvoltage" super bounces across 6 targets.
-- **No scatter:** extra turret projectiles fly **in parallel** with the main one (7px lateral offset), not in a spread — the "Twin Barrel", "Cluster Salvo", "Shockwave" cards and the "Rocket Barrage" super no longer scatter the fire. The Laser's sweeping beam hits the second target **deterministically** — the toughest of the remaining ones, not a random one. The only spreads in the game are the pellet spread of the Aeroblast shotgun itself (its design, not a card) and, since 2026-11-10, the Guardian's **Shotgun Evolution** card (each shot scatters into 2 extra bullets at ±0.12 rad) — an explicit owner-approved exception.
+- **No scatter:** (card names in this bullet are from the pre-reference set) extra turret projectiles fly **in parallel** with the main one (7px lateral offset), not in a spread — the "Twin Barrel", "Cluster Salvo", "Shockwave" cards and the "Rocket Barrage" super no longer scatter the fire. The Laser's sweeping beam hits the second target **deterministically** — the toughest of the remaining ones, not a random one. The only spreads in the game are the pellet spread of the Aeroblast shotgun itself (its design, not a card) and, since 2026-11-10, the Guardian's **Shotgun Evolution** card (each shot scatters into 2 extra bullets at ±0.12 rad) — an explicit owner-approved exception.
 - **Railgun, Disruption, Thunderbolt:** distinct effects and T1/T2/T3 chains.
 - **Combos:** including Gravity + Firewheel, Gravity + Hive, Railgun + Tesla. R&D requirements are tied to meta progression, not only to random battle cards.
 - **Chips:** levels 0–5 for `core` (+3% turret damage per step), `speed` (+2% fire rate), `fort` (+40 to the base's maximum HP), paid in components using the formula `4 + 4×current level`. Liveries change only the appearance.
@@ -59,178 +59,391 @@ For the exact HP/speed of the 11 enemies and the attacks of the 11 turrets, use 
 - **Notifications:** there are no pop-up notifications (toasts) in the game — not for super cards, patrol, or boss/champion warnings. The toast element and its styles were removed from the markup.
 - **HUD:** one transparent row: mode/stage, wave, average DPS, kills, timer. Labels shorten before the font shrinks (10.5 → 9px); the measured timer column is always reserved. Minutes display correctly after 10:00.
 
-## Battle cards, levels and pips (2026-11-10)
+## Battle cards: the reference set (2026-11-11)
 
-Rules (code: `src/js/07-cards.js`, `genCards`/`applyCard` in `src/js/07-ui.js`):
+Source of truth: [`docs/turrets-reference.md`](docs/turrets-reference.md) (11 turrets plus the Guardian, Russian effect text, English card names). Code: `src/js/07-cards.js` (all 270 cards), `src/js/03b-effects.js` (shared systems), `genCards`/`applyCard` in `src/js/07-ui.js`. The smoke test `every reference card exists…` parses the reference file and fails if a card is missing, if one was invented, or if its tier, Extra flag, R&D gate or **any number** from the reference text is not in the card text.
 
 | Rule | Value |
 |---|---|
-| Unit level | 1–3 (`MAX_RUN_LV`); a built turret and the Guardian start at Lv.1 |
-| Pips | 4 per level (`PIPS_PER_LV`): normal unit cards and combos fill pips 1–3; the purple card fills pip 4 and levels the unit up |
-| Purple card | appears only at 3 pips, then is forced into every draft (up to 2 per draft) until taken; survives a reroll |
-| Level-up bonus | unit damage ×1.25 (`BALANCE.levelUpDmg`) |
-| Lv.1 purple | the unit's evolution card, no R&D requirement |
-| Lv.2 purple | the unit's SUPER, R&D ≥ `rdTierUnlock` (10–18) |
-| Level-2 normal cards | unit Lv.≥2 and R&D 6/10/14 |
-| Draft weights | new turret as before; each unit's normal cards share ≈18 weight (min 3 per card), level-2 cards ×1.2; modules 3 |
+| Star Tier N | in-run unit level N: the draft pool holds the unit's normal cards with tier ≤ its level (1–3, `MAX_RUN_LV`) |
+| Extra (purple) | eligible only at 3 pips. At 3 pips, up to 2 purples are forced into each draft (round-robin over the unit's eligible Extras) until one is taken. A purple card levels the unit up (pips → 0, damage ×1.25 `BALANCE.levelUpDmg`). At Lv.3, a purple starts a **mastery** cycle (pips reset, `u.mastery++`) |
+| Pips | normal unit cards and combos fill pips 1–3 |
+| Super Mode | automatic on reaching Lv.3 when R&D ≥ `rdTierUnlock` (Laser/Aeroblast/Gravity/Firewheel 10, Sky Guard/Railgun 14, others 18); recorded in the pick list as "SUPER MODE: …". There are no SUPER cards any more |
+| 🔒 Lv.X | the card needs turret R&D ≥ X |
+| Lv.2/6/10 unlock table | the named cards need R&D 2/6/10 |
+| Guardian locks | Lv.61/71/101/121 exceed our R&D cap of 45 and are scaled ×45/121: **23 / 26 / 38 / 45** |
+| Lv.4/8/12 meta bumps | Lv.4 and Lv.12 (then 24/32/44): the secondary stat +20% (Hive: Wasp ATK count +1 per step, Railgun: Penetration +1 per step); Lv.8: Cooldown Speed +5% (later 16/28/36 keep −7.5% each). Secondary names: Gravity field radius, Field duration (Disruption), Strike width (Thunderbolt) |
+| Cross-turret cards | e.g. Tesla "Firewheel Thunder", Gravity "Hive Gravity", Beam "Bee Wave": they work only while the referenced unit is on the field |
+| Draft weights | each unit's normal cards share ≈18 weight (min 1.5 per card), tier ≥2 cards ×1.2 |
 | Empty draft guard | "Field Patch" (+120 HP, repeatable) fills the draft only when nothing else is left |
 
-Secondary-damage numbers the reference does not state (our values): Impact Reinforcement small missile = 50% of the missile's damage, impact only; Wasp II = +50% sting; Electro-Wasps shock = 60% of the sting, Electric type, up to 2 enemies within 80px; Shotgun Evolution bullets = full bullet damage; Flame Bullet = the standard burn (50% of the hit over 3 s); Energy Surge deflected lasers = 50% of a tick; Laser Reflection = 0.8^k of a tick for the k-th reflection; High-Energy Pulse doubles the damaging band `(r+8)×2`.
+**Entity caps for mobile** (`FX_CAP` in `03b-effects.js`): mines 30, pulse waves 24, Thunderbolt bolts 8, black holes 6, portals 4, spinners 4, mini drones 12, delayed strikes 30, projectiles 400, fields 56, Ripping Lasers 10/s, wasps 90. The full-card stress test checks them.
 
-Full card list (generated from `CARDS`):
+**Base behavior changed by the owner (2026-11-11), not by cards:**
+- **Laser fires only from the turret.** Every extra laser (deflected ±0.3·k rad, sweeping, reflected, refracted, Graviton/Emberrail/Convergence) starts at the turret, not at the target. Reflections are extra rays from the turret at 0.8^k damage. The direction still locks at pulse start. **Ray width depends on damage:** `3 × clamp(√power, 1, 3) × band`, where power is the ray's damage relative to the base tick (High-Energy Pulse doubles the band).
+- **Firewheel:** a bigger, slower disc: radius 20 (Size Boost +25% → 25), speed 200 (was 14 and 290). Its cooldown (2 s minus Killing Charge) starts only after the disc is gone. Contact damage went from 1.15× ATK + guaranteed burn to **3× ATK**, because burn is now the Ignition card (20%) / Inferno.
+- **Beam** is drawn as a thick wavy stream with flowing particles (`drawBeamStreams`).
+- **Gravity** is a field flying from the turret toward the target (95 px/s, range 260, "Extended Range" ×2) and pulling enemies along. Its tick damage went from 0.65× to **2.2× ATK** so DPS stays at the HEAD level (single-turret bench at R&D 1: 72 vs 73 dmg/s).
+- **Teslacoil** charges 0.3 s before each discharge (Cooperative Beam / Charged Shock act during the charge). The cooldown runs during the charge.
+- **Thunderbolt** strikes a vertical column (half-width 14 px × Strike width), targeting the enemy closest to the base, range 560.
 
-**Sky Guard** ([Fire])
+**Numbers the reference does not state (our values):**
+- **Paralyze / Immobilize:** 1 s base (Laser 0.6 s); bosses ×0.3, champions ×0.5; 1 s immunity afterwards.
+- **Teleport:** pushes the enemy back 120 px, or to the start for "rewind" effects; bosses are immune. Teleport Damage = min(3% max HP, 60000 × ATK).
+- **Disruption:** max 3 stacks (Overcharged: 5, power ×2). The detonation at max stacks deals 2× ATK; Burst adds 6×, the area version hits within 50 px. The Disruption Field deals 0.6× every 0.5 s for 3 s × Field duration.
+- **Small strikes:** Small Thunderbolt every 0.6 s at 0.5×; Chain Lightning 0.6× (jumps within 120 px).
+- **Mines and pulses:** Floating Mine arms after 0.3 s; Pulse Wave 0.6×; Ripping Laser is a 240 px tearing ray.
+- **Charge mechanics:** Charge Blast = 30% of volleys, or every volley while the Guardian is in Charged State. Guardian Charge Activation: 60 charge points → 20 charged shots at 1.5× fire rate. Killing Charge shortens the Firewheel downtime.
+- **Mirror Guardian:** a clone 40 px aside whose bullets deal 50%.
+- **Other cards:** Volley Wasp = an extra sting on a nearby enemy. Aeroblast per-volley effects run on the central "main" pellet. Weak Spot is capped at ×1.5. Split shells fly at small fragment angles (±0.35 rad).
+- **Carried over:** Wasp II +50% sting, Wasp III ×2; Impact Reinforcement small missile = 50% (impact only); Electro-Wasps shock = 60% of the sting to 2 enemies within 80 px; Shotgun Evolution bullets = full damage at ±0.12 rad (the only real spread besides the Aeroblast pellets).
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Volley Missile | 1 | normal | 1 | 2 | Missiles +1, DMG -15%. |
-| Explosion Spread | 1 | normal | 1 | 2 | Explosion range +30%. |
-| Impact Reinforcement | 1 | normal | 1 | 1 | After a hit, the missile launches 3 small missiles that deal impact damage only. |
-| Impact Multiplier | 1 | evolution (purple) | 1 | 1 | All Sky Guard missiles: Impact DMG +200%. |
-| Thermal Warhead | 2 | normal | 14 | 1 | Missile explosions set enemies on fire. |
-| Rocket Barrage | 2 | SUPER (purple) | 14 | 1 | +2 rockets per volley and +40% fire rate. |
+**Guardian** uses the official 22-card set (section 12 of the reference). It replaces the old bespoke Guardian cards (Explosive Rounds, Guardian Overdrive, Legendary Marksman). No stats table exists for it, so its base stats did not change. Shotgun Evolution keeps the real spread. Laser Shot's ripping laser starts at the Guardian.
 
-**Laser** ([Energy])
+Full card list (generated from `CARDS` via `cardDesc`):
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Laser Amplification | 1 | normal | 1 | 2 | Laser DMG +50%. |
-| Laser Reflection | 1 | normal | 1 | 3 | DMG -20% per reflection. Reflections +1. |
-| Energy Surge | 1 | normal | 1 | 1 | Fires 2 additional deflected lasers. |
-| Stable Energy | 1 | normal | 1 | 2 | Laser duration +40%. |
-| Additional Sweep | 1 | normal | 1 | 2 | Fires 1 additional sweeping laser at the toughest remaining enemy. |
-| Refracting Lens | 1 | normal | 1 | 1 | The beam refracts at the target: two side branches hit nearby enemies for 50% damage. |
-| High-Energy Pulse | 1 | evolution (purple) | 1 | 1 | The laser hits a twice wider band. Laser DMG range +100%. |
-| Slow Laser | 2 | normal | 6 | 1 | Enemies hit by deflected, reflected and sweeping lasers get [Slow] (30%). |
-| Vulnerability Mark | 1 | normal | 2 | 1 | Repeated laser hits make enemies [Vulnerable]: up to +30% incoming damage. |
-| Mirror Resonator | 2 | SUPER (purple) | 18 | 1 | The beam gains reflection and refraction at once, +60% damage. |
+**Sky Guard** — 23 cards
 
-**Disruption Drone** ([Force field])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Volley Missile | 1 | normal | 1 | Sky Guard missiles +1, DMG -15%. |
+| Sky Guard Boost | 1 | normal | 1 | Sky Guard missile DMG +50%. |
+| Explosion Spread | 1 | normal | 1 | Explosion range +30%. |
+| Impact Reinforcement | 1 | normal | 1 | After hitting a target, a Sky Guard missile launches 3 small missiles that deal impact damage only. |
+| Ignition | 1 | normal | 2 | Enemies hit by Sky Guard missiles get [Burn]. |
+| Volley Missile+ | 1 | normal | 26 | Sky Guard missiles +1. |
+| Sky Guard Boost+ | 1 | normal | 34 | Sky Guard missile DMG +100%. |
+| Explosion Spread+ | 1 | normal | 42 | Explosion range +45%. |
+| Burning Area | 1 | Extra (purple) | 1 | After exploding, Sky Guard missiles leave a burning area for 5 s. |
+| Impact Multiplier | 1 | Extra (purple) | 1 | All Sky Guard missiles: Impact DMG +200%. |
+| Missile Amplification | 2 | normal | 1 | Sky Guard small missiles +3. |
+| Ignition Amplification | 2 | normal | 6 | [Burn] DMG +100%. |
+| Thermal Warhead | 2 | normal | 22 | Sky Guard small missiles have a 60% chance to explode on hitting an enemy. |
+| Collapse Explosion | 2 | normal | 1 | After a Sky Guard missile explodes, a small black hole appears. |
+| Shock Thunder Blast | 2 | normal | 30 | All missiles have a 20% chance to leave a Floating Mine when dealing impact damage. |
+| Strong Impact | 2 | Extra (purple) | 1 | Sky Guard missiles +2. |
+| Close-range Explosion | 2 | Extra (purple) | 14 | After hitting a target, a Sky Guard missile triggers an extra strong explosion nearby. |
+| Chain Reaction | 3 | normal | 1 | Sky Guard small missiles have a 60% chance to launch one more small missile on hitting an enemy. |
+| Death Ignition | 3 | normal | 10 | An enemy dying under [Burn] explodes. |
+| Detonation Thunderbolt | 3 | normal | 1 | When Sky Guard missiles kill an enemy, a stationary small Thunderbolt appears for 5 s. |
+| Path Strike | 3 | normal | 1 | Sky Guard missiles deal impact damage to enemies along their path. |
+| Impact Cleave | 3 | normal | 38 | All missiles fire a Ripping Laser when dealing impact damage. |
+| Fire Transmission | 3 | Extra (purple) | 1 | Sky Guard missiles inflict [Burn] on enemies they fly through. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Cryo Core | 1 | normal | 1 | 2 | Slow +12%. |
-| Pulse Overclock | 1 | normal | 1 | 2 | Pulse rate +20%. |
-| Field Saturation | 1 | normal | 2 | 1 | Field area +20%. |
-| Defense Breach | 1 | evolution (purple) | 1 | 1 | Field pulses inflict [Vulnerable]. |
-| Disruption Stasis | 2 | normal | 6 | 1 | Slow +15%. |
-| Stasis Field | 2 | SUPER (purple) | 18 | 1 | Slow increased to 70%, pulses gain a slowing splash. |
+**Laser** — 23 cards
 
-**Aeroblast** ([Physical])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Laser Amplification | 1 | normal | 1 | Laser DMG +50%. |
+| Stable Energy | 1 | normal | 1 | Laser duration +40%. |
+| Laser Reflection | 1 | normal | 1 | DMG -20% per reflection. Laser reflections +1. |
+| Additional Sweep | 1 | normal | 1 | Fires 1 additional Sweeping Laser from the turret. |
+| Energy Surge | 1 | normal | 2 | Fires 2 additional Deflected Lasers from the turret. |
+| Laser Amplification+ | 1 | normal | 26 | Laser DMG +100%. |
+| Laser Reflection+ | 1 | normal | 34 | Laser reflections +1. |
+| Stable Energy+ | 1 | normal | 42 | Laser duration +60%. |
+| High-Energy Pulse | 1 | Extra (purple) | 1 | Laser DMG range +100%. |
+| Multi-Strike | 1 | Extra (purple) | 1 | Laser duration +100%, Cooldown speed +20%. |
+| Vulnerable Laser | 2 | normal | 1 | Enemies hit by Sweeping Lasers get [Vulnerable]. |
+| Slow Laser | 2 | normal | 6 | Enemies hit by Deflected Lasers get [Slow]. |
+| Energy Paralysis | 2 | normal | 1 | Enemies hit by the laser get [Paralyze]. |
+| Graviton Laser | 2 | normal | 22 | Lasers pull nearby enemies in. |
+| Emberrail Laser | 2 | normal | 38 | While active, the piercing laser leaves a Flame Trail. |
+| Energy Overload | 2 | Extra (purple) | 1 | Duration of all laser debuffs +100%. |
+| Tear Explosion | 2 | Extra (purple) | 1 | A laser hit has a 20% chance to fire a Ripping Laser from the turret. |
+| Energy Boost | 2 | Extra (purple) | 18 | Laser DMG +60% for every debuff on the enemy (max 300%). |
+| Sweep Boost | 3 | normal | 1 | The Sweeping Laser sweeps one more time. |
+| Deflected Laser Reflection | 3 | normal | 14 | Deflected laser reflections +1. |
+| Energy Detonation | 3 | normal | 1 | All lasers trigger an Ignition Explosion when hitting enemies with [Burn]. |
+| Convergence Trigger | 3 | normal | 1 | A laser hit has a 30% chance to create a Refracted Beam from the turret. |
+| Disruption Laser | 3 | normal | 30 | When dealing damage, the laser has a 10% chance to apply 1 stack of [Disruption]. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Impact Enhancement | 1 | normal | 1 | 2 | Knockback +50%, DMG +30%. |
-| Rapid Blast | 1 | normal | 1 | 2 | Fire rate +20%. |
-| Compression | 1 | normal | 2 | 1 | Knockback +20%, Impact radius +20%. |
-| Air Storm | 1 | evolution (purple) | 1 | 1 | Impact area +50%, DMG +20%. |
-| Shockwave | 2 | normal | 6 | 1 | Air pellets +1. |
-| Hurricane | 2 | SUPER (purple) | 14 | 1 | Knockback is three times stronger, blasts gain a large splash. |
+**Disruption Drone** — 24 cards
 
-**Thunderbolt** ([Electric])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Field Amplification | 1 | normal | 1 | Disruption Field DMG +50%. |
+| Field Duration | 1 | normal | 1 | Disruption Field duration +30%. |
+| Field Expansion | 1 | normal | 1 | Disruption Field DMG area +30%. |
+| Disruption Force | 1 | normal | 1 | Each time the Disruption Field deals damage, it applies 1 stack of [Disruption]. |
+| Random Disturbance | 1 | normal | 2 | Enemies hit by the Disruption Field have a 5% chance to teleport back some distance. |
+| Field Amplification+ | 1 | normal | 26 | Disruption Field DMG +100%. |
+| Field Expansion+ | 1 | normal | 34 | Disruption Field DMG area +45%. |
+| Field Duration+ | 1 | normal | 42 | Disruption Field duration +45%. |
+| Final Blast | 1 | Extra (purple) | 1 | When the Disruption Field ends, it deals explosion damage. |
+| Stasis Field | 1 | Extra (purple) | 1 | Each time enemies take Disruption Field damage, their [Slow] grows by 10% (max 90%). |
+| Disruption Burst | 2 | normal | 1 | When [Disruption] reaches max stacks, it deals 1 powerful one-time hit. |
+| Rewind Teleport | 2 | normal | 6 | Enemies hit by the Disruption Field have a 2.5% chance to teleport back to their starting point. |
+| Overcharged Disruption | 2 | normal | 22 | [Disruption] DMG +100%, max stacks become 5. |
+| Small Laser | 2 | normal | 1 | A Sweeping Laser appears in the center of each Disruption Field. |
+| Electric Field | 2 | normal | 1 | Enemies hit by the Disruption Field have a 30% chance to get [Paralyze]. |
+| Interference Thunder Core | 2 | normal | 30 | Enemies dying in the Disruption Field have a 30% chance to create a small Thunderbolt. |
+| Quick Cooldown | 2 | Extra (purple) | 1 | Disruption Drone DMG interval -30%, Cooldown speed +30%. |
+| Field Suppression | 2 | Extra (purple) | 1 | Enemies in the Disruption Field take extra damage based on their slow strength (max +200%). |
+| Area Disruption | 3 | normal | 1 | When [Disruption] reaches max stacks, it deals 1 extra area hit. |
+| Teleport Damage | 3 | normal | 10 | A teleport out of the Disruption Field deals 3% of the target's max HP (max 60000 × ATK). |
+| Fortress Support | 3 | normal | 1 | An extra set of Disruption Drones launches above the fortress. |
+| Field Replication | 3 | normal | 1 | A Railgun shell entering a Disruption Field for the first time splits with a 100% chance (+1 Railgun shell). |
+| Disruption Shotgun | 3 | normal | 38 | While a Disruption Field is active, the drones fire Penetrating Shotgun Shells into it. |
+| Converging Field | 3 | Extra (purple) | 18 | Every damage tick pulls enemies to the field center. Disruption Drone DMG +100%. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Double Chain | 1 | normal | 1 | 3 | Chain targets +1. |
-| Storm Capacitor | 1 | normal | 1 | 2 | Fire rate +20%. |
-| Paralyzing Discharge | 1 | evolution (purple) | 1 | 1 | Lightning inflicts [Slow]. |
-| Discharge Storm | 2 | normal | 14 | 1 | Fire rate +25%. |
-| Thunderstorm | 2 | SUPER (purple) | 18 | 1 | +3 chain lightning targets and +50% damage. |
+**Aeroblast** — 23 cards
 
-**Beam** ([Energy])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Powerful Blast | 1 | normal | 1 | Aeroblast projectile DMG +50%. |
+| Multiple Blast | 1 | normal | 1 | Aeroblast projectiles +1, DMG -15%. |
+| Impact Enhancement | 1 | normal | 1 | Knockback +50%, DMG +30%. |
+| Shotgun Barrage | 1 | normal | 1 | After firing, Aeroblast releases 5 Penetrating Shotgun Shells. |
+| Floating Mine | 1 | normal | 2 | On explosion, the Aeroblast projectile leaves 2 Floating Mines in the blast area. |
+| Powerful Blast+ | 1 | normal | 26 | Aeroblast projectile DMG +100%. |
+| Multiple Blast+ | 1 | normal | 34 | Aeroblast fires 1 extra time. |
+| Impact Enhancement+ | 1 | normal | 42 | Knockback +75%, DMG +30%. |
+| Massive Explosion | 1 | Extra (purple) | 1 | Aeroblast explosion radius +70%. |
+| Central Blast | 1 | Extra (purple) | 1 | Aeroblast projectiles also detonate a high-energy blast at the center of the area. |
+| Extra Loading | 2 | normal | 1 | For each enemy killed, Aeroblast fires 1 extra Penetrating Shotgun Shell (max 10). |
+| Wide Minefield | 2 | normal | 6 | Floating Mines +2, Mine explosion DMG +25%. |
+| Mine Shockwave | 2 | normal | 14 | Floating Mines +2, Mine knockback +100%. |
+| Piercing Blast | 2 | normal | 1 | Aeroblast projectile penetration +1. |
+| Firewheel Summon | 2 | normal | 1 | Every enemy hit by an Aeroblast explosion summons a small Firewheel drone. |
+| Bouncing Barrage | 2 | normal | 30 | Aeroblast projectile bounces +1. |
+| Chain Explosion | 2 | Extra (purple) | 1 | Explosion DMG +20% for every enemy hit by the Aeroblast explosion (max 200%). |
+| Range Extension | 2 | Extra (purple) | 1 | Aeroblast range +70%. |
+| Secondary Explosion | 2 | Extra (purple) | 18 | Enemies hit by an Aeroblast projectile cause an extra explosion after 1 s. |
+| Shotgun Penetration | 3 | normal | 1 | Shotgun Shell DMG +50%, range +70%. |
+| Gravity Bomb | 3 | normal | 1 | The projectile pulls enemies to the center before exploding. Aeroblast projectile DMG +100%. |
+| Shatter Impact | 3 | normal | 22 | On hit, the Aeroblast projectile creates 2 extra Ripping Lasers. |
+| Charge Blast | 3 | normal | 38 | 30% chance to fire Charge Shots, and keeps firing them while the Guardian is in Charged State. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| High-Frequency Beam | 1 | normal | 1 | 3 | Beam cooldown speed +30%. |
-| Beam Refraction | 1 | normal | 1 | 1 | On hit, the beam spawns refracted beams at nearby enemies. Refractions +2. |
-| Beam Resonance | 1 | normal | 1 | 2 | Beam series duration +35%. |
-| Beam Focus | 1 | normal | 2 | 1 | Repeated hits on the same target build damage up to +80%. |
-| Beam Penetration | 1 | evolution (purple) | 1 | 1 | All beams inflict [Vulnerable] on their targets. |
-| Stacking Damage | 2 | normal | 6 | 1 | The accumulated focus bonus is kept when switching targets. |
-| Concentrated Stream | 2 | normal | 14 | 1 | Focus cap raised to +300%. |
-| Annihilator | 2 | SUPER (purple) | 18 | 1 | +150% damage and +20% crit chance. |
+**Thunderbolt** — 23 cards
 
-**Firewheel Drone** ([Fire])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Continuous Strike | 1 | normal | 1 | Thunderbolts +1, Lightning strike DMG -15%. |
+| Swift Strike | 1 | normal | 1 | Lightning strike cooldown speed +10%, DMG +30%. |
+| Lightning Boost | 1 | normal | 1 | Lightning strike DMG +50%. |
+| Lightning Paralysis | 1 | normal | 1 | Enemies hit by a lightning strike get [Paralyze]. |
+| Chain Lightning | 1 | normal | 2 | A lightning strike launches 1 Chain Lightning on hit (max 5 targets). |
+| Lightning Boost+ | 1 | normal | 26 | Lightning strike DMG +100%. |
+| Continuous Strike+ | 1 | normal | 34 | Thunderbolts +1. |
+| Swift Strike+ | 1 | normal | 42 | Lightning strike cooldown speed +20%, DMG +30%. |
+| Lightning Expansion | 1 | Extra (purple) | 1 | Lightning strike width +100%. |
+| Slaughtering Lightning | 1 | Extra (purple) | 1 | When a lightning strike kills an enemy, there is a 60% chance to create a stationary small Thunderbolt. |
+| Paralysis Extension | 2 | normal | 1 | Thunderbolt [Paralyze] duration +100%. |
+| Chain Expansion | 2 | normal | 6 | Chain Lightning targets +4. |
+| Paralyzing Shock | 2 | normal | 22 | While Thunderbolt's [Paralyze] lasts, a small lightning strike hits the enemy every 1 s. |
+| Lightning Aftershock | 2 | normal | 1 | A Thunderbolt hit has a 50% chance to create 1 Floating Mine. |
+| Lightning Trail | 2 | normal | 1 | A lightning strike leaves a fire trail along its path. |
+| Stormcall Laser | 2 | normal | 30 | After each lightning strike, the Lightning Orb fires a Secondary Beam. |
+| Extra Strike | 2 | Extra (purple) | 1 | A lightning strike has a 50% chance to strike 1 more time. |
+| Thunder Chain | 2 | Extra (purple) | 1 | Enemies hit by a lightning strike launch a small Chain Lightning whenever they take damage (lasts 2 s, interval 0.5 s). |
+| Chain Strike | 2 | Extra (purple) | 18 | Enemies hit by Chain Lightning have a 25% chance to call a small lightning strike. |
+| Life Erosion | 3 | normal | 1 | A lightning strike that applies [Paralyze] also deals 1% of the target's max HP (max 20000 × ATK). |
+| Chain Interference | 3 | normal | 10 | Enemies hit by Chain Lightning get [Paralyze]; Chain Lightning DMG +100%. |
+| Lightning Teleportation | 3 | normal | 1 | Enemies hit by a lightning strike or Chain Lightning have a 50% chance to teleport back some distance. |
+| Lightning Strike Burst | 3 | normal | 38 | A lightning strike has a 10% chance to cause an explosion on hit. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Firewheel Stabilizer | 1 | normal | 1 | 3 | Disc flight time +2 s. |
-| Second Firefly | 1 | normal | 1 | 1 | Keeps two fire discs on the field instead of one. |
-| Flame Trail | 1 | evolution (purple) | 1 | 1 | The disc leaves burning areas behind it. |
-| Blazing Trail | 2 | normal | 6 | 1 | Disc DMG +25%. |
-| Extended Trail | 2 | normal | 14 | 1 | Disc flight time +3 s. |
-| Inferno | 2 | SUPER (purple) | 10 | 1 | Burning is 3 times stronger, ignite gains a splash. |
+**Beam** — 22 cards
 
-**Hive** ([Force field])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Beam Boost | 1 | normal | 1 | Beam DMG +50%. |
+| High-Frequency Beam | 1 | normal | 1 | Beam cooldown speed +30%. |
+| Damage Increase | 1 | normal | 1 | Beam DMG on the same target keeps growing (max 200%). |
+| Efficient Beam | 1 | normal | 1 | Beam duration +40%. |
+| Beam Refraction | 1 | normal | 2 | On hit, the beam creates Refracted Beams. Refractions +2. |
+| Beam Boost+ | 1 | normal | 26 | Beam DMG +100%. |
+| High-Frequency Beam+ | 1 | normal | 34 | Beam cooldown speed +45%. |
+| Efficient Beam+ | 1 | normal | 42 | Beam duration +60%. |
+| DMG Multiplier | 1 | Extra (purple) | 1 | Beam DMG interval -40%. |
+| Beam Penetration | 1 | Extra (purple) | 1 | All beams inflict [Vulnerable] on their targets. |
+| Stacking Damage | 2 | normal | 1 | The accumulated damage bonus is kept when the beam switches targets. |
+| Refraction Pull | 2 | normal | 6 | Refracted beams pull the hit target to the center. Refractions +2. |
+| Target Explosion | 2 | normal | 1 | Every beam hit causes an explosion. |
+| Disruptive Beam | 2 | normal | 22 | Targets hit by the beam create a small Disruption Field. |
+| Black Hole Spotlight | 2 | normal | 38 | A black hole appears at the ends of all beams. |
+| Slaughtering Beam | 2 | Extra (purple) | 1 | Beam duration +10% for every enemy killed by the beam (max 100%). |
+| Extra Beam | 2 | Extra (purple) | 1 | Fires an additional Secondary Beam. |
+| Extreme Focus | 3 | normal | 1 | The damage-growth cap rises to 400%. |
+| Refraction Explosion | 3 | normal | 10 | Every Refracted Beam hit causes an explosion. |
+| Beam Lightning | 3 | normal | 1 | Every beam hit has a 30% chance to launch 1 Chain Lightning. |
+| Matrix Resonance | 3 | normal | 14 | On hit, the beam releases an expanding Electric Matrix. |
+| Power-Accumulating Bee Wave | 3 | normal | 30 | When charged beams deal damage, there is a 40% chance to release a Pulse Wave. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Dense Swarm | 1 | normal | 1 | 2 | Wasps +2, DMG -15%. |
-| Rapid Barrage | 1 | normal | 1 | 3 | Wasp attack count +2. |
-| Swarm Assault | 1 | normal | 1 | 2 | Wasp DMG +50%. |
-| Swarm Echo | 1 | normal | 2 | 1 | On a kill, a wasp spawns 1 Echo Wasp I (50% DMG, max 1 per wasp). |
-| Wasp Evolution II | 1 | evolution (purple) | 1 | 1 | A Wasp I evolves into Wasp II (+50% DMG) after 3 attacks. |
-| Electro-Wasps | 2 | normal | 6 | 1 | Each wasp attack has a 50% chance to release a high-voltage shock at up to 2 nearby enemies (60% of the sting, Electric DMG). |
-| Echo Upgrade II | 2 | normal | 6 | 1 | Echo wasps evolve into Echo Wasp II (75% DMG). |
-| Echo Upgrade III | 2 | normal | 10 | 1 | Echo wasps deal full damage. |
-| Mother Swarm | 2 | SUPER (purple) | 18 | 1 | Drones are released in pairs and deal double damage. |
+**Railgun** — 22 cards
 
-**Railgun** ([Physical])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Ammo Boost | 1 | normal | 1 | Railgun shell DMG +50%. |
+| Shell Salvo | 1 | normal | 1 | Railgun shells +1, DMG -15%. |
+| Railgun Upgrade | 1 | normal | 1 | Railgun shell DMG +30%, Penetration +1. |
+| Basic Split | 1 | normal | 1 | On hitting the first enemy, the Railgun shell splits into 2 small shells, with a 20% chance of 2 more. |
+| Explosive Shells | 1 | normal | 2 | The Railgun shell explodes on hit. |
+| Ammo Boost+ | 1 | normal | 26 | Railgun shell DMG +100%. |
+| Shell Salvo+ | 1 | normal | 34 | Railgun shells +1. |
+| Railgun Upgrade+ | 1 | normal | 42 | Penetration +1, Railgun shell DMG +60%. |
+| Power Penetration | 1 | Extra (purple) | 1 | Penetration +3, Knockback +100%. |
+| Weak Spot Strike | 1 | Extra (purple) | 1 | Railgun shell DMG grows with the target's HP (max 150%). |
+| Piercing Enhancement | 2 | normal | 1 | On hitting the first enemy, a small Railgun shell splits into 2 mini shells, with a 20% chance of 2 more. |
+| Impact Spread | 2 | normal | 6 | Railgun explosion radius +20% per penetration. |
+| Impact Boost | 2 | normal | 10 | Railgun explosion DMG +30% per penetration. |
+| Piercing Mark | 2 | normal | 1 | Enemies hit by any Railgun shell get [Physical Vulnerable]. |
+| Surge Pierce | 2 | normal | 22 | When a Railgun shell kills an enemy, there is a 50% chance to release a high-voltage shock. |
+| Armor Piercing Pulse | 2 | normal | 38 | Firing a Railgun shell creates a Pulse Wave. |
+| Shell Crit Boost | 2 | Extra (purple) | 1 | All Railgun shell DMG +40%, Crit chance +30%. |
+| Execution Penetration | 2 | Extra (purple) | 1 | Railgun shell penetration +1 per kill (max +5). |
+| Split Mastery | 3 | normal | 1 | Split chance of all Railgun shells +40%. |
+| Secondary Minefield | 3 | normal | 1 | A Railgun shell leaves 1 Floating Mine on hit. |
+| Piercing Ricochet | 3 | normal | 18 | Penetration +1, Ricochets +1. |
+| Armor-Piercing Light Split | 3 | normal | 30 | Enemies hit by any Railgun shell have a 10% chance to fire a Ripping Laser. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Armor Piercer | 1 | normal | 1 | 2 | Pierce +2. |
-| Rail Capacitor | 1 | normal | 1 | 2 | DMG +20%. |
-| Explosive Shells | 1 | evolution (purple) | 1 | 1 | Piercing projectiles explode over a small area. |
-| Piercing Impact | 2 | normal | 6 | 1 | Pierce +2. |
-| Shock Rail | 2 | normal | 14 | 1 | DMG +30%, Pierce +1. |
-| Piercing Volley | 2 | SUPER (purple) | 14 | 1 | The projectile pierces ALL enemies on its line, +80% damage. |
+**Teslacoil** — 22 cards
 
-**Tesla Coil** ([Electric])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Electro Boost | 1 | normal | 1 | Teslacoil DMG +50%. |
+| Electro Chain | 1 | normal | 1 | Bounces +1, DMG -15%. |
+| Electro Acceleration | 1 | normal | 1 | Teslacoil cooldown speed +30%. |
+| Charge Expansion | 1 | normal | 1 | DMG radius grows with charge time. Charge time +0.5 s. |
+| Trap Matrix | 1 | normal | 2 | Teslacoil releases an Electric Matrix in the explosion area that deals extra damage and applies [Slow] for 2 s. |
+| Electro Boost+ | 1 | normal | 26 | Teslacoil DMG +100%. |
+| Electro Chain+ | 1 | normal | 34 | Bounces +1. |
+| Electro Acceleration+ | 1 | normal | 42 | Teslacoil cooldown speed +45%. |
+| Electric Chain Surge | 1 | Extra (purple) | 1 | On hit, Teslacoil releases up to 5 high-voltage shocks at the nearest enemies. |
+| Electro Interference | 1 | Extra (purple) | 1 | The Teslacoil explosion and Electric Matrix apply [Paralyze]. Teslacoil explosion radius +30%. |
+| Charge Destruction | 2 | normal | 1 | DMG grows with charge time. Charge time +0.5 s. |
+| Enhanced Matrix | 2 | normal | 6 | Electric Matrix DMG +100%, duration +1 s. |
+| Cooperative Beam | 2 | normal | 1 | While charging, Teslacoil fires 2 Refracted Beams. |
+| Wasp Mirage | 2 | normal | 22 | A Teslacoil hit summons an Echo Wasp. |
+| Electromagnetic Fission | 2 | normal | 30 | The Teslacoil explosion splits into 2 small Teslacoils. |
+| Expanded Shockwave | 2 | Extra (purple) | 1 | Teslacoil explosion radius is increased; damage in the outer part is halved. |
+| Charged Shock | 2 | Extra (purple) | 1 | While charging, Teslacoil releases up to 2 high-voltage shocks at the nearest enemies every 0.25 s. |
+| Charge Delayed | 3 | normal | 1 | Charge time +1 s. |
+| Matrix Thunderbolt | 3 | normal | 10 | Every 0.5 s the Electric Matrix creates a stationary small Thunderbolt that lasts 5 s. |
+| Highvolt Trigger | 3 | normal | 1 | The Teslacoil explosion launches 1 Chain Lightning through the enemies hit (max 5). |
+| Spinning Laser | 3 | normal | 14 | On hit, Teslacoil fires 1 Spinning Laser. |
+| Magnetic Storm Flare | 3 | normal | 38 | After hitting an enemy, Teslacoil creates 3 small Firewheel drones. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Electro Chain | 1 | normal | 1 | 3 | Bounces +1, DMG -15%. |
-| Electro Acceleration | 1 | normal | 1 | 2 | Tesla cooldown speed +30%. |
-| Trap Matrix | 1 | evolution (purple) | 1 | 1 | A discharge leaves an electric matrix that damages enemies over time. |
-| Enhanced Matrix | 2 | normal | 6 | 1 | The matrix lasts longer and hits harder. |
-| Matrix Thunderbolt | 2 | normal | 10 | 1 | The matrix periodically paralyzes enemies. |
-| Overvoltage | 2 | SUPER (purple) | 18 | 1 | The discharge bounces across 6 targets, +60% damage. |
+**Gravity Vortex Gun** — 22 cards
 
-**Gravity Vortex Gun** ([Force field])
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| High Power Field | 1 | normal | 1 | Gravity field DMG +50%. |
+| Wide Field | 1 | normal | 1 | Gravity field radius +25%. |
+| Extended Field | 1 | normal | 1 | Gravity field flight range +30%. |
+| Static Wormhole | 1 | normal | 1 | On hitting the first enemy, the field opens a portal that for 3 s moves enemies to where the field ends. |
+| Small Black Hole | 1 | normal | 2 | When the field ends, a small black hole appears and pulls enemies for 5 s. |
+| High Power Field+ | 1 | normal | 26 | Gravity field DMG +100%. |
+| Wide Field+ | 1 | normal | 34 | Gravity field radius +40%. |
+| Extended Field+ | 1 | normal | 42 | Gravity field flight range +50%. |
+| Extended Pull | 1 | Extra (purple) | 1 | The farther the gravity field flies, the bigger its radius. |
+| Field Amplification | 1 | Extra (purple) | 1 | Gravity field DMG +80%, Pull +100%. |
+| Wormhole Enhancement | 2 | normal | 1 | Portal duration (entry and exit) +100%. |
+| Wormhole Expansion | 2 | normal | 1 | Portal entry radius +100%. |
+| Black Hole Expansion | 2 | normal | 6 | Small black hole radius +50%, pull +50%. |
+| Field Reflection | 2 | normal | 1 | All gravity fields can bounce off walls. |
+| Field Disruption | 2 | normal | 1 | The gravity field applies [Disruption] on hit. |
+| Gravity Lightning | 2 | normal | 38 | Every 0.5 s the gravity field releases 4 high-voltage shocks. |
+| Extra Field | 2 | Extra (purple) | 1 | Gravity fields +1. |
+| Extended Range | 2 | Extra (purple) | 1 | Gravity field flight range +100%. |
+| Destructive Black Hole | 3 | normal | 14 | Small black hole DMG +250%. |
+| Double Fission | 3 | normal | 18 | At the end of its flight, the gravity field splits into 2 small fields. |
+| Binary Stars | 3 | normal | 22 | The gravity field splits into a pair of orbiting binary stars. |
+| Gravity Increase | 3 | normal | 30 | The farther the gravity field flies, the stronger its pull and damage. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Field Amplifier | 1 | normal | 1 | 2 | Field DMG +30%. |
-| Event Horizon | 1 | normal | 1 | 2 | Field size +20%. |
-| Small Black Hole | 1 | evolution (purple) | 1 | 1 | Pull duration +1.2 s. |
-| Black Hole Expansion | 2 | normal | 6 | 1 | Radius +35%, Pull +20%. |
-| Destructive Black Hole | 2 | normal | 14 | 1 | The field inflicts [Vulnerable]. |
-| Black Singularity | 2 | SUPER (purple) | 10 | 1 | Field radius +50%, pull +35%, +40% field damage. |
+**Hive** — 23 cards
 
-**Soldier "Bastion"** (Guardian = the reference bullet turret)
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Swarm Assault | 1 | normal | 1 | Wasp DMG +50%. |
+| Rapid Barrage | 1 | normal | 1 | Wasp attack count +2. |
+| Dense Swarm | 1 | normal | 1 | Wasps +2, DMG -15%. |
+| Contact Pulse | 1 | normal | 1 | On its first hit, a wasp releases 1 Pulse Wave. |
+| Swarm Echo | 1 | normal | 2 | On a kill, a wasp spawns 1 Echo Wasp I (max 1). |
+| Swarm Assault+ | 1 | normal | 26 | Wasp DMG +100%. |
+| Rapid Barrage+ | 1 | normal | 34 | Wasp attack count +2, DMG +30%. |
+| Dense Swarm+ | 1 | normal | 42 | Wasps +2. |
+| Wasp Evolution II | 1 | Extra (purple) | 1 | A Wasp I evolves into Wasp II after 3 attacks. |
+| Hive Mutation II | 1 | Extra (purple) | 1 | After every 2 volleys, the Hive releases a Wasp II. |
+| Amplified Pulse | 2 | normal | 1 | Pulse Waves apply [Slow] on hit. Pulse Wave DMG radius +30%. |
+| Final Resonance | 2 | normal | 1 | At the end of its life, a wasp releases 1 Pulse Wave. |
+| Echo Upgrade II | 2 | normal | 6 | Echo wasps evolve into Echo Wasp II. |
+| Electro-Wasps | 2 | normal | 1 | Each wasp attack has a 50% chance to release a high-voltage shock at the nearest enemies. |
+| Aero Split | 2 | normal | 22 | A wasp hit has a 60% chance to split into 3 small Railgun shells. |
+| Bee-Bomb Incineration Domain | 2 | normal | 30 | A destroyed wasp self-detonates and leaves a burning area. |
+| Wasp Evolution III | 2 | Extra (purple) | 1 | A Wasp II evolves into Wasp III after 3 attacks. |
+| Hive Mutation III | 2 | Extra (purple) | 1 | After every 2 volleys, the Hive has a 50% chance to release a Wasp III. |
+| Wasp Retrieval | 2 | Extra (purple) | 14 | Destroyed wasps have a 50% chance to return to the Hive (up to 5 stored). |
+| Echo Upgrade III | 3 | normal | 10 | Echo wasps evolve into Echo Wasp III. |
+| Volley Wasp | 3 | normal | 1 | Wasp bullets +1. |
+| Swarm Fury | 3 | normal | 1 | After each attack, wasp DMG +30%. |
+| Wasp Immobilize | 3 | normal | 38 | A wasp attack has a 20% chance to apply [Immobilize]. |
 
-| Card | Lv | Kind | R&D | Max | Effect |
-|---|---:|---|---:|---:|---|
-| Bullets Boost | 1 | normal | 1 | 2 | Bullet DMG +50%. |
-| Volley Shot | 1 | normal | 1 | 2 | Bullets +1, DMG -15%. |
-| Piercing Bullet | 1 | normal | 1 | 2 | Bullet penetration +1. |
-| Shotgun Evolution | 1 | evolution (purple) | 1 | 1 | Each shot scatters into 2 additional bullets in a real spread. |
-| Flame Bullet | 2 | normal | 6 | 1 | Bullets become flame bullets and deal extra fire damage over time on hit. |
-| Explosive Rounds | 2 | normal | 6 | 1 | Bullets deal area damage. |
-| Guardian Overdrive | 2 | normal | 14 | 1 | Fire rate +25%. |
-| Legendary Marksman | 2 | SUPER (purple) | 18 | 1 | +100% damage, +25% crit chance and +1 projectile per burst, across the whole field. |
+**Firewheel Drone** — 21 cards
 
-### Stage 1 balance after the card rework (`node tests/balance.cjs`, fresh R&D 1, 12 seeds)
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Firewheel Boost | 1 | normal | 1 | Firewheel Drone DMG +50%. |
+| Size Boost | 1 | normal | 1 | Firewheel Drone size +25%. |
+| Duration Extension | 1 | normal | 1 | Firewheel Drone duration +30%. |
+| Mini Drones | 1 | normal | 1 | Every 3 s the Firewheel Drone summons 2 mini Firewheel drones. |
+| Flame Trail | 1 | normal | 2 | In flight, the Firewheel Drone leaves a fire trail for 2 s. |
+| Firewheel Boost+ | 1 | normal | 26 | Firewheel Drone DMG +100%. |
+| Size Boost+ | 1 | normal | 34 | Firewheel Drone size +40%. |
+| Duration Extension+ | 1 | normal | 42 | Firewheel Drone duration +45%. |
+| Smart Acceleration | 1 | Extra (purple) | 1 | Firewheel Drone DMG +60% and speed +80% while it is not dealing damage. |
+| Hold the Ground | 1 | Extra (purple) | 1 | When its time runs out, the Firewheel Drone stays for 10 s more. |
+| Killing Array | 2 | normal | 1 | For every 2 enemies killed directly by the Firewheel Drone, 2 mini Firewheel drones are summoned. |
+| Blazing Trail | 2 | normal | 6 | Fire trail DMG +60%. |
+| Firewheel Ignition | 2 | normal | 1 | The Firewheel Drone has a 20% chance to apply [Burn]. |
+| Vortex Firewheel | 2 | normal | 18 | The Firewheel Drone pulls nearby enemies in. |
+| Killing Charge | 2 | Extra (purple) | 1 | For every 2 enemies killed directly by the Firewheel Drone, its cooldown -0.5 s (max 5 s). |
+| Combo Boost | 2 | Extra (purple) | 1 | Every 20 Firewheel Drone hits, its DMG +20% (max +200%). |
+| Mini Size Boost | 3 | normal | 1 | Mini Firewheel DMG +50%, duration +50%. |
+| Extended Trail | 3 | normal | 14 | Fire trail duration +2 s. |
+| Extra Barrage | 3 | normal | 1 | Every 15 Firewheel Drone hits, it fires a ring of penetrating bullets. |
+| Blazing Pulse | 3 | normal | 22 | The Firewheel Drone releases a Pulse Wave every 1.5 s. |
+| Flame Power Surge | 3 | normal | 38 | Firewheel Drone DMG grows over time, up to 500%. |
 
-| Build | Sensible picks: wins / first victory | First card: wins / first victory | Mean breaches (sensible / first) |
-|---|---:|---:|---:|
-| Before the rework (`1433fde`, old cards, growth 0.06) | 0/12 / — | 0/12 / — | 27.6 / 35.0 |
-| New cards, old enemies (growth 0.06) | 9/12 / 2nd | 8/12 / 1st | 9.3 / 18.5 |
-| New cards, growth 0.14 (before the fortress pass) | **4/12 / 3rd** | **2/12 / 8th** | 23.9 / 31.3 |
-| Compact turret pairs, growth 0.14 (2026-11-11) | **5/12 / 3rd** | **2/12 / 1st** | 17.3 / 30.2 |
+**Guardian (bullet turret)** — 22 cards
 
-A wider 36-seed check (not in CI) gave sensible 27/36 → 11/36 and first-card 16/36 → 7/36 for growth 0.06 → 0.14; 0.12–0.16 all land at 7–18/36, the measurement is noisy. Outcomes are bimodal: runs either collapse on waves 5–9 or win cleanly, and early-wave pressure should be checked by hand. Spot checks with developed meta (6 seeds, sensible picks, growth 0.14): Stage 4 R&D 12 — 5/6 victories, Stage 9 R&D 30 — 5/6, Stage 12 R&D 45 — 5/6 (0.06: 6/6, 5/6, 6/6).
+| Card | Tier | Kind | R&D | Effect |
+|---|---:|---|---:|---|
+| Volley Shot | 1 | normal | 1 | Bullets +1, DMG -15%. |
+| Bullets Boost | 1 | normal | 1 | Bullet DMG +50%. |
+| Piercing Bullet | 1 | normal | 1 | Penetration +1. |
+| Bullet Explosion | 1 | normal | 1 | A bullet has a 10% chance to explode on hit. |
+| Charge Activation | 1 | normal | 1 | The Guardian enters Charged State, gaining Charge Points by firing bullets. |
+| Volley Shot+ | 1 | normal | 23 | Bullets +1. |
+| Rapid Fire | 1 | normal | 26 | Fire rate +20%. |
+| Shotgun Evolution | 1 | Extra (purple) | 1 | Each shot scatters 2 additional sub-bullets in a real spread. |
+| Splitting Bullet | 1 | Extra (purple) | 1 | Bullets split into 1 sub-bullet; 2 sub-bullets in Charged State. |
+| Impact Bullet | 1 | Extra (purple) | 1 | Bullets gain a weak knockback; knockback +200% in Charged State. Bullet DMG +100%. |
+| Explosion Expansion | 2 | normal | 1 | Explosion range +50%. |
+| Quick Charge | 2 | normal | 1 | Charge Points from bullets +100%. |
+| Sustained Charge | 2 | normal | 1 | Shots fired in Charged State +100%. |
+| Flame Bullet | 2 | normal | 1 | Bullets become flame bullets and add extra fire DMG on hit. |
+| Electric Bullet | 2 | normal | 1 | When a bullet kills an enemy, there is a 50% chance to trigger a small lightning strike. |
+| Counterburst Scatter | 2 | normal | 38 | After every 40 shots, fires a wave of Penetrating Shotgun Shells at enemies near the Fortress. |
+| Penetration Boost | 2 | Extra (purple) | 1 | Penetration of all bullets +2. |
+| Reflection Boost | 2 | Extra (purple) | 1 | Reflections of all bullets +2. |
+| Explosion Boost | 3 | normal | 1 | Explosion DMG +60%, explosion chance +10%. |
+| Laser Shot | 3 | normal | 1 | Bullet hits have a 20% chance to fire a Ripping Laser from the Guardian, doubled in Charged State. |
+| Disruption Fire | 3 | normal | 1 | Every bullet hit has a 10% chance to inflict 1 stack of [Disruption]. |
+| Mirror Guardian | 3 | normal | 45 | Creates a clone guardian that deals 50% of the Guardian's DMG. |
+
+### Stage 1 balance after the reference card set (`node tests/balance.cjs`, fresh R&D 1)
+
+Enemies were retuned, cards were not: `enemyHpMul` 0.78 → **0.76**, `waveHpGrowth` 0.14 → **0.13**.
+
+| Measurement | Sensible picks | First card |
+|---|---:|---:|
+| CI seeds (12), old enemy numbers, before the compact-pairs merge | 2/12 | 2/12 |
+| CI seeds (12), **current** (`node tests/balance.cjs`, after merging d1b763f compact turret pairs) | **4/12** (first win on the 3rd attempt) | **3/12** (1st) |
+| 72 seeds (CI 12 + 60 extra), **current** | **21/72 ≈ 3.5/12** | **14/72 ≈ 2.3/12** |
+| 72 seeds, old enemy numbers (with the turret compensation above, before the merge) | 18/72 | 10/72 |
+
+The measurement is very noisy (values from 0.70 to 0.78 scatter between 6 and 17 wins out of 36). Outcomes stay bimodal: runs collapse on waves 5–9 or win cleanly. Spot checks with developed meta (6 seeds, current numbers, sensible / first card): Stage 4 R&D 12 — 6/6, 4/6; Stage 9 R&D 30 — 5/6, 3/6; Stage 12 R&D 45 — 4/6, 3/6 (HEAD before this change: 5/6, 2/6 at Stage 12). Stage 12 losses happen on wave 1, when the headless policy picks a module instead of a second turret.
 
 ## Aeroblast usefulness check (round 5)
 
@@ -265,7 +478,7 @@ Running the tests from a **clean checkout**:
 node tests/smoke.cjs
 ```
 
-The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **78 tests** (2026-11-11), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, a backward RAF timestamp cannot drive ring radii negative, and a ring with a negative radius still draws, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
+The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **96 tests** (2026-11-11), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, a backward RAF timestamp cannot drive ring radii negative, and a ring with a negative radius still draws, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
 
 ## Known limitations and next iterations
 

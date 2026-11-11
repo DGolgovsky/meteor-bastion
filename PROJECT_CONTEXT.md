@@ -37,7 +37,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **Hive is a critical invariant:** the hive's range limits **only the release of wasps**. Released wasps move and look for enemies **across the whole field**, even outside the turret's range, with correct retargeting. Don't bring back single-use kamikaze wasps.
 - **Laser:** a time-limited pulse, **the direction is locked at the moment of firing**; the beam visually reaches the edge of the field, but only damages along its line; the base CD is currently **7.8 s** (check the current code).
 - **Beam** differs from Laser: sequential focused ticks on a target, with damage stacking and upgrades; **Sky Guard** has separate impact and explosion; **Firewheel** is a long-lived bouncing disc, not a regular projectile; **Gravity** is a field that pulls enemies in and deals tick damage; **Disruption** is control/fields.
-- **Current parameters in `src/js/00-config.js` at the last check (×3, 2026-11-09):** `waveStart:24`, `waveGrowth:8.4`, `spawnBase:0.20`, `spawnReduction:0.002`, `spawnMin:0.06`, `formationCd:1.33`, `waveHpGrowth:0.14` (0.06 before the 2026-11-10 card rework), `turretBasePower:1.6`, `MAX_ENEMIES:330`; field `420×820` including underground scenery, unchanged combat/base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
+- **Current parameters in `src/js/00-config.js` at the last check (×3, 2026-11-09):** `waveStart:24`, `waveGrowth:8.4`, `spawnBase:0.20`, `spawnReduction:0.002`, `spawnMin:0.06`, `formationCd:1.33`, `enemyHpMul:0.76`, `waveHpGrowth:0.13` (0.06 before the 2026-11-10 card rework, 0.14 until the 2026-11-11 reference set), `turretBasePower:1.6`, `MAX_ENEMIES:330`; field `420×820` including underground scenery, unchanged combat/base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
 - The latest `BALANCE.md` states that the base has **1000 HP and no separate shield; Chips add max HP** — this has changed compared with earlier versions. Always check the current values against `newBattle()`.
 
 ## 5. What was found about the original and how to use it
@@ -75,6 +75,13 @@ Gameplay reference points of the original discussed in the chat: the Guardian is
 - **Guardian = the reference bullet turret** (Bullets Boost, Volley Shot, Piercing Bullet, Shotgun Evolution, Flame Bullet). **Shotgun Evolution uses a real spread: the one documented exception to the "extra projectiles fly parallel" rule** (Aeroblast's own pellet fan is not a card).
 - Card numbers are exactly the reference ones (+50%, +200%…); enemies were retuned instead: `waveHpGrowth` 0.06 → 0.14.
 - UI: draft with the 5-slot level/pip row (field order: far left, center left, Guardian, center right, far right), teal/purple cards with level badges, the Selected Cards Overview overlay (`ov-cards`) from draft/pause/results, 4 pips under every unit on the field.
+
+## Reference card set, 2026-11-11 (owner decisions)
+
+- **Source of truth:** `docs/turrets-reference.md` (11 turrets + the Guardian as section 12). All 270 cards are implemented in `07-cards.js` with the reference names, tiers and numbers; the shared mechanics live in `03b-effects.js` with entity caps (`FX_CAP`) for mobile. A smoke test parses the reference file and checks every card (tier, Extra, R&D gate, every number in the text) and that no card is invented.
+- **Mapping:** Star Tier N = in-run level N pool; Extra = purple (levels the unit up; at Lv.3 a mastery cycle); Super Mode is automatic at Lv.3 with R&D ≥ `rdTierUnlock` (no SUPER cards). 🔒 Lv.X = R&D X; the Lv.2/6/10 unlock table = R&D 2/6/10; Guardian locks 61/71/101/121 are scaled to 23/26/38/45. Lv.4/12 meta bumps = secondary +20% (Hive ATK count +1, Railgun Penetration +1), Lv.8 = Cooldown Speed +5%.
+- **Owner rules from this round:** every laser fires from the turret (forks/reflections do not start at the target); laser ray width scales with its damage; Firewheel is bigger (r 20) and slower (200 px/s); Beam is drawn as a thick visible stream. Guardian uses the official card set; Shotgun Evolution keeps its real spread; Laser Shot starts at the Guardian.
+- Cards were not changed for balance; enemies were (`enemyHpMul` 0.76, `waveHpGrowth` 0.13), plus base compensations for reworked behaviors (Gravity tick 2.2×, Firewheel contact 3×, the Tesla cooldown runs during its charge). See BALANCE.md for numbers and approximations.
 
 ## Models in `06-render.js`
 
