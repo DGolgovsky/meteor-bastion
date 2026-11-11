@@ -29,6 +29,10 @@ function harness(legacySave) {
       const m = /(\d+(?:\.\d+)?)px/.exec(canvasContext.font || "11px");
       const size = m ? parseFloat(m[1]) : 11;
       return { width: s.length * size * 0.6 };
+    },
+    /* arc: mirror the browser — a negative radius throws IndexSizeError */
+    arc(x, y, radius) {
+      if (radius < 0) throw new Error("IndexSizeError: Failed to execute 'arc' on 'CanvasRenderingContext2D': The radius provided (" + radius + ") is negative.");
     }
   }, {
     get(target, key) { return target[key] ?? (() => {}); },
@@ -1173,6 +1177,23 @@ test("a throwing frame does not kill the game loop", () => {
   h.update=orig;
   h.loop(48); /* must not throw: the loop survives and keeps running */
   assert.ok(h.B.loopError&&h.B.loopError.indexOf("boom-test")>=0,"error stays recorded until dismissed");
+});
+
+test("a backward RAF timestamp cannot drive ring radii negative", () => {
+  const {game:h}=harness();h.startBattle();h.B.waveState="fighting"; /* intro returns early from update(), rings only age while fighting */
+  h.loop(100); /* one normal frame */
+  h.B.rings.push({x:210,y:300,r:5,vr:90,t:0,life:0.35,color:"#ff9f2e"});
+  h.loop(-10); /* timestamp jumps backwards (app switch / vsync restart): raw must clamp to 0 */
+  assert.ok(!h.B.loopError,"a backward timestamp must not record a loop error");
+  assert.ok(h.B.rings.length===1&&h.B.rings[0].r>=0,"ring radius must stay non-negative, got "+(h.B.rings[0]&&h.B.rings[0].r));
+  h.loop(6); /* next frame is normal again */
+  assert.ok(!h.B.loopError,"the loop keeps running after a backward timestamp");
+});
+
+test("drawing a ring with a negative radius does not throw", () => {
+  const {game:h}=harness();h.startBattle();
+  h.B.rings.push({x:210,y:300,r:-0.338,vr:90,t:0,life:0.35,color:"#ff9f2e"});
+  h.draw(); /* must not throw: the ring arc clamps its radius */
 });
 
 /* ---------- model rendering ---------- */

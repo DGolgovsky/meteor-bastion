@@ -756,7 +756,7 @@ function draw(){
   else strokeBeam(b.w,b.color,7);
   ctx.restore();
  });
- B.rings.forEach(function(r){ctx.save();ctx.globalAlpha=1-r.t/r.life;ctx.strokeStyle=r.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,6.29);ctx.stroke();ctx.restore();});
+ B.rings.forEach(function(r){ctx.save();ctx.globalAlpha=1-r.t/r.life;ctx.strokeStyle=r.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(r.x,r.y,Math.max(0.01,r.r),0,6.29);ctx.stroke();ctx.restore();});
  B.parts.forEach(function(p){
   ctx.save();ctx.globalAlpha=1-p.t/p.life;
   if(p.kind==="muzzle"){ctx.strokeStyle=p.color;ctx.lineWidth=4;ctx.shadowColor=p.color;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(p.x,p.y,p.r,p.angle-.44,p.angle+.44);ctx.stroke();}

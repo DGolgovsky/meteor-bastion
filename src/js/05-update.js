@@ -284,7 +284,7 @@ function update(dt){
 }
 function loop(ts){
  if(!B)return;
- var raw=Math.min(0.05,(ts-lastTs)/1000);lastTs=ts;
+ var raw=Math.max(0,Math.min(0.05,(ts-lastTs)/1000));lastTs=ts;
  try{
   if(!B.paused&&!B.over&&!$("ov-levelup").classList.contains("on"))update(raw*B.speed);
   draw();
