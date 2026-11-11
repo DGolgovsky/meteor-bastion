@@ -161,15 +161,17 @@ test("Firewheel spawns airborne bouncing discs", () => {
   g.B.enemies = [sampleEnemy(g)];
   g.unitFire(u, 0.4);
   assert.ok(g.B.wheels.length > 0);
-  // "Firefly": one large long-lived disc; repeated shots do not spawn
-  // new ones while the previous one is alive. The wheelCount card raises the limit to two.
+  // "Firefly": one large long-lived disc; repeated shots do not spawn new ones while it is alive.
   assert.equal(g.B.wheels.length, 1);
   assert.ok(g.B.wheels[0].life >= 9, "disc should live ~10s, got " + g.B.wheels[0].life);
+  // owner request 2026-11-11: the disc is bigger (r 20, was 14) and slower (200 px/s, was 290)
+  assert.equal(g.B.wheels[0].r, 20);
+  assert.ok(Math.abs(Math.hypot(g.B.wheels[0].vx, g.B.wheels[0].vy) - 200) < 1e-6);
   for (let i = 0; i < 5; i++) g.unitFire(u, 0.8);
   assert.equal(g.B.wheels.length, 1);
-  g.applyCard({ kind: "card", u, def: g.cardById("firewheel", "wheelCount") });
-  g.unitFire(u, 0.8);
-  assert.equal(g.B.wheels.length, 2);
+  g.applyCardDef(g.cardById("firewheel", "sizeBoost"), u);
+  g.B.wheels = []; u.cd = 0; g.unitFire(u, 0.1);
+  assert.equal(g.B.wheels[0].r, 25, "Size Boost +25%");
 });
 
 test("Guardian fires alternating hands in a checkerboard stream", () => {
@@ -223,7 +225,8 @@ test("every declarative card renders and applies without exceptions", () => {
     assert.equal(h.cls, def.rare ? "purple" : "teal");
     c.applyCard(card);
     assert.equal(u.cards[def.id], 1, def.id);
-    if (def.rare) assert.equal(u.runLv, def.lvl + 1, def.id + " must level the unit up");
+    if (def.rare) assert.equal(u.runLv, Math.min(3, def.lvl + 1), def.id + " must level the unit up (max 3)");
+    if (def.rare) assert.equal(u.pips, 0, def.id + " resets pips");
   }
 });
 
@@ -237,28 +240,27 @@ test("card text is generated from the same fx ops that apply the effect", () => 
   }
   const t = g.cardById("hive", "denseSwarm");
   assert.equal(g.cardDesc(t), "Wasps +2, DMG -15%.");
-  assert.equal(g.cardDesc(g.cardById("skyguard", "volleyMissile")), "Missiles +1, DMG -15%.");
+  assert.equal(g.cardDesc(g.cardById("skyguard", "volleyMissile")), "Sky Guard missiles +1, DMG -15%.");
   assert.equal(g.cardDesc(g.cardById("laser", "laserAmplification")), "Laser DMG +50%.");
 });
 
-test("generic cards and SUPER-every-5-levels are gone; every unit has a level-1 purple at R&D 1", () => {
+test("reference rules: no SUPER cards, Super Mode at max level; every unit can level from a fresh account", () => {
   assert.equal(typeof g.CARD_CHAINS, "undefined");
   assert.equal(typeof g.gainLevel, "undefined");
   assert.ok(!/kind:"up"|kind:"mod"|kind:"chain"/.test(source), "old card kinds must be removed");
+  assert.equal(g.CARDS.filter(d => d.isSuper).length, 0, "Super Mode is not a card any more");
   for (const cfg of g.allUnitsCfg()) {
-    const purple1 = g.CARDS.filter(d => d.unit === cfg.id && d.rare && d.lvl === 1);
-    const supers = g.CARDS.filter(d => d.unit === cfg.id && d.isSuper);
-    assert.equal(supers.length, 1, cfg.id + " SUPER");
-    assert.equal(supers[0].lvl, 2);
-    assert.equal(g.cardRd(supers[0]), g.rdTierUnlock(cfg.id));
-    const normal1 = g.CARDS.filter(d => d.unit === cfg.id && !d.rare && d.lvl === 1 && (d.rd || 1) <= 1);
-    const slots = normal1.reduce((s, d) => s + (d.max || 1), 0);
-    assert.ok(slots >= 3, cfg.id + " needs at least 3 level-1 pips reachable at R&D 1, has " + slots);
-    if (purple1.length) assert.ok(purple1.every(d => (d.rd || 1) <= 1), cfg.id + " level-1 purple must not need R&D");
+    const normal1 = g.CARDS.filter(d => d.unit === cfg.id && !d.rare && d.lvl === 1 && d.rd <= 1);
+    assert.ok(normal1.length >= 3, cfg.id + " needs at least 3 Tier-1 cards at R&D 1, has " + normal1.length);
+    const purple1 = g.CARDS.filter(d => d.unit === cfg.id && d.rare && d.lvl === 1 && d.rd <= 1);
+    assert.ok(purple1.length >= 1, cfg.id + " needs a Tier-1 Extra at R&D 1");
+    assert.ok(g.SUPERS[cfg.id], cfg.id + " has a Super Mode");
   }
+  /* reference "Lv.10: Super Mode at max level" */
+  ["laser", "aeroblast", "gravity", "firewheel"].forEach(id => assert.equal(g.rdTierUnlock(id), 10, id));
 });
 
-test("pips: 3 normal cards force the purple card; it levels up; max level is 3", () => {
+test("pips: Tier pools grow with level, 3 pips force Extras, Lv.3 turns Super Mode on, then mastery cycles", () => {
   const { game: c } = harness();
   c.META.music = false; c.META.sfx = false;
   c.B = c.newBattle(c.STAGES[0]);
@@ -266,41 +268,61 @@ test("pips: 3 normal cards force the purple card; it levels up; max level is 3",
   const u = c.mkUnit(c.TURRETS.find(t => t.id === "tesla"), 52, 0, false);
   c.B.turrets = [u]; c.B.usedTypes.tesla = 1;
   const take = def => { c.B.pendingDrafts = 1; c.B.waveState = "draft"; c.applyCard({ kind: "card", u, def }); };
+  const ids = () => c.unitCards(u).map(d => d.id);
   assert.equal(u.runLv, 1); assert.equal(u.pips, 0);
   assert.equal(c.purpleFor(u), null, "no purple before 3 pips");
-  take(c.cardById("tesla", "electroChain"));
+  assert.ok(!ids().includes("chargeDestruction"), "Tier-2 cards need unit Lv.2");
+  assert.ok(!ids().includes("trapMatrix"), "Trap Matrix needs R&D 2 (reference Lv.2 unlock)");
+  take(c.cardById("tesla", "electroBoost"));
   take(c.cardById("tesla", "electroChain"));
   assert.equal(u.pips, 2);
   assert.ok(c.genCards().every(x => !(x.kind === "card" && x.def.rare)), "purple cards are never random");
   take(c.cardById("tesla", "electroAcceleration"));
   assert.equal(u.pips, 3);
-  const purple = c.purpleFor(u);
-  assert.equal(purple.id, "trapMatrix");
+  const purples = c.unitCards(u).filter(d => d.rare).map(d => d.id).sort();
+  assert.equal(JSON.stringify(purples), JSON.stringify(["electricChainSurge", "electroInterference"]), "Tier-1 Extras");
   for (let i = 0; i < 20; i++) {
-    const cards = c.genCards();
-    assert.ok(cards.some(x => x.kind === "card" && x.u === u && x.def.id === "trapMatrix"), "purple card must be guaranteed");
+    const cards = c.genCards().filter(x => x.kind === "card" && x.def.rare);
+    assert.equal(cards.length, 2, "both Extras are offered as a choice");
   }
-  take(c.cardById("tesla", "electroAcceleration"));
+  take(c.cardById("tesla", "chargeExpansion"));
   assert.equal(u.pips, 3, "pips do not overflow past 3 before the purple card");
   const dmg = u.dmgMul;
-  take(purple);
+  take(c.cardById("tesla", "electroInterference"));
   assert.equal(u.runLv, 2); assert.equal(u.pips, 0);
   assert.ok(Math.abs(u.dmgMul / dmg - (1 + c.BALANCE.levelUpDmg)) < 1e-9, "level-up damage bonus");
-  assert.ok(u.teslaMatrix);
-  /* level-2 cards need R&D 6; the SUPER needs rdTierUnlock */
-  assert.equal(c.cardEligible(u, c.cardById("tesla", "enhancedMatrix")), false);
+  assert.ok(ids().includes("chargeDestruction") && !ids().includes("enhancedMatrix"), "Enhanced Matrix needs R&D 6");
   c.META.levels.tesla = 6;
-  assert.equal(c.cardEligible(u, c.cardById("tesla", "enhancedMatrix")), true);
+  assert.ok(ids().includes("enhancedMatrix"));
+  assert.ok(!ids().includes("chargeDelayed"), "Tier-3 cards need unit Lv.3");
   u.pips = 3;
-  assert.equal(c.purpleFor(u), null, "SUPER is gated by rdTierUnlock");
+  const p2 = c.unitCards(u).filter(d => d.rare).map(d => d.id).sort();
+  assert.equal(JSON.stringify(p2), JSON.stringify(["chargedShock", "electricChainSurge", "expandedShockwave"]), "Tier ≤ 2 Extras");
   c.META.levels.tesla = c.rdTierUnlock("tesla");
-  assert.equal(c.purpleFor(u).isSuper, true);
-  take(c.purpleFor(u));
-  assert.equal(u.runLv, 3); assert.equal(u.pips, 4);
-  assert.equal(c.purpleFor(u), null, "level 3 is the maximum");
-  take(c.cardById("tesla", "enhancedMatrix"));
-  assert.equal(u.runLv, 3); assert.equal(u.pips, 4);
-  assert.ok(c.B.picked.length >= 4 && c.B.picked.find(p => p.id === "electroChain").n === 2, "picked cards are grouped with counts");
+  take(c.cardById("tesla", "chargedShock"));
+  assert.equal(u.runLv, 3); assert.equal(u.superOn, true, "Super Mode switches on at max level");
+  assert.equal(u.multiCount, 6, "Overvoltage applied");
+  assert.ok(c.B.picked.some(p => p.id === "super"));
+  assert.ok(ids().includes("chargeDelayed"));
+  u.pips = 3;
+  take(c.cardById("tesla", "expandedShockwave"));
+  assert.equal(u.runLv, 3, "level 3 is the maximum"); assert.equal(u.pips, 0, "mastery cycle resets pips");
+  take(c.cardById("tesla", "chargeDelayed"));
+  assert.equal(u.pips, 1);
+  assert.ok(c.B.picked.length >= 7 && c.B.picked.find(p => p.id === "electroChain").n === 1, "picked cards are recorded");
+});
+
+test("without enough R&D a turret reaches Lv.3 but Super Mode stays off", () => {
+  const { game: c } = harness();
+  c.META.music = false; c.META.sfx = false;
+  c.B = c.newBattle(c.STAGES[0]);
+  const u = c.mkUnit(c.TURRETS.find(t => t.id === "laser"), 52, 0, false);
+  c.B.turrets = [u];
+  u.runLv = 2; u.pips = 3;
+  c.takeCard(u, c.cardById("laser", "vulnerableLaser")); u.pips = 3;
+  c.takeCard(u, c.cardById("laser", "tearExplosion"));
+  assert.equal(u.runLv, 3); assert.ok(!u.superOn);
+  assert.ok(!u.refract);
 });
 
 test("random three-card drafts always have valid display data", () => {
@@ -375,7 +397,7 @@ test("Wasp Evolution II evolves a wasp after 3 attacks; Electro-Wasps shock near
   const tgt = sampleEnemy(g, 500); tgt.hp = tgt.maxHp = 1e6;
   const near = sampleEnemy(g, 500); near.x = tgt.x + 40; near.hp = near.maxHp = 1e6;
   g.B.enemies = [tgt, near];
-  const dr = { x: tgt.x, y: tgt.y + 2, src: hive, life: 9, tgt, hitT: 0, hits: 20, boost: 1, echoed: false, isEcho: false, launchT: 0, vx: 0, vy: 0 };
+  const dr = { x: tgt.x, y: tgt.y + 2, src: hive, life: 9, tgt, hitT: 0, hits: 20, boost: 1, tier: 1, echoed: false, isEcho: false, launchT: 0, vx: 0, vy: 0 };
   g.B.drones = [dr];
   for (let i = 0; i < 3; i++) { dr.hitT = 0; dr.x = tgt.x; dr.y = tgt.y + 6; dr.tgt = tgt; g.update(0.01); }
   assert.equal(dr.evolved, true, "wasp must evolve after 3 attacks");
@@ -385,25 +407,64 @@ test("Wasp Evolution II evolves a wasp after 3 attacks; Electro-Wasps shock near
   assert.ok(g.B.beams.some(b => b.arc && b.color === "#a5f3fc"));
 });
 
-test("High-Energy Pulse doubles the laser band; Slow Laser slows deflected targets; Energy Surge fires 2 deflected lasers", () => {
+test("Laser fires only from the turret: High-Energy Pulse band, Energy Surge deflected lasers with Slow, width grows with power", () => {
   cardBattle(g);
-  const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 52, 0, false);
+  const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 210, 0, false);
   g.B.turrets = [laser];
-  const main = sampleEnemy(g, 400); main.x = 52;
-  const side = sampleEnemy(g, 400); side.x = 52 + main.r + 8 + 10;
-  const o1 = sampleEnemy(g, 300); o1.x = 300;
-  const o2 = sampleEnemy(g, 250); o2.x = 360;
+  const ox = 210, oy = laser.y - 14, d = 300;
+  const main = sampleEnemy(g, oy - d); main.x = ox;
+  const side = sampleEnemy(g, oy - d); side.x = ox + main.r + 8 + 10;
+  /* deflected lasers are locked at ±0.3 rad from the main line and start at the turret */
+  const o1 = sampleEnemy(g, oy - d * Math.cos(0.3)); o1.x = ox + d * Math.sin(0.3);
+  const o2 = sampleEnemy(g, oy - d * Math.cos(0.3)); o2.x = ox - d * Math.sin(0.3);
+  [main, side, o1, o2].forEach(e => { e.speed = 0; e.baseSpeed = 0; });
   g.B.enemies = [main, side, o1, o2];
   laser.cd = 0; g.unitFire(laser, 0.2);
   assert.equal(side.hp, 1000, "a normal laser misses an enemy 10px outside its band");
+  assert.equal(o1.hp, 1000, "no deflected lasers without the card");
+  const w0 = g.laserWidth(laser);
   g.applyCardDef(g.cardById("laser", "highEnergyPulse"), laser);
   g.applyCardDef(g.cardById("laser", "energySurge"), laser);
   g.applyCardDef(g.cardById("laser", "slowLaser"), laser);
   assert.equal(laser.laserBandMul, 2); assert.equal(laser.laserDeflect, 2);
+  g.B.beams = [];
   laser.cd = 0; laser.laserActive = 0; laser.laserTickT = 0; g.unitFire(laser, 0.2);
   assert.ok(side.hp < 1000, "a doubled band hits it");
   assert.ok(o1.hp < 1000 && o2.hp < 1000, "two deflected lasers hit two other enemies");
   assert.ok(o1.slowFactor < 1 && o2.slowFactor < 1, "deflected lasers slow");
+  const lasers = g.B.beams.filter(b => b.laser);
+  assert.ok(lasers.length >= 3);
+  assert.ok(lasers.every(b => b.x1 === ox && b.y1 === oy), "every laser starts at the turret");
+  /* thickness follows damage power */
+  const w1 = g.laserWidth(laser);
+  g.applyCardDef(g.cardById("laser", "laserAmplification"), laser);
+  assert.ok(g.laserWidth(laser) > w1 && w1 > w0, "laser width grows with damage power");
+  laser.dmgMul *= 100;
+  assert.ok(g.laserWidth(laser) <= 3 * 3 * 2 + 1e-9, "width is capped");
+});
+
+test("Laser Reflection, Sweeping Lasers and Convergence beams all originate at the turret", () => {
+  cardBattle(g);
+  const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 210, 0, false);
+  g.B.turrets = [laser];
+  laser.reflect = 2; laser.laserSweep = 2; laser.sweepPasses = 2; laser.convergence = true; laser.tearExplosion = true;
+  const ox = 210, oy = laser.y - 14;
+  const es = [];
+  for (let i = 0; i < 8; i++) { const e = sampleEnemy(g, 300 + (i % 3) * 40); e.x = 120 + i * 25; e.speed = 0; e.baseSpeed = 0; e.hp = e.maxHp = 1e6; es.push(e); }
+  g.B.enemies = es;
+  laser.cd = 0;
+  let sweepAngles = new Set();
+  for (let i = 0; i < 40; i++) {
+    g.B.beams = [];
+    g.unitFire(laser, 0.05);
+    const ls = g.B.beams.filter(b => b.laser);
+    assert.ok(ls.every(b => Math.abs(b.x1 - ox) < 1e-9 && Math.abs(b.y1 - oy) < 1e-9), "all laser beams start at the turret");
+    g.B.beams.filter(b => b.color === "#a7f3d0").forEach(b => sweepAngles.add(Math.round(Math.atan2(b.y2 - b.y1, b.x2 - b.x1) * 20)));
+    const rips = g.B.beams.filter(b => b.color === "#ff6b9a");
+    assert.ok(rips.every(b => Math.abs(b.x1 - ox) < 1e-9), "Tear Explosion ripping lasers start at the turret");
+  }
+  assert.ok(sweepAngles.size >= 6, "sweeping lasers really sweep: " + sweepAngles.size);
+  assert.ok(es.filter(e => e.hp < e.maxHp).length >= 5, "reflections/sweeps reach several enemies");
 });
 
 test("Beam Refraction adds 2 refracted beams, Beam Penetration makes every beam hit Vulnerable", () => {
@@ -455,7 +516,7 @@ test("draft shows the 5-slot level/pip row; Selected Cards overview opens from d
   const grid = element("cards-grid").innerHTML;
   assert.ok(grid.includes("Dense Swarm") && grid.includes("Wasps +2, DMG -15%") && grid.includes('class="mcard teal"'));
   hive.pips = 3; c.B.pendingDrafts = 1;
-  c.applyCard({ kind: "card", u: hive, def: c.cardById("hive", "waspEvolution") });
+  c.applyCard({ kind: "card", u: hive, def: c.cardById("hive", "waspEvolutionII") });
   c.openCardsOverview();
   assert.ok(element("cards-grid").innerHTML.includes('class="mcard purple"'), "purple cards have a purple border");
   assert.ok(shell.includes('id="btn-lu-cards"') && shell.includes('id="btn-pause-cards"') && shell.includes('id="btn-res-cards"'));
@@ -636,28 +697,34 @@ test("12 campaign stages, 20/25/30 waves and saved progress", () => {
   assert.equal(late.B.bossSpawned,true,"stage 12 boss must spawn on wave 30");
 });
 
-test("R&D gates migrated tier cards: T1 at R&D 2, level-2 cards at R&D 6/10 and in order", () => {
+test("R&D gates follow the reference locks and Lv.2/6/10 unlocks; Star Tier gates the in-run level", () => {
   const {game:rnd}=harness();
   rnd.META.music=false;rnd.META.sfx=false;
   rnd.startBattle();
   const t=rnd.mkUnit(rnd.TURRETS.find(t=>t.id==="hive"),52,0,false);
   rnd.B.turrets=[t];
   const ids=()=>rnd.unitCards(t).map(d=>d.id);
-  assert.ok(!ids().includes("swarmEcho"),"Swarm Echo needs R&D 2");
+  assert.ok(!ids().includes("swarmEcho"),"Swarm Echo is the Lv.2 unlock");
   rnd.META.levels.hive=2;
   assert.ok(ids().includes("swarmEcho"));
   rnd.B.pendingDrafts=1;rnd.applyCard({kind:"card",u:t,def:rnd.cardById("hive","swarmEcho")});
   assert.equal(t.hiveEcho,1);
   t.runLv=2;t.pips=0;
-  assert.ok(!ids().includes("echoUpgrade2"),"level-2 cards need R&D 6");
+  assert.ok(!ids().includes("echoUpgradeII"),"Echo Upgrade II is the Lv.6 unlock");
   rnd.META.levels.hive=6;
-  assert.ok(ids().includes("echoUpgrade2"));
-  assert.ok(!ids().includes("echoUpgrade3"),"Echo III needs Echo II and R&D 10");
-  rnd.B.pendingDrafts=1;rnd.applyCard({kind:"card",u:t,def:rnd.cardById("hive","echoUpgrade2")});
+  assert.ok(ids().includes("echoUpgradeII"));
   rnd.META.levels.hive=10;
-  assert.ok(ids().includes("echoUpgrade3"));
+  assert.ok(!ids().includes("echoUpgradeIII"),"Echo Upgrade III is Star Tier 3");
+  t.runLv=3;
+  assert.ok(ids().includes("echoUpgradeIII"));
+  assert.ok(!ids().includes("swarmAssaultPlus"),"Swarm Assault+ is locked to Lv.26");
+  rnd.META.levels.hive=26;
+  assert.ok(ids().includes("swarmAssaultPlus"));
   t.runLv=1;
-  assert.ok(!ids().includes("echoUpgrade3"),"level-2 cards never appear on a level-1 unit");
+  assert.ok(!ids().includes("echoUpgradeII"),"Tier-2 cards never appear on a level-1 unit");
+  /* Guardian locks Lv.61/71/101/121 exceed the R&D cap of 45 and are scaled into it */
+  const gd=c=>rnd.cardById("soldier",c).rd;
+  assert.equal([gd("volleyShotPlus"),gd("rapidFire"),gd("counterburstScatter"),gd("mirrorGuardian")].join(","),"23,26,38,45");
 });
 
 test("Gravity Vortex creates damaging fields that pull enemies", () => {
@@ -917,29 +984,25 @@ test("Tesla discharge bounces sequentially to the nearest enemy with decaying da
   assert.ok(!arcs.some(a => Math.abs(a.x1 - 200) < 1 && Math.abs(a.x2 - 320) < 1), "no simultaneous arc from target 1 to target 3");
 });
 
-test("laser sweep hits the strongest remaining target, never a random one", () => {
+test("sweeping lasers swing from the turret across the locked direction (no random targets)", () => {
   g.B = g.newBattle(g.STAGES[0]);
   g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
-  const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 52, 0, false);
+  const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 210, 0, false);
   laser.laserSweep = 1;
   g.B.turrets = [laser];
-  const strong = sampleEnemy(g, 400); strong.x = 180; strong.maxHp = 1000; strong.hp = 5000;
-  const mid = sampleEnemy(g, 400); mid.x = 100; mid.maxHp = 800; mid.hp = 800;
-  const weak = sampleEnemy(g, 400); weak.x = 300; weak.maxHp = 500; weak.hp = 500;
-  g.B.enemies = [strong, mid, weak];
-  let swept = null;
-  for (let ch = 0; ch < 5 && !swept; ch++) {
-    laser.cd = 0; laser.laserActive = 0;
-    for (let i = 0; i < 60 && !swept; i++) {
-      g.unitFire(laser, 0.05);
-      const sw = g.B.beams.find(b => b.color === "#a7f3d0");
-      if (sw) swept = sw;
-    }
+  const e = sampleEnemy(g, 400); e.x = 210; e.speed = 0; e.baseSpeed = 0;
+  g.B.enemies = [e];
+  laser.cd = 0;
+  const angs = [];
+  for (let i = 0; i < 30 && (i === 0 || laser.laserActive > 0); i++) {
+    g.B.beams = [];
+    g.unitFire(laser, 0.05);
+    const sw = g.B.beams.find(b => b.color === "#a7f3d0");
+    assert.ok(sw && sw.x1 === 210, "a sweeping laser starts at the turret");
+    angs.push(Math.atan2(sw.y2 - sw.y1, sw.x2 - sw.x1) - laser.laserAngle);
   }
-  assert.ok(swept, "a sweep beam should appear within a few channels");
-  assert.ok(Math.abs(swept.x2 - 100) < 1 && Math.abs(swept.y2 - 400) < 1,
-    "sweep must hit the strongest remaining target (mid, 800 HP), got endpoint (" + swept.x2 + "," + swept.y2 + ")");
-  assert.equal(weak.hp, 500, "sweep must never hit the weaker target");
+  assert.ok(angs[0] < -0.6 && angs[angs.length - 1] > 0.5, "one pass swings from -0.8 to +0.8 rad: " + angs[0] + " .. " + angs[angs.length - 1]);
+  for (let i = 1; i < angs.length; i++) assert.ok(angs[i] >= angs[i - 1] - 1e-9, "monotonic sweep");
 });
 
 test("extra projectiles fly parallel to the main shot, not in a fan", () => {
@@ -1386,6 +1449,321 @@ test("Drawing projectiles consumes no random numbers (flicker is a function of t
   projScene(h,true);calls=0;h.draw();
   assert.ok(h.B.projs.length>40);
   assert.equal(calls,baseline,"projectile drawing must not call Math.random");
+});
+
+
+/* ---------- reference card set (docs/turrets-reference.md) ---------- */
+function parseReference() {
+  const md = fs.readFileSync(path.join(root, "docs", "turrets-reference.md"), "utf8");
+  const units = { "Sky Guard": "skyguard", "Laser": "laser", "Disruption Drone": "disruption", "Aeroblast": "aeroblast",
+    "Thunderbolt": "thunder", "Beam": "beam", "Railgun": "railgun", "Teslacoil": "tesla", "Gravity Vortex Gun": "gravity",
+    "Hive": "hive", "Firewheel Drone": "firewheel", "Guardian": "soldier" };
+  const cards = []; let unit = null, tier = 0, extra = false; const unlocks = {};
+  for (const line of md.split(/\r?\n/)) {
+    let m;
+    if ((m = line.match(/^## (.+?)(?: \(|$)/))) { unit = units[m[1].trim()] || null; tier = 0; extra = false; continue; }
+    if (!unit) continue;
+    if ((m = line.match(/^### Star Tier (\d)/))) { tier = +m[1]; extra = false; continue; }
+    if (/^\*\*Extra:\*\*/.test(line)) { extra = true; continue; }
+    if ((m = line.match(/^\| Lv\.(\d+) \| Открывает карточку \*\*(.+?)\*\*/))) { unlocks[unit + ":" + m[2]] = +m[1]; continue; }
+    if (tier && (m = line.match(/^- \*\*(.+?)\*\*(?: \(🔒 Lv\.(\d+)\))?: (.+)$/))) cards.push({ unit, tier, extra, name: m[1], lock: m[2] ? +m[2] : 0, text: m[3] });
+  }
+  cards.forEach(c => { c.unlock = unlocks[c.unit + ":" + c.name] || 0; });
+  return cards;
+}
+test("every reference card exists with its tier, Extra flag, R&D gate and the reference numbers", () => {
+  const ref = parseReference();
+  assert.ok(ref.length >= 270, "reference parsed: " + ref.length);
+  const guardianScale = x => x > 45 ? Math.round(x * 45 / 121) : x;
+  for (const c of ref) {
+    const def = g.CARDS.find(d => d.unit === c.unit && d.name === c.name);
+    assert.ok(def, "missing card " + c.unit + ": " + c.name);
+    assert.equal(def.lvl, c.tier, c.name + " tier");
+    assert.equal(!!def.rare, c.extra, c.name + " Extra/purple");
+    const gate = c.lock ? guardianScale(c.lock) : (c.unlock || 1);
+    assert.equal(def.rd, gate, c.name + " R&D gate");
+    const desc = g.cardDesc(def);
+    const nums = (c.text.match(/\d+(?:\.\d+)?/g) || []);
+    for (const n of nums) assert.ok(desc.includes(n), c.unit + ": " + c.name + " must mention " + n + " — " + desc);
+  }
+  /* no invented turret cards beyond the reference */
+  const names = new Set(ref.map(c => c.unit + ":" + c.name));
+  const extraDefs = g.CARDS.filter(d => !names.has(d.unit + ":" + d.name));
+  assert.equal(extraDefs.length, 0, "cards not in the reference: " + extraDefs.map(d => d.name).join(", "));
+});
+
+test("every card's mechanic runs in a live battle with all turrets present, entity caps hold", () => {
+  const { game: c } = harness(undefined, 99);
+  c.META.music = false; c.META.sfx = false;
+  for (const id of Object.keys(c.META.levels)) c.META.levels[id] = 45;
+  const ids = ["skyguard", "laser", "disruption", "aeroblast", "thunder", "beam", "railgun", "tesla", "gravity", "hive", "firewheel"];
+  const byUnit = {};
+  c.CARDS.forEach(d => (byUnit[d.unit] = byUnit[d.unit] || []).push(d));
+  /* four turrets per battle (the slot limit); every turret type and the Guardian take ALL of their cards */
+  const groups = [["skyguard", "laser", "disruption", "railgun"], ["aeroblast", "thunder", "beam", "firewheel"], ["tesla", "gravity", "hive", "railgun"], ["disruption", "railgun", "firewheel", "hive"]];
+  for (const grp of groups) {
+    c.B = c.newBattle(c.STAGES[5]);
+    c.B.soldier = c.mkUnit(c.SOLDIER_CFG, 210, -1, true);
+    c.B.turrets = grp.map((id, i) => c.mkUnit(c.TURRETS.find(t => t.id === id), c.TURRET_X[i], i, false));
+    c.B.wave = 8; c.B.waveState = "fighting"; c.startWave(8);
+    for (const u of c.allFighters()) {
+      u.runLv = 3;
+      for (const d of byUnit[u.cfg.id]) { c.applyCardDef(d, u); u.cards[d.id] = 1; u.mods.push(d.id); }
+      c.maybeSuperMode(u);
+      u.rangeMul = 5; /* short-range turrets must engage too, so every mechanic is exercised */
+    }
+    let peak = { mines: 0, bolts: 0, holes: 0, minis: 0, projs: 0, drones: 0, fields: 0, spinners: 0, portals: 0, pulses: 0 };
+    for (let i = 0; i < 900 && !c.B.over; i++) {
+      if (c.B.waveState === "draft") { c.B.pendingDrafts = 0; c.B.waveState = "fighting"; }
+      c.update(1 / 30);
+      if (i % 30 === 0) c.draw();
+      peak.mines = Math.max(peak.mines, c.B.mines.length); peak.bolts = Math.max(peak.bolts, c.B.bolts.length);
+      peak.holes = Math.max(peak.holes, c.B.fields.filter(f => f.kind === "blackhole").length);
+      peak.minis = Math.max(peak.minis, c.B.wheels.filter(w => w.mini).length);
+      peak.projs = Math.max(peak.projs, c.B.projs.length); peak.drones = Math.max(peak.drones, c.B.drones.length);
+      peak.fields = Math.max(peak.fields, c.B.fields.length); peak.spinners = Math.max(peak.spinners, c.B.spinners.length);
+      peak.portals = Math.max(peak.portals, c.B.portals.length); peak.pulses = Math.max(peak.pulses, c.B.pulses.length);
+      for (const e of c.B.enemies) assert.ok(Number.isFinite(e.x) && Number.isFinite(e.y) && !Number.isNaN(e.hp), "enemy state stays finite");
+    }
+    const cap = c.FX_CAP;
+    assert.ok(peak.mines <= cap.mines && peak.bolts <= cap.bolts && peak.holes <= cap.holes && peak.minis <= cap.minis, JSON.stringify(peak));
+    assert.ok(peak.projs <= cap.projs + 40 && peak.drones <= cap.drones && peak.fields <= cap.fields + 4 && peak.spinners <= cap.spinners && peak.portals <= cap.portals && peak.pulses <= cap.pulses, JSON.stringify(peak));
+    assert.ok(!c.B.loopError, c.B.loopError);
+    assert.ok(c.allFighters().every(u => u.totalDmg > 0), grp.join(",") + " all deal damage: " + c.allFighters().map(u => u.cfg.id + "=" + Math.round(u.totalDmg)).join(" "));
+  }
+  assert.ok(ids.every(id => byUnit[id].length >= 20));
+});
+
+
+function mechBattle(c, ids) {
+  c.META.music = false; c.META.sfx = false;
+  c.B = c.newBattle(c.STAGES[0]);
+  c.B.soldier = c.mkUnit(c.SOLDIER_CFG, 210, -1, true); c.B.soldier.cd = 1e9;
+  c.B.turrets = (ids || []).map((id, i) => c.mkUnit(c.TURRETS.find(t => t.id === id), c.TURRET_X[i], i, false));
+  c.B.turrets.forEach(u => { u.critBonus = -1; });
+  c.B.wave = 3; c.B.waveState = "fighting"; c.B.waveQueue = 1; c.B.spawnT = 1e9;
+  return c.B.turrets;
+}
+function still(c, x, y, hp) { const e = sampleEnemy(c, y); e.x = x; e.speed = 0; e.baseSpeed = 0; e.hp = e.maxHp = hp || 1e6; return e; }
+
+test("Paralyze and Immobilize stop an enemy; a 1 s immunity prevents perma-stun; bosses are only briefly stunned", () => {
+  const { game: c } = harness(); mechBattle(c, []);
+  const e = sampleEnemy(c, 300); e.speed = e.baseSpeed = 40; c.B.enemies = [e];
+  assert.ok(c.applyParalyze(e, 1));
+  const y = e.y; c.update(0.5); assert.equal(e.y, y, "paralyzed enemy does not move");
+  assert.ok(!c.applyParalyze(e, 1), "cannot be re-paralyzed while stunned");
+  for (let i = 0; i < 20; i++) c.update(0.05);
+  assert.ok(e.y > y, "moves again after Paralyze");
+  assert.ok(!c.applyParalyze(e, 1), "immune for 1 s after Paralyze ends");
+  for (let i = 0; i < 25; i++) c.update(0.05);
+  assert.ok(c.applyImmobilize(e, 1), "Immobilize works after the immunity");
+  const boss = sampleEnemy(c, 300); boss.kind = "boss"; c.applyParalyze(boss, 1);
+  assert.ok(Math.abs(boss.paralyzeT - 0.3) < 1e-9, "bosses get 30% duration");
+});
+
+test("Disruption stacks detonate at max stacks (Burst, Area, Overcharged 5 stacks); teleport-back spares bosses", () => {
+  const { game: c } = harness();
+  const [d] = mechBattle(c, ["disruption"]);
+  const e = still(c, 200, 300), n = still(c, 230, 300); c.B.enemies = [e, n];
+  c.addDisruption(e, d, 1); c.addDisruption(e, d, 1);
+  assert.equal(e.hp, 1e6); assert.equal(e.disr, 2);
+  c.addDisruption(e, d, 1);
+  assert.ok(e.hp < 1e6 && e.disr === 0, "detonates at 3 stacks");
+  d.disrBurst = true; d.areaDisr = true; c.applyCardDef(c.cardById("disruption", "overchargedDisruption"), d);
+  const hp = e.hp; for (let i = 0; i < 4; i++) c.addDisruption(e, d, 1);
+  assert.equal(e.hp, hp, "Overcharged: max stacks become 5");
+  c.addDisruption(e, d, 1);
+  assert.ok(e.hp < hp && n.hp < 1e6, "Burst + Area hit");
+  const y = e.y; assert.ok(c.teleportBack(e, false, null)); assert.ok(e.y < y);
+  const b = still(c, 300, 300); b.kind = "boss"; assert.ok(!c.teleportBack(b, true, null)); assert.equal(b.y, 300);
+  d.teleportDamage = true; const h2 = n.hp; c.teleportBack(n, true, d);
+  assert.ok(Math.abs((h2 - n.hp) - 0.03 * n.maxHp) < 1e-6 && n.y === -20, "Teleport Damage = 3% max HP, rewind to start");
+});
+
+test("Disruption Field deals periodic damage, Final Blast on expiry, Disruption Force stacks", () => {
+  const { game: c } = harness();
+  const [d] = mechBattle(c, ["disruption"]);
+  d.cd = 1e9; d.finalBlast = true; d.disrForce = true;
+  const e = still(c, 200, 300); c.B.enemies = [e];
+  c.addDisruptionField(d, 200, 300);
+  c.update(0.2); const after1 = e.hp;
+  assert.ok(after1 < 1e6 && e.slowFactor < 1, "the field damages and slows");
+  assert.ok(e.disr >= 1, "Disruption Force applies a stack");
+  let blast = 0;
+  for (let i = 0; i < 80 && c.B.fields.some(f => f.kind === "slow"); i++) { const h = e.hp; c.update(0.05); blast = h - e.hp; }
+  assert.ok(!c.B.fields.some(f => f.kind === "slow"), "field expires");
+  assert.ok(blast >= d.cfg.damage * 2, "Final Blast on expiry: " + blast);
+});
+
+test("Thunderbolt calls a vertical strike that hits the whole column; Chain Lightning, Paralysis, Life Erosion", () => {
+  const { game: c } = harness();
+  const [t] = mechBattle(c, ["thunder"]);
+  const a = still(c, 200, 250), b = still(c, 205, 450), off = still(c, 300, 260);
+  c.B.enemies = [a, b, off];
+  c.thunderStrike(t, 200, 1);
+  assert.ok(a.hp < 1e6 && b.hp < 1e6 && off.hp === 1e6, "column only");
+  assert.ok(c.B.beams.some(x => x.bolt && x.x1 === 200), "lightning column fx");
+  ["lightningParalysis", "chainLightning", "lifeErosion"].forEach(id => c.applyCardDef(c.cardById("thunder", id), t));
+  a.hp = b.hp = off.hp = 1e6; a.paraImmuneT = b.paraImmuneT = 0; a.paralyzeT = b.paralyzeT = 0;
+  c.thunderStrike(t, 200, 1);
+  assert.ok(a.paralyzeT > 0, "Paralyze");
+  assert.ok(off.hp < 1e6, "Chain Lightning jumps to the enemy outside the column");
+  assert.ok(1e6 - b.hp >= 0.01 * 1e6, "Life Erosion: 1% max HP");
+});
+
+test("Floating Mines arm and explode; Pulse Waves expand once over each enemy; Ripping Laser and shocks", () => {
+  const { game: c } = harness();
+  const [a] = mechBattle(c, ["aeroblast"]);
+  a.cd = 1e9;
+  const e = still(c, 200, 300, 1000); c.B.enemies = [e];
+  c.addMine(a, 200, 300); c.update(0.1);
+  assert.equal(c.B.mines.length, 1, "not armed yet");
+  c.update(0.3); assert.equal(c.B.mines.length, 0); assert.ok(e.hp < 1000);
+  const hp = e.hp; c.addPulse(a, 200, 280, 60, 10);
+  for (let i = 0; i < 12; i++) c.update(0.05);
+  assert.ok(e.hp < hp && c.B.pulses.length === 0);
+  const h2 = e.hp; c.ripLaser(a, 200, 480, -Math.PI / 2, 10); assert.ok(e.hp < h2, "Ripping Laser hits along its line");
+  for (let i = 0; i < 40; i++) c.ripLaser(a, 0, 0, 0, 1);
+  assert.ok(c.B.ripN <= c.FX_CAP.rips, "Ripping Lasers are rate-capped");
+  const n = still(c, 230, 300); c.B.enemies.push(n);
+  c.shockFrom(a, 200, 300, 1, 10, [e]); assert.ok(n.hp < 1e6);
+  for (let i = 0; i < 60; i++) c.addMine(a, 100, 300);
+  assert.equal(c.B.mines.length, c.FX_CAP.mines, "mine cap");
+});
+
+test("Gravity field flies from the turret over its range, then leaves a small black hole; Wormhole portal", () => {
+  const { game: c } = harness();
+  const [gv] = mechBattle(c, ["gravity"]);
+  gv.smallBH = true; gv.wormhole = true;
+  const tgt = still(c, 52, 520); c.B.enemies = [tgt];
+  gv.cd = 0; c.unitFire(gv, 0.05);
+  const f = c.B.fields.find(x => x.kind === "gravity");
+  assert.ok(f && Math.abs(f.x - 52) < 1 && f.y > 600, "spawns at the turret");
+  const y0 = f.y; c.update(0.5); assert.ok(f.y < y0, "and flies toward the target");
+  for (let i = 0; i < 80; i++) c.update(0.05);
+  assert.ok(c.B.fields.some(x => x.kind === "blackhole"), "Small Black Hole at the end of flight");
+  assert.ok(c.B.portals.length >= 1 || tgt.y !== 520, "Static Wormhole opened");
+});
+
+test("Teslacoil charges before firing; Cooperative Beam and Charged Shock work during the charge", () => {
+  const { game: c } = harness();
+  const [t] = mechBattle(c, ["tesla"]);
+  t.coopBeam = true; t.chargedShock = true; t.chargeTime = 0.8;
+  const e = still(c, 52, 400), e2 = still(c, 90, 420); c.B.enemies = [e, e2];
+  t.cd = 0; c.unitFire(t, 0.05);
+  assert.equal(c.B.projs.length, 0, "charging, not firing yet");
+  for (let i = 0; i < 10; i++) c.unitFire(t, 0.05);
+  assert.ok(e.hp < 1e6 && e2.hp < 1e6, "refracted beams / shocks during the charge");
+  for (let i = 0; i < 10; i++) c.unitFire(t, 0.05);
+  const p = c.B.projs.find(x => x.src === t);
+  assert.ok(p && p.chargeT > 0.7, "the discharge carries its charge time");
+});
+
+test("Railgun Basic Split splits on the first hit; Piercing Mark applies Physical Vulnerable; Execution Penetration", () => {
+  const { game: c } = harness();
+  const [r] = mechBattle(c, ["railgun"]);
+  ["basicSplit", "piercingMark", "executionPenetration"].forEach(id => c.applyCardDef(c.cardById("railgun", id), r));
+  const e = still(c, 200, 300); c.B.enemies = [e, still(c, 260, 260)];
+  const p = { src: r, dmg: 70, x: 200, y: 330, vx: 0, vy: -900, rail: true, hitSet: [e], pierce: 3 };
+  const before = c.B.projs.length; c.applyHit(p, e);
+  const frags = c.B.projs.slice(before);
+  assert.ok(frags.length === 2 || frags.length === 4, "2 small shells (+20%: 2 more)");
+  assert.ok(e.physVulnT > 0);
+  const weak = still(c, 100, 300, 1); weak.lastSrc = null; c.B.enemies.push(weak);
+  c.applyHit({ src: r, dmg: 70, x: 100, y: 330, vx: 0, vy: -900, rail: true, hitSet: [weak], pierce: 1, pierced: 1 }, weak);
+  assert.equal(r.execPierce, 1, "penetration +1 per kill");
+});
+
+test("Hive: Wasp Evolution III, Hive Mutation II, Final Resonance, Wasp Retrieval", () => {
+  const { game: c } = harness();
+  const [h] = mechBattle(c, ["hive"]);
+  ["waspEvolutionII", "waspEvolutionIII", "hiveMutationII", "finalResonance", "waspRetrieval"].forEach(id => c.applyCardDef(c.cardById("hive", id), h));
+  const e = still(c, 52, 500); c.B.enemies = [e];
+  const dr = c.newWasp(h, 52, 506, { hits: 20 }); dr.tgt = e; c.B.drones = [dr];
+  for (let i = 0; i < 6; i++) { dr.hitT = 0; dr.x = e.x; dr.y = e.y + 6; dr.tgt = e; c.update(0.01); }
+  assert.equal(dr.tier, 3); assert.equal(dr.boost, 2, "Wasp III = 2x");
+  c.B.drones = []; h.cd = 0; c.unitFire(h, 0.05); const n1 = c.B.drones.length;
+  c.B.drones = []; h.cd = 0; c.unitFire(h, 0.05);
+  assert.equal(c.B.drones.length, n1 + 1, "every 2nd volley adds a Wasp II");
+  assert.ok(c.B.drones.some(d => d.tier === 2));
+  const w = c.B.drones[0]; w.life = 0; let stored = 0;
+  for (let i = 0; i < 40; i++) { c.waspDies(w); }
+  assert.ok(h.stored === 5, "retrieval stores up to 5");
+  assert.ok(c.B.pulses.length > 0, "Final Resonance pulse");
+});
+
+test("Firewheel: Mini Drones, Hold the Ground, Killing Array; mini cap", () => {
+  const { game: c } = harness();
+  const [f] = mechBattle(c, ["firewheel"]);
+  ["miniDrones", "holdTheGround", "killingArray"].forEach(id => c.applyCardDef(c.cardById("firewheel", id), f));
+  c.B.enemies = [still(c, 200, 300)];
+  f.cd = 0; c.unitFire(f, 0.05);
+  const w = c.B.wheels[0];
+  for (let i = 0; i < 70; i++) c.update(0.05);
+  assert.ok(c.B.wheels.filter(x => x.mini).length >= 2, "2 mini drones every 3 s");
+  w.life = 0.01; c.update(0.05);
+  assert.ok(w.holding && c.B.wheels.includes(w), "Hold the Ground keeps the disc 10 s more");
+  for (let i = 0; i < 40; i++) c.addMiniWheel(f, 200, 300);
+  assert.ok(c.B.wheels.filter(x => x.mini).length <= c.FX_CAP.minis);
+});
+
+test("Guardian: Charge Activation enters Charged State; Splitting Bullet; Mirror Guardian clone fires at 50%; Counterburst", () => {
+  const { game: c } = harness();
+  mechBattle(c, []);
+  const s = c.B.soldier; s.cd = 0;
+  ["chargeActivation", "splittingBullet", "mirrorGuardian", "counterburstScatter"].forEach(id => c.applyCardDef(c.cardById("soldier", id), s));
+  const e = still(c, 210, 300); c.B.enemies = [e, still(c, 240, 300), still(c, 180, 280)];
+  let shots = 0;
+  for (let i = 0; i < 300 && !(s.chargedLeft > 0); i++) { s.cd = 0; const b = c.B.projs.length; c.unitFire(s, 0.01); shots++; }
+  assert.ok(s.chargedLeft > 0, "Charged State after enough shots: " + shots);
+  const b0 = c.B.projs.length; s.cd = 0; c.unitFire(s, 0.01);
+  const vol = c.B.projs.slice(b0).filter(p => p.bullet);
+  assert.ok(vol.some(p => p.dmg === 6) && vol.some(p => p.dmg === 12), "clone bullets deal 50%");
+  assert.ok(vol.every(p => p.charged));
+  const n0 = c.B.projs.length; c.applyHit(vol[0], e);
+  assert.equal(c.B.projs.length - n0, 2, "Charged State: 2 sub-bullets");
+  assert.ok(c.B.projs.some(p => p.kind === "shell" && p.src === s && p.pierce === 99), "Counterburst wave fired after 40 shots");
+});
+
+test("Aeroblast: Floating Mine card, Shotgun Barrage shells, Multiple Blast+ repeat, Extra Loading", () => {
+  const { game: c } = harness();
+  const [a] = mechBattle(c, ["aeroblast"]);
+  ["floatingMine", "shotgunBarrage", "multipleBlastPlus", "extraLoading"].forEach(id => c.applyCardDef(c.cardById("aeroblast", id), a));
+  const e = still(c, 52, 450); c.B.enemies = [e];
+  a.cd = 0; c.unitFire(a, 0.01);
+  const pel = c.B.projs.filter(p => !p.kind), shells = c.B.projs.filter(p => p.kind === "shell");
+  assert.equal(pel.filter(p => p.main).length, 1); assert.equal(shells.length, 5);
+  c.applyHit(pel.find(p => p.main), e);
+  assert.equal(c.B.mines.length, 2, "2 mines per explosion");
+  for (let i = 0; i < 5; i++) c.unitFire(a, 0.05);
+  assert.ok(c.B.projs.filter(p => !p.kind).length >= 2 * pel.length, "fires 1 extra time");
+  const k = still(c, 60, 450, 1); c.B.enemies.push(k); c.dealDamage(a, k, 100, { kind: "aero" });
+  assert.equal(a.aeroLoaded, 1);
+});
+
+test("Beam: thick stream visual state, Damage Increase ramp, Slaughtering Beam", () => {
+  const { game: c } = harness();
+  const [b] = mechBattle(c, ["beam"]);
+  ["damageIncrease", "slaughteringBeam"].forEach(id => c.applyCardDef(c.cardById("beam", id), b));
+  const e = still(c, 52, 450); c.B.enemies = [e];
+  b.cd = 0; const hits = [];
+  for (let i = 0; i < 6; i++) { const h = e.hp; c.unitFire(b, 0.2); hits.push(h - e.hp); }
+  assert.ok(b.beamVisT > 0 && b.beamVisX === 52, "stream state for the renderer");
+  assert.ok(hits[5] > hits[1], "damage on the same target grows");
+  c.draw();
+  const k = still(c, 60, 450, 1); c.B.enemies.push(k); c.dealDamage(b, k, 100, { kind: "beam" });
+  assert.ok(Math.abs(b.beamKillBonus - 0.1) < 1e-9);
+});
+
+test("meta progression: Lv.4/12 +20% secondary, Lv.8 Cooldown Speed +5%, Hive ATK count +1 per bump", () => {
+  const { game: c } = harness();
+  assert.ok(Math.abs(c.metaCooldown(8) - 1 / 1.05) < 1e-9);
+  assert.ok(Math.abs(c.metaCooldown(7) - 1) < 1e-9);
+  assert.equal(c.metaSteps(3), 0); assert.equal(c.metaSteps(4), 1); assert.equal(c.metaSteps(12), 2);
+  c.META.levels.hive = 12; c.B = c.newBattle(c.STAGES[0]);
+  const h = c.mkUnit(c.TURRETS.find(t => t.id === "hive"), 52, 0, false);
+  assert.equal(h.hiveAttacks, 9);
+  c.META.levels.railgun = 4; assert.equal(c.mkUnit(c.TURRETS.find(t => t.id === "railgun"), 52, 0, false).pierce, 4);
 });
 
 console.log("\n" + tests.length + " smoke tests passed.");

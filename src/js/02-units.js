@@ -27,16 +27,30 @@ window.addEventListener("resize",function(){clearTimeout(fitT);fitT=setTimeout(f
 window.addEventListener("orientationchange",function(){setTimeout(fitCanvas,80);setTimeout(fitCanvas,320);});
 var B=null, raf=null, lastTs=0;
 function mkUnit(cfg,x,slot,isSoldier){
- var lv=META.levels[cfg.id],secondary=metaSecondary(lv),area={rocket:32,charge:42,knockback:40,slow:34};
- return {cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,pips:0,cards:{},cd:Math.random()*0.2,laserActive:0,angle:-Math.PI/2,recoil:0,handAlt:false,
-  metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:metaDamage(lv)*(isSoldier?1:BALANCE.turretBasePower)*(isSoldier?1:1+0.03*META.chips.core),haste:1+0.02*META.chips.speed,extraProj:0,
-  pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?Math.floor((secondary-1)*5):0),
-  chain:(cfg.effect==="chain"?2:0)+(cfg.id==="thunder"?Math.floor((secondary-1)*2):0),
-  splash:(area[cfg.effect]||0)*secondary,critBonus:0,slowPow:0.35,totalDmg:0,mods:[],
-  beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:12,aeroPellets:5,
+ var lv=META.levels[cfg.id],secondary=metaSecondary(lv),steps=metaSteps(lv),area={rocket:32,charge:42,knockback:40,slow:34};
+ var dm=metaDamage(lv)*(isSoldier?1:BALANCE.turretBasePower)*(isSoldier?1:1+0.03*META.chips.core);
+ var u={cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,pips:0,cards:{},cd:Math.random()*0.2,laserActive:0,angle:-Math.PI/2,recoil:0,handAlt:false,
+  metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:dm,baseDmgMul:dm,haste:1+0.02*META.chips.speed,extraProj:0,
+  pierce:(cfg.effect==="pierce"?3:0)+(cfg.id==="railgun"?steps:0),chain:0,
+  /* secondary meta stat (reference Lv.4/Lv.12 rewards): DMG range for Sky Guard/Aeroblast/Teslacoil/Gravity,
+     duration for Laser/Beam/Disruption/Firewheel, strike width for Thunderbolt, ATK count for Hive */
+  splash:(area[cfg.effect]||0)*(cfg.id==="disruption"?1:secondary),critBonus:0,slowPow:0.35,totalDmg:0,mods:[],
+  beamSplit:false,reflect:0,refract:false,hiveDouble:false,burnMul:1,multiCount:3,knock:12,aeroPellets:5,rangeMul:1,
   laserTicks:0,laserTickT:0,laserTarget:null,beamTicks:0,beamTickT:0,beamTarget:null,beamRamp:0,
-  chargeT:0,hiveCount:3,hiveAttacks:Math.round(7*secondary),wheelHits:Math.round(50*secondary),gravityRadius:Math.round(70*secondary),gravityPull:65,gravityDuration:3.5,gravityPower:1.0,
-  laserDeflect:0,laserSweep:0,beamRefractions:0,teslaMatrix:false,teslaMatrixPlus:false,teslaChargeBonus:0,fireTrail:false,wheelMax:1};
+  chargeT:0,hiveCount:3,hiveAttacks:7+steps,wheelHits:Math.round(50*secondary),gravityRadius:Math.round(70*secondary),gravityPull:65,gravityPower:1.0,gravityRange:260,
+  laserDeflect:0,laserSweep:0,sweepPasses:1,laserDurationMul:1,laserBandMul:1,debuffDurMul:1,deflectReflect:0,
+  beamRefractions:0,beamInterval:0.2,beamDurationMul:1,beamFocusCap:0,beamKillBonus:0,
+  fieldDurMul:1,fieldIntervalMul:1,disrMax:3,disrPower:1,
+  strikes:1,strikeWidthMul:1,strikeWidthBase:secondary,chainTargets:5,paraDurMul:1,
+  impactReinforce:0,impactMul:1,
+  aeroShells:0,aeroLoaded:0,mineCount:0,mineDmgMul:1,mineKnockMul:1,pelletPierce:0,bounceCount:0,aeroRepeat:0,shellDmgMul:1,shellRangeMul:1,
+  splitBonus:0,railKnock:6,ricochet:0,execPierce:0,
+  chargeTime:0.3,teslaRadiusMul:1,matrixDmgMul:1,matrixDurBonus:0,teslaMatrix:false,
+  portalDurMul:1,portalRMul:1,bhRMul:1,bhPullMul:1,bhDmgMul:1,extraFields:0,
+  pulseRMul:1,waspBullets:0,stored:0,volleys:0,
+  wheelSizeMul:1,wheelDurMul:1,trailDmgMul:1,trailDurBonus:0,miniDmgMul:1,miniDurMul:1,wheelIgnite:0,fireTrail:false,wheelMax:1,
+  bulletExplode:0,bulletExplR:1,bulletExplDmg:1,chargeGain:1,chargeShots:1,chargePts:0,chargedLeft:0,shotCount:0};
+ return u;
 }
 function newBattle(stage){
  return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:!!stage.elite,championsKilled:0,championsSpawned:0,guardianGoalX:SOLDIER_X,
@@ -48,7 +62,7 @@ function newBattle(stage){
      as in the original, the first card arrives right after the second monster
      (the first enemies of wave 1 are meteors worth 1 point each), then the pace slows with the waves. */
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
-  enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],
+  enemies:[],projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],mines:[],pulses:[],bolts:[],portals:[],spinners:[],delayed:[],
   shake:0,baseFlashT:0,baseHitTextT:0,waveDensity:{},maxUpwardOwn:0,picked:[],drafts:0,waveState:"intro",introT:1.2,
   allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }

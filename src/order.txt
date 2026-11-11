@@ -5,6 +5,7 @@
 02-units.js
 04-waves.js
 03-combat.js
+03b-effects.js
 05-update.js
 06-render.js
 07-cards.js

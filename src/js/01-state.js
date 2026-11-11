@@ -50,7 +50,7 @@ function setLivery(id){
  if(!["classic","arctic","ember"].includes(id)||META.livery===id)return false;
  META.livery=id;persist();syncToggles();SFX.pick();return true;
 }
-function rdTierUnlock(id){return {skyguard:14,laser:18,disruption:18,aeroblast:14,thunder:18,beam:18,firewheel:10,hive:18,railgun:14,tesla:18,gravity:10,soldier:18}[id]||18;}
+function rdTierUnlock(id){return {skyguard:14,laser:10,disruption:18,aeroblast:10,thunder:18,beam:18,firewheel:10,hive:18,railgun:14,tesla:18,gravity:10,soldier:18}[id]||18;}
 function rdTierName(level){return level>=22?"T3/Combo":level>=14?"Breakthrough":level>=10?"T3":level>=6?"T2":level>=2?"T1":"BASIC";}
 
 function refillEnergy(){var now=Date.now();if(!META.lastEnergyAt)META.lastEnergyAt=now;

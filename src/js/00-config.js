@@ -6,7 +6,7 @@ var TURRETS=[
  {id:"laser",name:"Laser",icon:"🔆",dmgType:"Energy",damage:26,attackSpeed:1,range:1200,projSpeed:0,crit:0.05,critMul:1.8,target:"strongest",effect:"beam",rarity:"common",color:"#4ade80",desc:"A map-wide beam: damages ALL enemies caught in it. Upgrades add beam reflection and refraction."},
  {id:"disruption",name:"Disruption Drone",icon:"🛸",dmgType:"Force field",damage:7,attackSpeed:1.1,range:180,projSpeed:340,crit:0.05,critMul:1.7,target:"closestBase",effect:"slow",rarity:"rare",color:"#38c8ff",desc:"Force-field pulses slow enemies by 35%."},
  {id:"aeroblast",name:"Aeroblast",icon:"🌀",dmgType:"Air",damage:10,attackSpeed:0.8,range:540,projSpeed:520,crit:0.06,critMul:1.8,target:"nearest",effect:"knockback",rarity:"common",color:"#7dd7ff",desc:"A medium-range air shotgun: 5 pellets, a tight spread at range and strong knockback up close."},
- {id:"thunder",name:"Thunderbolt",icon:"⚡",dmgType:"Electric",damage:16,attackSpeed:0.8,range:180,projSpeed:0,crit:0.12,critMul:2.0,target:"nearest",effect:"chain",rarity:"rare",color:"#c084fc",desc:"Lightning jumps to nearby enemies."},
+ {id:"thunder",name:"Thunderbolt",icon:"⚡",dmgType:"Electric",damage:16,attackSpeed:0.8,range:560,projSpeed:0,crit:0.12,critMul:2.0,target:"closestBase",effect:"chain",rarity:"rare",color:"#c084fc",desc:"Calls vertical lightning strikes that hit every enemy in the bolt's column."},
  {id:"beam",name:"Beam",icon:"🔷",dmgType:"Energy",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"strongest",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Fires a focused series of energy hits at the toughest targets."},
  {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Fire",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Releases a long-lived bouncing fire disc that repeatedly hits enemies."},
  {id:"hive",name:"Hive",icon:"🐝",dmgType:"Drones",damage:14,attackSpeed:0.5,range:390,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:"#facc15",desc:"Releases persistent wasps within range. Released wasps hunt across the whole field and strike repeatedly."},
@@ -56,10 +56,12 @@ var BALANCE={
     count actually triples (tripling totals alone only stretches waves). */
  waveStart:24,waveGrowth:8.4,
  spawnBase:0.20,spawnReduction:0.002,spawnMin:0.06,formationCd:1.33,
- enemyHpMul:0.78,
- /* waveHpGrowth 0.06 -> 0.14 (2026-11-10): the reference card numbers (+50%, +200%) made Stage 1 a
+ /* enemyHpMul 0.78 -> 0.76 and waveHpGrowth 0.14 -> 0.13 (2026-11-11, full reference card set):
+    72-seed Stage 1 R&D 1 check gives sensible picks 23/72 (~4/12) and first card 12/72 (~2/12).
+    waveHpGrowth 0.06 -> 0.14 (2026-11-10): the reference card numbers (+50%, +200%) made Stage 1 a
     75% win for the sensible headless policy; enemies, not cards, were retuned back to ~1/3 */
- waveHpGrowth:0.14,bossHpGrowth:0.07,turretBasePower:1.6,
+ enemyHpMul:0.78,
+ waveHpGrowth:0.13,bossHpGrowth:0.07,turretBasePower:1.6,
  /* a purple card raises the unit level (max 3); each level-up multiplies its damage */
  levelUpDmg:0.25,
  eliteHp:1.68,eliteSpeed:1.10,eliteContact:1.18,
@@ -72,9 +74,12 @@ var BALANCE={
    and a turret-specific secondary stat at five other milestones. */
 var CD_LEVELS=[8,16,28,36], SECONDARY_LEVELS=[4,12,24,32,44];
 function metaDamage(lv){return 1+0.08*(Math.min(45,Math.max(1,lv))-1);}
-function metaCooldown(lv){return 1-0.075*CD_LEVELS.filter(function(x){return lv>=x;}).length;}
+/* reference Lv.8 reward "Cooldown Speed +5%" (factor 1/1.05); later steps keep -7.5% each */
+function metaCooldown(lv){return (lv>=CD_LEVELS[0]?1/1.05:1)*(1-0.075*CD_LEVELS.slice(1).filter(function(x){return lv>=x;}).length);}
+/* number of reference Lv.4 / Lv.12 (and later) +20% secondary bumps */
+function metaSteps(lv){return SECONDARY_LEVELS.filter(function(x){return lv>=x;}).length;}
 function metaSecondary(lv){return 1+0.2*SECONDARY_LEVELS.filter(function(x){return lv>=x;}).length;}
-function secondaryName(id){return ({skyguard:"Blast radius",laser:"Beam duration",aeroblast:"Impact radius",beam:"Beam duration",firewheel:"Drone lifetime",hive:"Wasp attacks",railgun:"Pierce",tesla:"Discharge radius",gravity:"Gravity field size",disruption:"Field area",thunder:"Chain targets",soldier:"Shots"})[id]||"Effect strength";}
+function secondaryName(id){return ({skyguard:"Blast radius",laser:"Beam duration",aeroblast:"Impact radius",beam:"Beam duration",firewheel:"Drone lifetime",hive:"Wasp ATK count",railgun:"Penetration",tesla:"Discharge radius",gravity:"Gravity field radius",disruption:"Field duration",thunder:"Strike width",soldier:"Shots"})[id]||"Effect strength";}
 
 /* Placement order: outer left, outer right, inner left, inner right.
    Each flank is a compact pair, with a clear central bunker/Guardian lane.

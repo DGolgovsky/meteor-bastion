@@ -25,6 +25,8 @@ function stepMove(e,dt){
   e.hoverCount++;e.hoverCd=type==="boss"?8+Math.random()*2:type==="healer"?3+Math.random():4+Math.random()*2;
  }
  if(e.hoverT>0){e.hoverT=Math.max(0,e.hoverT-dt);mul=0;vx=0;}
+ /* Paralyze / Immobilize: the enemy stops completely */
+ if(e.paralyzeT>0||e.immobT>0){mul=0;vx=0;}
  var vy=Math.max(0,speed*mul*e.slowFactor*(e.chargeMul||1)*(e.hasteT>0?BALANCE.eliteAuraSpeed:1));
  if(["fast","mini","elite","phase","boss"].indexOf(type)>=0)vy*=.91;
  if(speed<=0)vx=0;
@@ -60,7 +62,17 @@ function update(dt){
    if(e.burnT>0){e.burnT-=dt;var burnHit=Math.min(e.hp,e.burnDps*dt);e.hp-=burnHit;if(e.burnSource)e.burnSource.totalDmg+=burnHit;
      /* the burn has ended, so reset its DPS: otherwise a stale strong burn would override any weaker ignite later */
      if(e.burnT<=0){e.burnDps=0;e.burnSource=null;}if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});if(e.hp<=0){killEnemy(e);B.enemies.splice(i,1);continue;}}
-   if(e.slowT>0){e.slowT-=dt;if(e.slowT<=0)e.slowFactor=1;}
+   if(e.slowT>0){e.slowT-=dt;if(e.slowT<=0){e.slowFactor=1;e.stasisSlow=0;}}
+   /* card statuses (03b-effects.js) */
+   if(e.paralyzeT>0){e.paralyzeT-=dt;
+     if(e.paraShockSrc){e.paraShockT-=dt;if(e.paraShockT<=0){e.paraShockT=1;smallStrike(e.paraShockSrc,e.x,e.paraShockSrc.cfg.damage*0.5);}}
+     if(e.paralyzeT<=0)e.paraShockSrc=null;}
+   if(e.immobT>0)e.immobT-=dt;
+   if(e.paraImmuneT>0)e.paraImmuneT-=dt;
+   if(e.physVulnT>0)e.physVulnT-=dt;
+   if(e.disrT>0){e.disrT-=dt;if(e.disrT<=0)e.disr=0;}
+   if(e.thunderChainT>0){e.thunderChainT-=dt;e.tcCd=(e.tcCd||0)-dt;}
+   if(e.dead||e.hp<=0){if(!e.dead)killEnemy(e);B.enemies.splice(i,1);continue;}
    /* the regeneration star heals nearby enemies (support, like the Rejuvenation Star) */
    if(e.kind==="healer"&&!e.dead){
      e.healT-=dt;
@@ -118,13 +130,11 @@ function update(dt){
  for(var j=B.drones.length-1;j>=0;j--){
    var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);
    if(dr.launchT>0){
-     /* launch phase: the wasp flies outward from the turret, homing is not on yet,
-        but the target is already reassigned if the first one died, so after launch the wasp
-        heads straight for a live target instead of wasting time re-picking */
+     /* launch phase: the wasp flies outward from the turret; the target is reassigned if it died */
      if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
      dr.launchT-=dt;dr.x+=dr.vx*dt;dr.y+=dr.vy*dt;
      if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
-     if(dr.life<=0)B.drones.splice(j,1);
+     if(dr.life<=0){waspDies(dr);B.drones.splice(j,1);}
      continue;
    }
    if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
@@ -132,119 +142,76 @@ function update(dt){
     var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);
     dr.x+=Math.cos(a)*240*dt;dr.y+=Math.sin(a)*240*dt;
     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
-    /* the wasp strikes while UNDER the enemy: touching its bottom edge (distance to the center
-       less than the enemy radius + 4), not reaching its center */
+    /* the wasp strikes while UNDER the enemy: touching its bottom edge */
     if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
-      var sting=dr.src.cfg.damage*0.65*dr.boost;
-      dealDamage(dr.src,dr.tgt,sting,dr.src.hiveBurn?{burn:true}:{});
-      /* Electro-Wasps: 50% chance per attack of a high-voltage shock at up to 2 nearby enemies */
-      if(dr.src.electroWasps&&Math.random()<0.5){
-        var hitE=dr.tgt;
-        B.enemies.filter(function(o){return o!==hitE&&!o.dead&&o.hp>0&&Math.hypot(o.x-hitE.x,o.y-hitE.y)<=80;})
-         .sort(function(a,b){return Math.hypot(a.x-hitE.x,a.y-hitE.y)-Math.hypot(b.x-hitE.x,b.y-hitE.y);}).slice(0,2)
-         .forEach(function(o){arcFx(hitE.x,hitE.y,o.x,o.y,"#a5f3fc");dealDamage(dr.src,o,sting*0.6,{dtype:"electric"});});
-      }
-      /* Wasp Evolution II: an ordinary wasp evolves into Wasp II (+50% DMG) after waspEvolve attacks */
-      dr.attacks=(dr.attacks||0)+1;
-      if(dr.src.waspEvolve&&!dr.isEcho&&!dr.evolved&&dr.attacks>=dr.src.waspEvolve){dr.evolved=true;dr.boost*=1.5;burst(dr.x,dr.y,6,"#fb923c");}
-      /* Swarm Echo T1–T3: an ordinary wasp that kills an enemy releases one echo.
-         Echo wasps never multiply again, avoiding an exponential swarm. */
-      if(dr.tgt.dead&&dr.src.hiveEcho&&!dr.isEcho&&!dr.echoed&&B.drones.length<90){
-        dr.echoed=true;
-        var power=dr.src.hiveEcho===1?0.5:dr.src.hiveEcho===2?0.75:1;
-        B.drones.push({x:dr.x,y:dr.y,src:dr.src,life:6.5,tgt:null,
-          hitT:0,hits:Math.max(2,Math.ceil(dr.src.hiveAttacks*0.65)),boost:power,
-          isEcho:true,echoed:true,launchT:0});
-      }
-      dr.hits--;dr.hitT=0.26;
+      if(waspSting(dr)){waspDies(dr);B.drones.splice(j,1);continue;}
       dr.x+=Math.cos(a+Math.PI)*14;dr.y+=Math.sin(a+Math.PI)*14;
-      burst(dr.x,dr.y,3,"#facc15");
-      if(dr.hits<=0){B.drones.splice(j,1);continue;}
       dr.tgt=null;
     }
    }else dr.y-=35*dt;
-   if(dr.life<=0)B.drones.splice(j,1);
+   if(dr.life<=0){waspDies(dr);B.drones.splice(j,1);}
  }
- /* Bouncing Firewheel drones: each foe can be hit repeatedly, with a per-target interval. */
+ /* Bouncing Firewheel drones (and mini Firewheels): each foe can be hit repeatedly, 0.3 s per target. */
  for(var wi=B.wheels.length-1;wi>=0;wi--){
-   var wheel=B.wheels[wi];wheel.life-=dt;
-   var wx0=wheel.x,wy0=wheel.y;
-   var nextTarget=pickDroneTarget({x:wheel.x,y:wheel.y});
-   if(nextTarget){
-     var curr=Math.atan2(wheel.vy,wheel.vx),wanted=Math.atan2(nextTarget.y-wheel.y,nextTarget.x-wheel.x);
-     var turn=Math.atan2(Math.sin(wanted-curr),Math.cos(wanted-curr));
-     curr+=Math.max(-1.15*dt,Math.min(1.15*dt,turn));
-     wheel.vx=Math.cos(curr)*wheel.speed;wheel.vy=Math.sin(curr)*wheel.speed;
+   var wheel=B.wheels[wi];
+   if(stepWheel(wheel,dt)){
+     B.wheels.splice(wi,1);
+     /* the main disc is gone: the Firewheel cooldown starts now (Killing Charge shortens it, max 5 s) */
+     if(!wheel.mini&&wheel.src.cfg.id==="firewheel"){var ws=wheel.src;ws.cd=Math.max(0,2*ws.metaCd/ws.haste-(ws.chargeCut||0));ws.chargeCut=0;}
    }
-   wheel.x+=wheel.vx*dt;wheel.y+=wheel.vy*dt;
-   if(wheel.x<14||wheel.x>W-14){wheel.x=Math.max(14,Math.min(W-14,wheel.x));wheel.vx*=-1;wheel.bounces++;}
-   if(wheel.y<88||wheel.y>BASEY-38){wheel.y=Math.max(88,Math.min(BASEY-38,wheel.y));wheel.vy*=-1;wheel.bounces++;}
-   var bonus=1+Math.min(0.6,wheel.bounces*0.1);
-   B.enemies.forEach(function(e){
-    if(e.dead||e.hp<=0||sweptContact(wx0,wy0,wheel.x,wheel.y,e.x,e.y,e.r+14)===null)return;
-    var prev=wheel.last.has(e)?wheel.last.get(e):-99;
-    if(B.t-prev<0.3)return;
-    wheel.last.set(e,B.t);wheel.hits++;
-    dealDamage(wheel.src,e,wheel.src.cfg.damage*1.15*bonus,{burn:true});
-    if(wheel.src.fireTrail&&B.fields.length<48)B.fields.push({kind:"firetrail",x:wheel.x,y:wheel.y,r:23,life:1.1,src:wheel.src,tick:0.15});
-    if(wheel.hits%20===0){ringFx(wheel.x,wheel.y,"#ff8a3c",100);B.enemies.forEach(function(o){if(!o.dead&&o.hp>0&&Math.hypot(o.x-wheel.x,o.y-wheel.y)<=45)dealDamage(wheel.src,o,wheel.src.cfg.damage*2,{});});}
-   });
-   if(wheel.life<=0)B.wheels.splice(wi,1);
  }
- /* Tesla matrices and Disruption fields. Pulses stop when the field expires. */
+ /* fields: Disruption, gravity, black holes, Electric Matrices, fire trails */
  for(var fi=B.fields.length-1;fi>=0;fi--){
    var field=B.fields[fi];field.age=(field.age||0)+dt;field.life-=dt;field.tick-=dt;
-   if(field.kind==="gravity"){
-     B.enemies.forEach(function(e){
-       if(e.dead||e.hp<=0)return;
-       var dx=field.x-e.x,dy=field.y-e.y,d=Math.hypot(dx,dy);
-       if(d>=field.r||d<4)return;
-       var strength=field.pull*(1-d/field.r)*(e.kind==="boss"?0.20:e.champion?0.48:1);
-       e.x=Math.max(e.r,Math.min(W-e.r,e.x+dx/d*strength*dt));
-       /* the VIS_TOP lower bound keeps an enemy below the HUD, but must not "teleport" down
-          a freshly spawned one (y<VIS_TOP): for it, the floor is its current height */
-       e.y=Math.min(BASEY-20,Math.max(Math.min(e.y,VIS_TOP),e.y+dy/d*strength*dt*0.28));
-     });
+   stepField(field,dt);
+   if(field.life<=0){
+     if(field.kind==="slow"&&field.src.finalBlast)explodeAt(field.src,field.x,field.y,field.r*1.2,field.src.cfg.damage*2*(field.dmgScale||1),{kind:"field"},"#38c8ff");
+     if(field.kind==="gravity")endGravityField(field);
+     B.fields.splice(fi,1);
    }
-   if(field.tick<=0){
-    field.tick+=field.kind==="gravity"?0.5:field.kind==="matrix"?0.45:0.4;
-    B.enemies.forEach(function(e){
-      if(e.dead||e.hp<=0||Math.hypot(e.x-field.x,e.y-field.y)>field.r)return;
-      if(field.kind==="slow"){e.slowFactor=Math.min(e.slowFactor,1-(field.src.slowPow||0.35));e.slowT=0.65;if(field.src.fieldExpose){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=3;}}
-      else if(field.kind==="gravity")dealDamage(field.src,e,field.src.cfg.damage*0.65*(field.power||1),{vulnerable:!!field.src.gravityShred});
-      else if(field.kind==="firetrail")dealDamage(field.src,e,field.src.cfg.damage*0.23,{burn:true});
-      else{dealDamage(field.src,e,field.src.cfg.damage*(field.src.teslaMatrixPlus?0.95:0.65),{});
-        if(field.src.teslaThunder&&Math.random()<0.25){e.slowFactor=Math.min(e.slowFactor,0.65);e.slowT=Math.max(e.slowT,0.7);}
-      }
-    });
-   }
-   if(field.life<=0)B.fields.splice(fi,1);
  }
+ updateEffects(dt);
  /* projectiles */
  for(var q=B.projs.length-1;q>=0;q--){
    var pr=B.projs[q];pr.life-=dt;
    /* Sky Guard rockets home in on their target */
-   if(pr.src.cfg.effect==="rocket"){
+   if(pr.src.cfg.effect==="rocket"&&!pr.kind){
      if(!pr.tgt||pr.tgt.hp<=0||pr.tgt.dead)pr.tgt=pickTarget(pr.src);
      if(pr.tgt){var sp=pr.src.cfg.projSpeed,ca=Math.atan2(pr.vy,pr.vx),wa=Math.atan2(pr.tgt.y-pr.y,pr.tgt.x-pr.x),df=wa-ca;
        while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;
        var rturn=Math.max(-3.6*dt,Math.min(3.6*dt,df));ca+=rturn;pr.vx=Math.cos(ca)*sp;pr.vy=Math.sin(ca)*sp;}
+     /* Fire Transmission: missiles ignite the enemies they fly through */
+     if(pr.src.fireTrans){var bl=pr.burned||(pr.burned=[]);
+       B.enemies.forEach(function(en){if(onField(en)&&bl.indexOf(en)<0&&Math.hypot(en.x-pr.x,en.y-pr.y)<=en.r+8){bl.push(en);igniteE(pr.src,en,pr.src.cfg.damage);}});}
    }
    var p0x=pr.x,p0y=pr.y;
    pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
-   /* trail history for rendering only (x,y,t triplets): a point per ~3px of travel, pruned by AGE so the trail has the same length at any frame rate / game speed; consumes no RNG.
-      The last triplet is a "live head" that always sits exactly on the projectile (at 120 Hz a shot moves <3px per frame, so it is moved in place until it has travelled far enough to commit). */
+   /* Piercing Ricochet / Reflection Boost: bounce off the side walls and the top of the field */
+   if(pr.ricochet>0&&(pr.x<4||pr.x>W-4||pr.y<VIS_TOP)){
+     if(pr.x<4||pr.x>W-4)pr.vx*=-1;else pr.vy*=-1;
+     pr.x=Math.max(4,Math.min(W-4,pr.x));pr.y=Math.max(VIS_TOP,pr.y);pr.ricochet--;pr.hitSet=pr.hitSet.slice(-1);pr.life=Math.max(pr.life,0.8);
+   }
+   /* Field Replication: a Railgun shell entering a Disruption Field for the first time gains +1 parallel shell */
+   if(pr.rail&&!pr.kind&&!pr.replicated){
+     for(var rf=0;rf<B.fields.length;rf++){var fd=B.fields[rf];
+       if(fd.kind==="slow"&&fd.src.fieldReplication&&Math.hypot(pr.x-fd.x,pr.y-fd.y)<=fd.r){
+         pr.replicated=true;
+         if(B.projs.length<FX_CAP.projs){var sl=Math.hypot(pr.vx,pr.vy)||1;
+           B.projs.push({x:pr.x-pr.vy/sl*7,y:pr.y+pr.vx/sl*7,vx:pr.vx,vy:pr.vy,src:pr.src,dmg:pr.dmg,pierce:pr.pierce,hitSet:pr.hitSet.slice(),life:pr.life,tgt:null,rail:true,replicated:true,ricochet:pr.ricochet||0});}
+         break;}}
+   }
+   /* trail history for rendering only (x,y,t triplets), pruned by AGE; consumes no RNG */
    var trh=pr.tr||(pr.tr=[]),trn=trh.length;
    if(trn>=6&&Math.abs(trh[trn-6]-pr.x)+Math.abs(trh[trn-5]-pr.y)<3){trh[trn-3]=pr.x;trh[trn-2]=pr.y;trh[trn-1]=B.t;}
    else trh.push(pr.x,pr.y,B.t);
    while(trh.length>6&&B.t-trh[5]>PROJ_TRAIL_T)trh.splice(0,3);
-   if(pr.src.cfg.effect==="rocket"&&Math.random()<dt*55)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.26,t:0,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2.2});
-   if(pr.src.cfg.effect==="charge"&&Math.random()<dt*50)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*14-7,vy:Math.random()*14-7,life:0.24,t:0,color:"#a06bff",r:1.9});
-   /* projectile trails: each type has its own */
-   if(pr.src.cfg.id==="firewheel"&&Math.random()<dt*46)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*20-10,vy:Math.random()*20-10,life:0.28,t:0,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2.4});
-   if(pr.src.cfg.id==="railgun"&&Math.random()<dt*60)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.22,t:0,color:"#f472b6",r:2});
-   if(pr.src.cfg.id==="disruption"&&Math.random()<dt*30)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.25,t:0,color:"#38c8ff",r:1.8});
-   if(pr.src.cfg.id==="aeroblast"&&Math.random()<dt*36)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.3,t:0,color:"#7dd7ff",r:2});
+   if(!pr.kind&&B.parts.length<300){
+    if(pr.src.cfg.effect==="rocket"&&Math.random()<dt*55)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.26,t:0,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2.2});
+    if(pr.src.cfg.effect==="charge"&&Math.random()<dt*50)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*14-7,vy:Math.random()*14-7,life:0.24,t:0,color:"#a06bff",r:1.9});
+    if(pr.src.cfg.id==="railgun"&&Math.random()<dt*60)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.22,t:0,color:"#f472b6",r:2});
+    if(pr.src.cfg.id==="disruption"&&Math.random()<dt*30)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.25,t:0,color:"#38c8ff",r:1.8});
+    if(pr.src.cfg.id==="aeroblast"&&Math.random()<dt*36)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.3,t:0,color:"#7dd7ff",r:2});
+   }
    var dead=pr.life<=0||pr.x<-20||pr.x>W+20||pr.y<-30||pr.y>H+20;
    if(pr.life>0){
      var intersections=[];
@@ -257,8 +224,19 @@ function update(dt){
      for(var h=0;h<intersections.length;h++){
        var en=intersections[h].enemy;
        if(en.dead||en.hp<=0)continue;
-       pr.hitSet.push(en);applyHit(pr,en);SFX.hit();
-       if(pr.pierce>0)pr.pierce--;else{dead=true;break;}
+       pr.hitSet.push(en);
+       /* Path Strike: a missile deals impact damage to enemies on its path and flies on to its target */
+       if(pr.src.pathStrike&&pr.src.cfg.effect==="rocket"&&!pr.kind&&!pr.mini&&aliveE(pr.tgt)&&en!==pr.tgt){
+         dealDamage(pr.src,en,pr.dmg*0.55*(pr.src.impactMul||1),{kind:"rocket",burn:!!pr.src.rocketBurn});continue;
+       }
+       applyHit(pr,en);SFX.hit();
+       if(pr.pierce>0)pr.pierce--;
+       else if(pr.bounce>0){
+         /* Bouncing Barrage: the pellet bounces to the nearest other enemy */
+         var nb=nearestList(en.x,en.y,1,170,pr.hitSet)[0];
+         if(nb){pr.bounce--;var bsp=Math.hypot(pr.vx,pr.vy),ba=Math.atan2(nb.y-en.y,nb.x-en.x);pr.x=en.x;pr.y=en.y;pr.vx=Math.cos(ba)*bsp;pr.vy=Math.sin(ba)*bsp;pr.tgt=nb;pr.life=Math.max(pr.life,0.6);break;}
+         dead=true;break;
+       }else{dead=true;break;}
      }
    }
    if(dead)B.projs.splice(q,1);

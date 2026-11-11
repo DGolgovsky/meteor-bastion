@@ -6,8 +6,15 @@ var COMBOS={spin:["Spinning Laser","Laser + Tesla Coil: an extra beam and +20% L
 var MODULES={boost:["Battlefield Boost","All units deal +12% damage until the end of the battle."],healm:["Fortress Repair","Instantly restore 250 HP to the base."],regenm:["Regeneration Cycle","Instantly restore 200 HP to the base."],jam:["Wave Jammer","All enemies are 15% slower until the end of the battle."],patch:["Field Patch","Instantly restore 120 HP to the base. Offered only when no other cards are left."]};
 function forcedPurples(){
  var res=[];
- allFighters().forEach(function(u){var d=purpleFor(u);if(d)res.push({kind:"card",u:u,def:d,forced:true});});
- return res.sort(function(a,b){return a.u.slot-b.u.slot;});
+ /* every ready unit offers one of its eligible Extras first; a second Extra of the same unit fills
+    the remaining forced spot so the player gets a real choice between purples */
+ var lists=allFighters().slice().sort(function(a,b){return a.slot-b.slot;}).map(function(u){
+  var ds=unitCards(u).filter(function(d){return d.rare;});
+  for(var i=ds.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),tmp=ds[i];ds[i]=ds[j];ds[j]=tmp;}
+  return ds.map(function(d){return {kind:"card",u:u,def:d,forced:true};});
+ }).filter(function(l){return l.length;});
+ for(var round=0;round<3;round++)lists.forEach(function(l){if(l[round])res.push(l[round]);});
+ return res;
 }
 function genCards(allowForced){
  var picks=[];
@@ -22,7 +29,7 @@ function genCards(allowForced){
  allFighters().forEach(function(u){
   var defs=unitCards(u).filter(function(d){return !d.rare;});
   /* each unit gets about the same total weight regardless of how many cards it has left */
-  defs.forEach(function(d){pool.push({kind:"card",u:u,def:d,w:Math.max(3,18/defs.length)*(d.lvl===2?1.2:1)});});
+  defs.forEach(function(d){pool.push({kind:"card",u:u,def:d,w:Math.max(1.5,18/defs.length)*(d.lvl>=2?1.2:1)});});
  });
  /* combo cards for turret pairs (the Combo mechanic from Galaxy Defense) */
  var hasT=function(id){return B.turrets.some(function(u){return u.cfg.id===id;});};
@@ -58,8 +65,8 @@ function sameCard(a,b){
 function cardHTML(c){
  if(c.kind==="card"){var d=c.def;
   return{cls:d.rare?"purple":"teal",icon:c.u.cfg.icon,name:d.name,unit:c.u.cfg.name,lvl:d.lvl,rare:!!d.rare,
-   tag:(d.isSuper?"⭐ SUPER":d.rare?"EVOLUTION":"Lv."+d.lvl),
-   desc:cardDesc(d)+(d.rare?" <b>Unit Lv."+c.u.runLv+" → "+(c.u.runLv+1)+"</b>":"")};}
+   tag:(d.rare?(c.u.runLv<MAX_RUN_LV?"EVOLUTION":"MASTERY"):"Tier "+d.lvl),
+   desc:cardDesc(d)+(d.rare?(c.u.runLv<MAX_RUN_LV?" <b>Unit Lv."+c.u.runLv+" → "+(c.u.runLv+1)+(c.u.runLv+1===MAX_RUN_LV&&superModeReady(c.u)?" + SUPER MODE":"")+"</b>":" <b>Mastery: pips reset</b>"):"")};}
  if(c.kind==="new")return{cls:"teal",icon:c.cfg.icon,name:c.cfg.name,unit:c.cfg.name,lvl:1,rare:false,tag:"NEW",desc:"Build <b>"+c.cfg.name+"</b> ["+DTYPE_RU[c.cfg.dtype]+" DMG]: "+c.cfg.desc+"<br>Damage: <b>"+c.cfg.damage+"</b> · "+RARITY[c.cfg.rarity].n};
  if(c.kind==="combo"){var CM=COMBOS[c.modId];
   return{cls:"purple",icon:"🔗",name:"Combo: "+CM[0],unit:c.u.cfg.name,lvl:1,rare:false,tag:"COMBO",desc:CM[1]};}
