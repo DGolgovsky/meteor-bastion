@@ -26,7 +26,7 @@ In every campaign the boss joins at 60% of the stage stream and descends on the 
 | Spawn interval | `max(0.06,0.20 − wave×0.002)` s, then a ×0.7–1.3 random variation; formation cooldown 1.33 s; both multiplied by the late-sector opening cadence (see `CAMPAIGN_OPENING`) |
 | HP multiplier per virtual wave | `4.25 × (1 + (wave−1)×0.13)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; 0.85/0.13 before the 2026-11-12 owner order — enemies 5x HP; 0.78/0.14 before the 2026-11-11 reference card set, growth 0.06 before the 2026-11-10 card rework) |
 | Boss HP multiplier per virtual wave | `13.2 × 1.1 × (1 + (wave−1)×0.07)`, on top of the stage (0.88 before the 2026-11-12 owner order — the boss is 15x HP, its own number) |
-| Enemy speed | `×0.75` on top of the stage multiplier (`enemySpdMul`, 1 before the 2026-11-12 owner order — enemies 25% slower); the boss has its own `×0.25` (75% slower, not stacked with the general 25%); the jam module ×0.85 stacks on top |
+| Enemy speed | `×0.375` on top of the stage multiplier (`enemySpdMul`, 1 before the 2026-11-12 owner order — enemies 25% slower, then another 50% (0.75×0.5); the boss has its own `×0.25` (75% slower, not stacked with the general slowdown); the jam module ×0.85 stacks on top |
 | Guardian | 12 damage (−8% from 13, a small round 4 nerf), 4 attacks/s, fires from both hands alternately; the triple burst is a tight group (3px spacing, one hand for the whole burst) |
 | Turret visibility top (VIS_TOP) | y=30 — enemies above the line (just below the HUD row) are not targeted; spawning (y=-30) is unchanged |
 | Turret and Guardian sprite scale | ×0.88 — the level label under the unit is not scaled |
@@ -448,14 +448,14 @@ The measurement is very noisy (values from 0.70 to 0.78 scatter between 6 and 17
 
 ### Stage 1 balance after the 2026-11-12 owner order (5x HP, 25% slower, continuous stream)
 
-`enemyHpMul` 0.85 → **4.25**, boss 0.88 → **13.2** (15x HP), `enemySpdMul` 1 → **0.75** (boss its own ×0.25, 75% slower); no waves — one non-stop stream per stage, drafts only from points. Boss joins at 60% of the stream and descends on the fortress: 90% of base max HP if it arrives.
+`enemyHpMul` 0.85 → **4.25**, boss 0.88 → **13.2** (15x HP), `enemySpdMul` 1 → **0.75** (boss its own ×0.25, 75% slower); no waves — one non-stop stream per stage, drafts only from points. Boss joins at 60% of the stream and descends on the fortress: 90% of base max HP if it arrives. Later the same day: enemies another 50% slower (`enemySpdMul` 0.75 → **0.375**, boss untouched at ×0.25).
 
 | Measurement | Sensible picks | First card |
 |---|---:|---:|
 | CI seeds (12), **current** (`node tests/balance.cjs`) | **0/12** (no first victory) | **0/12** (no first victory) |
 | Fixed triplet (3121, 777, 42), **current** | **0/3** | **0/3** |
 
-Every run dies on virtual wave 4 at ~19 s with ~36 leaks and 0–18 kills (mean ~2.9 smart / ~2.1 first-card): a fresh R&D 1 Guardian (12 DMG, 4 shots/s) needs ~23 hits per meteor at 276 HP and cannot keep up with the spawn rate, so the base takes ~36 meteor impacts in the first 20 seconds. This is a measured finding, not a bug — the game was **not** retuned to recover the old numbers.
+Every run dies on virtual wave ~5 at ~34 s with ~36 leaks and ~27 kills smart / ~14 first-card (mean): a fresh R&D 1 Guardian (12 DMG, 4 shots/s) needs ~23 hits per meteor at 276 HP and cannot keep up with the spawn rate, so the base takes ~36 meteor impacts in the first ~35 seconds. This is a measured finding, not a bug — the game was **not** retuned to recover the old numbers. The extra 50% slowdown the same day (enemySpdMul 0.375) roughly doubled survival time (19 s → 34 s) and kills, but wins are still 0/12.
 
 Control probe (same stream, same 0.75 speed, HP back at 0.85 via the in-memory calibration override): smart **1/3, first victory on attempt 3** (seed 42 wins at 304 s, 2,245 kills, 0 leaks) — the old target still holds without the 5x HP, so the collapse is the HP alone, not the stream. The old "first win no earlier than the 3rd attempt" target no longer applies; `--check-balance` now pins **0/3** on the fixed triplet so any future rebalancing shows up as a change.
 

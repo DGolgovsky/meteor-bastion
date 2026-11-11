@@ -567,14 +567,14 @@ test("the stage is one continuous stream: virtual waves advance silently, the qu
   assert.ok(!/W\d+\//.test(h.combatHudLayout().items.join(" ")),"the HUD must not show a wave counter");
 });
 
-test("enemies are 5x HP and 25% slower; the boss is 15x HP and 75% slower (owner order 2026-11-12)", () => {
+test("enemies are 5x HP and 62.5% slower (0.375); the boss is 15x HP and 75% slower (owner order 2026-11-12)", () => {
   assert.equal(g.BALANCE.enemyHpMul,4.25);
   const {game:h}=harness();h.startBattle();h.startWave(1);
-  assert.equal(h.B.enemySpdMul,0.75);
+  assert.equal(h.B.enemySpdMul,0.375);
   assert.ok(h.spawnEnemy("meteor"));
   const e=h.B.enemies[0];
   assert.equal(e.hp,65*4.25,"meteor HP must be 5x");
-  assert.ok(e.baseSpeed>=82*0.75*0.85*0.93&&e.baseSpeed<=82*0.75*0.85*1.11,"meteor speed must carry the 0.75 multiplier, got "+e.baseSpeed);
+  assert.ok(e.baseSpeed>=82*0.375*0.85*0.93&&e.baseSpeed<=82*0.375*0.85*1.11,"meteor speed must carry the 0.375 multiplier, got "+e.baseSpeed);
   h.B.wave=1;
   assert.ok(h.spawnBoss());
   const boss=h.B.enemies.find(x=>x.kind==="boss");

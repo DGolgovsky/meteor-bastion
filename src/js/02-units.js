@@ -72,7 +72,7 @@ function newBattle(stage){
   enemies:[],enemyShots:[],enemyShotHits:0,enemyShotsFired:0,enemyShotDamage:0,enemyShotsIntercepted:0,meteorDamage:0,
   projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],mines:[],pulses:[],bolts:[],portals:[],spinners:[],delayed:[],
   shake:0,baseFlashT:0,baseHitTextT:0,waveDensity:{},maxUpwardOwn:0,picked:[],drafts:0,waveState:"intro",introT:1.2,
-  allDmgMul:1,enemySpdMul:0.75,/* 2026-11-12, owner order: enemies 25% slower */combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
+  allDmgMul:1,enemySpdMul:0.375,/* 2026-11-12, owner order: enemies 25% slower, then another 50% (0.75*0.5); boss keeps its own x0.25 */combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }
 function startBattle(){refillEnergy();
  if(META.energy<5)return;
