@@ -643,13 +643,68 @@ function eBoss(e,k){var r=e.r,pu=0.5+0.5*Math.sin(B.t*2.4);
  ctx.fillStyle="#fff4cf";ctx.beginPath();ctx.arc(-r*0.04,-r*0.05,r*0.1,0,6.2832);ctx.fill();
  ctx.strokeStyle=k.lt;ctx.lineWidth=1.4;ctx.globalAlpha=0.7;ctx.beginPath();ctx.arc(0,0,r*0.5,0,6.2832);ctx.stroke();ctx.globalAlpha=1;
 }
+/* Siege insects use flat shell/wing layers: no per-enemy gradients or blur. */
+function insectLegs(e,k,wide){
+ var r=e.r,fl=Math.sin(B.t*7+e.phase)*r*.08;
+ ctx.lineWidth=Math.max(1,r*.09);ctx.strokeStyle=k.deep;ctx.beginPath();
+ for(var side=-1;side<=1;side+=2)for(var i=0;i<3;i++){
+  var y=(i-1)*r*.46;ctx.moveTo(side*r*.46,y);ctx.lineTo(side*r*(wide?1.14:.88),y+r*.22+fl);ctx.lineTo(side*r*(wide?1.32:1.08),y+r*.53+fl);
+ }ctx.stroke();
+}
+function eSpitter(e,k){
+ var r=e.r,pu=.5+.5*Math.sin(B.t*3+e.phase);insectLegs(e,k,true);
+ ctx.fillStyle=k.dk;ctx.beginPath();ctx.ellipse(0,-r*.25,r*.82,r*.94,0,0,6.29);ctx.fill();
+ ctx.fillStyle=k.base;ctx.beginPath();ctx.ellipse(-r*.07,-r*.34,r*.69,r*.8,0,0,6.29);ctx.fill();
+ ctx.strokeStyle=k.deep;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,-r*1.05);ctx.lineTo(0,r*.45);ctx.stroke();
+ ctx.fillStyle=k.lt;ctx.globalAlpha=.5;ctx.beginPath();ctx.ellipse(-r*.33,-r*.44,r*.15,r*.36,-.25,0,6.29);ctx.fill();ctx.globalAlpha=1;
+ [-1,1].forEach(function(side){ctx.fillStyle="#b6f064";ctx.beginPath();ctx.arc(side*r*.61,r*.23,r*(.23+pu*.03),0,6.29);ctx.fill();ctx.fillStyle=k.deep;ctx.beginPath();ctx.arc(side*r*.22,r*.47,r*.15,0,6.29);ctx.fill();});
+ ctx.fillStyle=k.deep;ctx.beginPath();ctx.ellipse(0,r*.63,r*.43,r*.36,0,0,6.29);ctx.fill();
+ ctx.fillStyle="#d7fb9c";ctx.beginPath();ctx.arc(0,r*.87,r*.17,0,6.29);ctx.fill();
+}
+function eNeedle(e,k){
+ var r=e.r,fl=Math.sin(B.t*26+e.phase)*r*.16;
+ ctx.fillStyle="rgba(242,221,139,.28)";
+ [-1,1].forEach(function(side){ctx.beginPath();ctx.moveTo(side*r*.22,-r*.42);ctx.lineTo(side*r*1.7,-r*.93+fl);ctx.lineTo(side*r*1.23,r*.1+fl);ctx.lineTo(side*r*.2,r*.32);ctx.closePath();ctx.fill();});
+ insectLegs(e,k,false);ctx.fillStyle=k.deep;ctx.beginPath();ctx.ellipse(0,-r*.23,r*.4,r*1.1,0,0,6.29);ctx.fill();
+ ctx.fillStyle=k.base;ctx.beginPath();ctx.ellipse(-r*.03,-r*.36,r*.31,r*.84,0,0,6.29);ctx.fill();
+ ctx.strokeStyle=k.deep;ctx.lineWidth=r*.18;ctx.beginPath();ctx.moveTo(-r*.3,-r*.48);ctx.lineTo(r*.3,-r*.48);ctx.moveTo(-r*.31,-r*.06);ctx.lineTo(r*.31,-r*.06);ctx.stroke();
+ ctx.fillStyle="#fff1ac";ctx.beginPath();ctx.arc(-r*.18,r*.4,r*.11,0,6.29);ctx.arc(r*.18,r*.4,r*.11,0,6.29);ctx.fill();
+ ctx.fillStyle=k.lt;ctx.beginPath();ctx.moveTo(-r*.12,r*.6);ctx.lineTo(0,r*1.72);ctx.lineTo(r*.12,r*.6);ctx.closePath();ctx.fill();
+}
+function eBulwark(e,k){
+ var r=e.r;insectLegs(e,k,true);
+ ctx.fillStyle=k.deep;ctx.beginPath();ctx.ellipse(0,0,r,r*1.13,0,0,6.29);ctx.fill();
+ ctx.fillStyle=k.base;ctx.beginPath();ctx.ellipse(-r*.06,-r*.12,r*.9,r*.96,0,0,6.29);ctx.fill();
+ ctx.fillStyle=k.dk;ctx.beginPath();ctx.moveTo(0,-r*1.07);ctx.lineTo(r*.13,r*.72);ctx.lineTo(r*.68,r*.81);ctx.lineTo(r*.87,-r*.25);ctx.lineTo(r*.51,-r*.92);ctx.closePath();ctx.fill();
+ ctx.strokeStyle=k.lt;ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-r*.7,-r*.52);ctx.quadraticCurveTo(-r*.83,-r*.97,-r*.15,-r*.98);ctx.stroke();
+ ctx.fillStyle="#161c17";ctx.beginPath();ctx.ellipse(0,r*.65,r*.51,r*.36,0,0,6.29);ctx.fill();
+ [-1,1].forEach(function(side){ctx.fillStyle=k.lt;ctx.beginPath();ctx.moveTo(side*r*.4,r*.69);ctx.lineTo(side*r*.85,r*1.2);ctx.lineTo(side*r*.67,r*.38);ctx.closePath();ctx.fill();ctx.fillStyle="#ffe9a3";ctx.beginPath();ctx.arc(side*r*.21,r*.76,r*.09,0,6.29);ctx.fill();});
+}
+function eMoth(e,k){
+ var r=e.r,fl=.88+.12*Math.sin(B.t*12+e.phase);
+ ctx.save();ctx.scale(fl,1);
+ [-1,1].forEach(function(side){
+  ctx.fillStyle=k.dk;ctx.beginPath();ctx.moveTo(0,-r*.52);ctx.lineTo(side*r*1.7,-r*1.04);ctx.lineTo(side*r*1.45,r*.4);ctx.lineTo(side*r*.72,r*1.14);ctx.lineTo(0,r*.48);ctx.closePath();ctx.fill();
+  ctx.fillStyle=k.base;ctx.beginPath();ctx.moveTo(side*r*.2,-r*.43);ctx.lineTo(side*r*1.46,-r*.81);ctx.lineTo(side*r*1.23,r*.26);ctx.lineTo(side*r*.68,r*.87);ctx.lineTo(side*r*.25,r*.35);ctx.closePath();ctx.fill();
+  ctx.fillStyle=k.deep;ctx.beginPath();ctx.ellipse(side*r*.95,-r*.12,r*.28,r*.39,side*.45,0,6.29);ctx.fill();
+  ctx.fillStyle="#ffd5f6";ctx.beginPath();ctx.arc(side*r*.95,-r*.12,r*.14,0,6.29);ctx.fill();
+ });ctx.restore();
+ ctx.fillStyle=k.deep;ctx.beginPath();ctx.ellipse(0,0,r*.24,r*.94,0,0,6.29);ctx.fill();
+ ctx.strokeStyle=k.lt;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-r*.08,-r*.7);ctx.lineTo(-r*.46,-r*1.19);ctx.moveTo(r*.08,-r*.7);ctx.lineTo(r*.46,-r*1.19);ctx.stroke();
+ ctx.fillStyle="#ffe7fa";ctx.beginPath();ctx.arc(0,r*.47,r*.13,0,6.29);ctx.fill();
+}
 function drawEnemyBody(e){
  if(e.seed===undefined)e.seed=hrand(e.phase,7); /* the shape seed is taken once, from the random initial phase */
  var k=enemyTones(e);
  switch(e.cfg.id){
   case "fast":eFast(e,k);break;
   case "armored":eArmored(e,k);break;
-  case "meteor":case "mini":eMeteor(e,k);break;
+  case "meteor":eMeteor(e,k);break;
+  case "mini":insectLegs(e,k,false);eFlyer(e,k);break;
+  case "spitter":eSpitter(e,k);break;
+  case "needle":eNeedle(e,k);break;
+  case "bulwark":eBulwark(e,k);break;
+  case "moth":eMoth(e,k);break;
   default:
    switch(e.kind){
     case "healer":eHealer(e,k);break;
@@ -663,10 +718,41 @@ function drawEnemyBody(e){
    }
  }
 }
+/* Hostile artillery can be intercepted by player fire. Shapes distinguish acid,
+   needles, prism shards and heavy siege orbs without adding expensive glows. */
+function drawEnemyShots(){
+ (B.enemyShots||[]).forEach(function(p){
+  if(p.dead||p.life<=0)return;
+  var r=p.r||3,col=p.color||"#fda4af",a=Math.atan2(p.vy,p.vx);
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);ctx.lineWidth=1.2;
+  ctx.fillStyle=glowRgba(col,.22);ctx.beginPath();ctx.ellipse(-r*1.4,0,r*3,r*.9,0,0,6.29);ctx.fill();
+  ctx.fillStyle=col;ctx.strokeStyle=col;
+  if(p.kind==="needle"){ctx.beginPath();ctx.moveTo(r*2.8,0);ctx.lineTo(-r*1.7,-r*.65);ctx.lineTo(-r*.7,0);ctx.lineTo(-r*1.7,r*.65);ctx.closePath();ctx.fill();}
+  else if(p.kind==="prism"){ctx.beginPath();ctx.moveTo(r*1.8,0);ctx.lineTo(0,-r);ctx.lineTo(-r*1.6,0);ctx.lineTo(0,r);ctx.closePath();ctx.fill();}
+  else {ctx.beginPath();ctx.arc(0,0,r,0,6.29);ctx.fill();if(p.kind==="siege"){ctx.beginPath();ctx.arc(0,0,r+2,0,6.29);ctx.stroke();}}
+  ctx.fillStyle="#fff4dc";ctx.beginPath();ctx.ellipse(r*.25,0,r*.5,r*.28,0,0,6.29);ctx.fill();ctx.restore();
+ });
+}
+function drawEnemyAim(){
+ var drawn=0;
+ B.enemies.forEach(function(e){
+  if(drawn>=10||e.dead||e.attackState!=="charge"||!e.attackWindup||e.kind==="phase"&&e.cloakT>0&&!e.revealedT)return;
+  var ratio=Math.min(1,e.attackCharge/e.attackWindup);
+  if(ratio<.2)return;
+  drawn++;ctx.save();ctx.globalAlpha=.12+.24*ratio;ctx.strokeStyle=e.color;ctx.lineWidth=1;ctx.setLineDash([3,8]);
+  ctx.beginPath();ctx.moveTo(e.x,e.y+e.r);ctx.lineTo(e.attackAimX,e.attackAimY);ctx.stroke();ctx.setLineDash([]);
+  ctx.globalAlpha=.3+.4*ratio;ctx.beginPath();ctx.ellipse(e.attackAimX,e.attackAimY,5+ratio*3,2+ratio,0,0,6.29);ctx.stroke();ctx.restore();
+ });
+}
 function drawEnemy(e){
  ctx.save();ctx.translate(e.x,e.y);ctx.scale(e.visualScale||1,e.visualScale||1);
  if(e.kind==="phase"&&e.cloakT>0&&!e.revealedT)ctx.globalAlpha=0.38;
  drawEnemyBody(e);
+ if(e.attackState==="charge"&&e.attackWindup){
+  var charge=Math.max(0,Math.min(1,e.attackCharge/e.attackWindup));
+  ctx.strokeStyle=e.color;ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(0,0,e.r+4,-Math.PI/2,-Math.PI/2+charge*6.2832);ctx.stroke();
+  ctx.fillStyle="#fff0bc";ctx.beginPath();ctx.arc(0,e.r*.9,1.4+charge*2,0,6.29);ctx.fill();
+ }
  if(e.cfg.id==="elite"){ctx.strokeStyle="#ff7ab8";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-e.r*1.2,-e.r*1.2);ctx.lineTo(e.r*1.2,e.r*1.2);ctx.moveTo(e.r*1.2,-e.r*1.2);ctx.lineTo(-e.r*1.2,e.r*1.2);ctx.stroke();}   /* elite mark */
  if(e.cfg.id==="phase"&&e.cloakT>0){ctx.fillStyle="rgba(131,164,217,.3)";for(var ph=0;ph<3;ph++){ctx.beginPath();ctx.arc(0,-e.r-6-ph*7,2+ph,0,6.2832);ctx.fill();}}   /* cloaking "vapor" */
  if(e.kind==="charger"){ctx.strokeStyle="#ff9a4d";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,e.r+2+Math.sin(B.t*14)*1.5,0,6.2832);ctx.stroke();}
@@ -697,7 +783,9 @@ function draw(){
  drawBattleBackdrop();drawFortress();
  drawBattleFields();
  /* enemies */
+ drawEnemyAim();
  B.enemies.forEach(drawEnemy);
+ drawEnemyShots();
  /* Hive releases a swarm of bees: striped body, flapping wings, stinger */
  B.drones.forEach(function(d){
    var flap=Math.sin(B.t*46+d.x*0.7)*0.5;
@@ -788,8 +876,20 @@ function draw(){
  B.beams.forEach(function(b){
   ctx.save();ctx.globalAlpha=1-b.t/b.life;
   function strokeBeam(w,color,blur){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.shadowColor=b.color;ctx.shadowBlur=blur;ctx.beginPath();ctx.moveTo(b.x1,b.y1);if(b.arc&&b.mx!==undefined)ctx.lineTo(b.mx,b.my);ctx.lineTo(b.x2,b.y2);ctx.stroke();}
-  /* laser beams: three layers whose thickness follows b.w (= laser damage power, see laserWidth) */
-  if(b.laser){var a0=ctx.globalAlpha;ctx.globalAlpha=a0*0.35;strokeBeam(b.w*4,b.color,12);ctx.globalAlpha=a0;strokeBeam(b.w*2,b.color,8);strokeBeam(Math.max(1,b.w),"#ffffff",4);}
+  /* Cross-ray gradient supplies the soft halo without full-screen shadowBlur passes.
+     Thickness still follows damage power; one refreshed visual represents each ray. */
+  if(b.laser){
+   var dx=b.x2-b.x1,dy=b.y2-b.y1,len=Math.hypot(dx,dy),half=b.w*2.5;
+   if(len>0){
+    ctx.translate(b.x1,b.y1);ctx.rotate(Math.atan2(dy,dx));ctx.shadowBlur=0;
+    var glow=ctx.createLinearGradient(0,-half,0,half);
+    glow.addColorStop(0,glowRgba(b.color,0));glow.addColorStop(.4,glowRgba(b.color,.2));
+    glow.addColorStop(.5,glowRgba(b.color,.5));glow.addColorStop(.6,glowRgba(b.color,.2));glow.addColorStop(1,glowRgba(b.color,0));
+    ctx.fillStyle=glow;ctx.fillRect(0,-half,len,half*2);
+    ctx.fillStyle=b.color;ctx.fillRect(0,-b.w,len,b.w*2);
+    ctx.fillStyle="#ffffff";var core=Math.max(1,b.w);ctx.fillRect(0,-core*.5,len,core);
+   }
+  }
   else if(b.bolt){ /* vertical lightning strike: jagged deterministic polyline */
    ctx.strokeStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.lineJoin="round";
    [[b.w*1.8,0.45],[Math.max(1.5,b.w*0.6),1]].forEach(function(l,li){
@@ -844,7 +944,9 @@ function drawBeamStreams(){
    for(var k=1;k<=16;k++){var f=k/16,off=Math.sin(f*18-B.t*22)*amp*(1-Math.abs(f-0.5)*1.2);ctx.lineTo(x1+dx*f+nx*off,y1+dy*f+ny*off);}
    ctx.stroke();
   }
-  ctx.shadowColor="#38bdf8";ctx.shadowBlur=16;
+  /* The broad translucent wave is the halo; blurring three long paths every
+     frame cost more than the rest of the stream drawing at phone DPR. */
+  ctx.shadowBlur=0;
   wave(w*2.4,"#38bdf8",0.28,2.5);
   wave(w*1.3,"#38bdf8",0.85,1.5);
   wave(Math.max(2,w*0.45),"#e0f2fe",1,0.6);

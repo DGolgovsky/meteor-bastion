@@ -1,24 +1,11 @@
 /* ==================== DRAFT: 1 of 3 for battle points ==================== */
 /* Pool: build a free slot, the unit cards of 07-cards.js (levels/pips), combos, fortress modules.
-   Purple cards are never random: a unit with 3 pips gets its purple card forced into the draft. */
+   All offers use weighted sampling without replacement. Higher tiers and bonuses are rarer. */
 function freeSlot(){for(var i=0;i<4;i++){if(!B.turrets.some(function(t){return t.slot===i;}))return i;}return -1;}
 var COMBOS={spin:["Spinning Laser","Laser + Tesla Coil: an extra beam and +20% Laser damage."],det:["Detonation Lightning","Sky Guard + Thunderbolt: rockets shock nearby enemies."],blaze:["Blazing Swarm","Firewheel + Hive: wasps set enemies on fire."],disr:["Disrupting Beam","Beam + Disruption Drone: the beam slows its target."],vortexWheel:["Vortex Disc","Firewheel + Gravity: the disc gains +25% damage and +2 s lifetime."],binaryStars:["Binary Singularity","Gravity + Hive: stronger pull, field radius +30%."],surgePierce:["Surge Rail","Railgun + Tesla: pierce +2, damage +25%."]};
 var MODULES={boost:["Battlefield Boost","All units deal +12% damage until the end of the battle."],healm:["Fortress Repair","Instantly restore 250 HP to the base."],regenm:["Regeneration Cycle","Instantly restore 200 HP to the base."],jam:["Wave Jammer","All enemies are 15% slower until the end of the battle."],patch:["Field Patch","Instantly restore 120 HP to the base. Offered only when no other cards are left."]};
-function forcedPurples(){
- var res=[];
- /* every ready unit offers one of its eligible Extras first; a second Extra of the same unit fills
-    the remaining forced spot so the player gets a real choice between purples */
- var lists=allFighters().slice().sort(function(a,b){return a.slot-b.slot;}).map(function(u){
-  var ds=unitCards(u).filter(function(d){return d.rare;});
-  for(var i=ds.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),tmp=ds[i];ds[i]=ds[j];ds[j]=tmp;}
-  return ds.map(function(d){return {kind:"card",u:u,def:d,forced:true};});
- }).filter(function(l){return l.length;});
- for(var round=0;round<3;round++)lists.forEach(function(l){if(l[round])res.push(l[round]);});
- return res;
-}
-function genCards(allowForced){
+function genCards(){
  var picks=[];
- if(allowForced!==false)forcedPurples().slice(0,2).forEach(function(c){picks.push(c);});
  var pool=[];
  if(freeSlot()>=0)TURRETS.forEach(function(cfg){
    if(!B.usedTypes[cfg.id]){
@@ -27,22 +14,24 @@ function genCards(allowForced){
    }
  });
  allFighters().forEach(function(u){
-  var defs=unitCards(u).filter(function(d){return !d.rare;});
-  /* each unit gets about the same total weight regardless of how many cards it has left */
-  defs.forEach(function(d){pool.push({kind:"card",u:u,def:d,w:Math.max(1.5,18/defs.length)*(d.lvl>=2?1.2:1)});});
+  var defs=unitCards(u),normalCount=defs.filter(function(d){return !d.rare;}).length;
+  /* Keep a comparable budget per unit. Never normalize each tier separately: doing so
+     would cancel the tier penalty when there are fewer high-tier cards left. */
+  var base=CARD_DROP.unitWeight/Math.max(3,normalCount);
+  defs.forEach(function(d){pool.push({kind:"card",u:u,def:d,w:base*cardDropWeight(d)});});
  });
  /* combo cards for turret pairs (the Combo mechanic from Galaxy Defense) */
  var hasT=function(id){return B.turrets.some(function(u){return u.cfg.id===id;});};
  var fuT=function(id){return B.turrets.filter(function(u){return u.cfg.id===id;})[0];};
- if(hasT("laser")&&hasT("tesla")&&META.levels.tesla>=14&&!B.combos.spin)pool.push({kind:"combo",modId:"spin",u:fuT("laser"),w:3});
- if(hasT("skyguard")&&hasT("thunder")&&META.levels.skyguard>=14&&!B.combos.det)pool.push({kind:"combo",modId:"det",u:fuT("skyguard"),w:3});
- if(hasT("firewheel")&&hasT("hive")&&META.levels.firewheel>=22&&!B.combos.blaze)pool.push({kind:"combo",modId:"blaze",u:fuT("hive"),w:3});
- if(hasT("beam")&&hasT("disruption")&&META.levels.beam>=22&&!B.combos.disr)pool.push({kind:"combo",modId:"disr",u:fuT("beam"),w:3});
- if(hasT("firewheel")&&hasT("gravity")&&META.levels.gravity>=18&&!B.combos.vortexWheel)pool.push({kind:"combo",modId:"vortexWheel",u:fuT("firewheel"),w:3});
- if(hasT("gravity")&&hasT("hive")&&META.levels.gravity>=22&&!B.combos.binaryStars)pool.push({kind:"combo",modId:"binaryStars",u:fuT("gravity"),w:3});
- if(hasT("railgun")&&hasT("tesla")&&META.levels.railgun>=22&&!B.combos.surgePierce)pool.push({kind:"combo",modId:"surgePierce",u:fuT("railgun"),w:3});
+ if(hasT("laser")&&hasT("tesla")&&META.levels.tesla>=14&&!B.combos.spin)pool.push({kind:"combo",modId:"spin",u:fuT("laser"),w:CARD_DROP.bonusWeight});
+ if(hasT("skyguard")&&hasT("thunder")&&META.levels.skyguard>=14&&!B.combos.det)pool.push({kind:"combo",modId:"det",u:fuT("skyguard"),w:CARD_DROP.bonusWeight});
+ if(hasT("firewheel")&&hasT("hive")&&META.levels.firewheel>=22&&!B.combos.blaze)pool.push({kind:"combo",modId:"blaze",u:fuT("hive"),w:CARD_DROP.bonusWeight});
+ if(hasT("beam")&&hasT("disruption")&&META.levels.beam>=22&&!B.combos.disr)pool.push({kind:"combo",modId:"disr",u:fuT("beam"),w:CARD_DROP.bonusWeight});
+ if(hasT("firewheel")&&hasT("gravity")&&META.levels.gravity>=18&&!B.combos.vortexWheel)pool.push({kind:"combo",modId:"vortexWheel",u:fuT("firewheel"),w:CARD_DROP.bonusWeight});
+ if(hasT("gravity")&&hasT("hive")&&META.levels.gravity>=22&&!B.combos.binaryStars)pool.push({kind:"combo",modId:"binaryStars",u:fuT("gravity"),w:CARD_DROP.bonusWeight});
+ if(hasT("railgun")&&hasT("tesla")&&META.levels.railgun>=22&&!B.combos.surgePierce)pool.push({kind:"combo",modId:"surgePierce",u:fuT("railgun"),w:CARD_DROP.bonusWeight});
  /* fortress modules: global battle boosts, each once per battle */
- ["boost","healm","regenm","jam"].forEach(function(mid){if(!B.modulesUsed[mid])pool.push({kind:"module",modId:mid,w:3});});
+ ["boost","healm","regenm","jam"].forEach(function(mid){if(!B.modulesUsed[mid])pool.push({kind:"module",modId:mid,w:CARD_DROP.bonusWeight});});
  var guard=0;
  while(picks.length<3&&pool.length&&guard++<80){
    var tot=0;pool.forEach(function(x){tot+=x.w;});
@@ -96,9 +85,8 @@ function renderCards(){
  });
 }
 $("btn-reroll").addEventListener("click",function(){if(!B.reroll)return;B.reroll=false;
- // forced purple cards survive a reroll
- var keep=curCards.filter(function(c){return c.forced;});
- curCards=keep.concat(genCards(false).filter(function(c){return !keep.some(function(k){return sameCard(k,c);});})).slice(0,3);
+ /* A reroll uses the same weighted pool; rare cards are not pinned in place. */
+ curCards=genCards();
  renderCards();$("btn-reroll").style.display="none";SFX.pick();});
 function applyCard(c){
  if(c.kind==="new"){

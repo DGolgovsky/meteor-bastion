@@ -1,38 +1,113 @@
 /* ---------- update ---------- */
 /* No intrinsic enemy flight ever moves upward. Knockback and Gravity are external forces. */
 function stepMove(e,dt){
+ if(!isMeteorEnemy(e)){stepInsectMove(e,dt);return;}
  var type=e.moveKind||(e.cfg&&e.cfg.id)||e.kind;
  var speed=e.baseSpeed===undefined?e.speed:e.baseSpeed;
  var mul=1+.15*Math.sin(B.t*.9+(e.speedPhase||0)),vx=0,dir=e.driftDir||1;
  if(type==="armored")mul=1+.05*Math.sin(B.t+e.phase);
- else if(type==="splitter")mul=1;
  else if(type==="meteor")vx=Math.sin(B.t*.9+e.phase)*18;
  else if(type==="fast"){
   e.driftT=(e.driftT||1.6)-dt;if(e.driftT<=0){e.driftDir=-dir;dir=e.driftDir;e.driftT=1.2+Math.random()*.8;}
   mul=Math.sin(B.t*4+e.speedPhase)>.5?1.3:.8;
   vx=dir*speed*.38;
- }else if(type==="mini"){mul=1.15;vx=dir*speed*.50;}
- else if(type==="flyer")vx=Math.sin(B.t*1.4+e.phase)*35;
- else if(type==="healer"){mul=.9;vx=Math.sin(B.t*.5+e.phase)*12;}
- else if(type==="elite"){mul=1+.2*Math.sin(B.t*.9+e.speedPhase);vx=dir*speed*.27;}
- else if(type==="phase"){mul=e.cloakT>0?1.25:1;vx=e.cloakT>0?dir*speed*.48:Math.sin(B.t*1.5+e.phase)*25;}
- else if(type==="charger"){mul=e.chargeRemaining>0?1:.7;vx=e.chargeRemaining>0?(W/2>e.x?1:-1)*speed*.3:0;}
- else if(type==="boss"){mul=1;vx=dir*speed*.16;e.driftT=(e.driftT||5)-dt;if(e.driftT<=0){e.driftDir=-dir;e.driftT=4+Math.random()*2;}}
- e.hoverCd=(e.hoverCd===undefined?4:e.hoverCd)-dt;
- var maxHover=type==="healer"?3:2,canHover=["flyer","healer","elite","boss"].indexOf(type)>=0;
- if(canHover&&e.hoverT<=0&&e.hoverCd<=0&&e.hoverCount<maxHover&&e.y>150&&e.y<450){
-  e.hoverT=type==="healer"?1.5+Math.random():type==="boss"?1+Math.random()*.5:.6+Math.random()*.6;
-  e.hoverCount++;e.hoverCd=type==="boss"?8+Math.random()*2:type==="healer"?3+Math.random():4+Math.random()*2;
- }
- if(e.hoverT>0){e.hoverT=Math.max(0,e.hoverT-dt);mul=0;vx=0;}
+ } else if(type==="charger"){mul=e.chargeRemaining>0?1:.7;vx=e.chargeRemaining>0?(W/2>e.x?1:-1)*speed*.3:0;}
  /* Paralyze / Immobilize: the enemy stops completely */
  if(e.paralyzeT>0||e.immobT>0){mul=0;vx=0;}
  var vy=Math.max(0,speed*mul*e.slowFactor*(e.chargeMul||1)*(e.hasteT>0?BALANCE.eliteAuraSpeed:1));
- if(["fast","mini","elite","phase","boss"].indexOf(type)>=0)vy*=.91;
+ if(type==="fast")vy*=.91;
  if(speed<=0)vx=0;
  var oldY=e.y;e.vx=vx;e.vy=vy;e.y+=vy*dt;e.x+=vx*dt;
  if(e.x<e.r||e.x>W-e.r){e.x=Math.max(e.r,Math.min(W-e.r,e.x));e.driftDir=-(e.driftDir||1);}
  B.maxUpwardOwn=Math.max(B.maxUpwardOwn||0,Math.max(0,oldY-e.y));
+}
+
+/* Insects approach a per-enemy firing station, then strafe without diving into
+   the deck. Knockback/gravity can displace them; they must approach again. */
+function stepInsectMove(e,dt){
+ initEnemyStation(e);
+ /* Only an external pull or a legacy/manual spawn can put an insect below its
+    station. Correct deck overshoot before recording intrinsic motion: it is not
+    a spontaneous upward flight, and a displaced shooter never occupies the bunker. */
+ if(e.y>BASEY-60)e.y=BASEY-60;
+ var speed=e.baseSpeed===undefined?e.speed:e.baseSpeed,stopped=e.paralyzeT>0||e.immobT>0;
+ var sf=stopped?0:Math.max(0,e.slowFactor===undefined?1:e.slowFactor),gap=Math.max(0,e.standY-e.y);
+ var vy=Math.max(0,(speed||0)*sf*(e.hasteT>0?BALANCE.eliteAuraSpeed:1));
+ if(dt>0)vy=Math.min(vy,gap/dt);else vy=0;
+ var anchored=gap<8,target=e.standX+Math.sin(B.t*(e.cfg.id==="needle"?.7:1.1)+(e.phase||0))*18;
+ var vx=stopped?0:anchored?Math.max(-24,Math.min(24,(target-e.x)*1.8))*sf:Math.sin(B.t*.9+(e.phase||0))*Math.min(18,(speed||0)*.2)*sf;
+ var oldY=e.y,oldX=e.x;e.y+=vy*dt;e.x=Math.max(e.r,Math.min(W-e.r,e.x+vx*dt));
+ e.vx=dt>0?(e.x-oldX)/dt:0;e.vy=vy;e.hoverT=anchored?1:0;
+ B.maxUpwardOwn=Math.max(B.maxUpwardOwn||0,Math.max(0,oldY-e.y));
+}
+function hitFortress(amount,kind,x){
+ if(B.over||!(amount>0))return;
+ if(kind==="meteor"){B.leaks++;B.meteorDamage=(B.meteorDamage||0)+amount;}
+ else {B.enemyShotHits=(B.enemyShotHits||0)+1;B.enemyShotDamage=(B.enemyShotDamage||0)+amount;}
+ B.baseHp=Math.max(0,B.baseHp-amount);B.baseFlashT=.12;B.baseHitTextT=.2;B.shake=Math.min(12,B.shake+(kind==="meteor"?5:2));
+ burst(x,BASEY,kind==="meteor"?14:5,"#ff5470");
+ if(kind==="meteor")SFX.boom();
+ if(B.baseHp<=0)endBattle(false);
+}
+function fireEnemyVolley(e,p){
+ var shots=B.enemyShots||(B.enemyShots=[]),created=0;
+ var pressure=1+Math.min(.6,Math.max(0,(e.siegeAge||0)-20)*.01);
+ for(var i=0;i<p.burst&&shots.length<ENEMY_SHOT_CAP;i++){
+  var x=e.x,y=Math.min(BASEY-36,e.y+e.r+2),tx=Math.max(16,Math.min(W-16,e.attackAimX+(i-(p.burst-1)/2)*(p.spread||0))),ty=e.attackAimY;
+  var dx=tx-x,dy=ty-y,d=Math.hypot(dx,dy)||1;
+  shots.push({x:x,y:y,vx:dx/d*p.speed,vy:dy/d*p.speed,r:p.r,hp:p.hp,damage:e.dmg*p.mul*pressure,
+   kind:p.kind,color:p.color,life:8,dead:false,source:e,aimX:tx,aimY:ty});created++;
+ }
+ B.enemyShotsFired=(B.enemyShotsFired||0)+created;
+ if(created)e.attackVolley=(e.attackVolley||0)+1;
+ return created;
+}
+function stepEnemyAttack(e,dt){
+ if(isMeteorEnemy(e))return;initEnemyStation(e);
+ var p=enemyAttackProfile(e);
+ if(e.y<e.standY-8){e.attackState="approach";e.attackCharge=0;return;}
+ e.siegeAge+=dt;
+ if(e.paralyzeT>0||e.immobT>0){e.attackState="stunned";e.attackCharge=0;return;}
+ /* Slowing a shooter also delays its windup and reload, not only its flight. */
+ var tempo=Math.max(.2,e.slowFactor===undefined?1:e.slowFactor)*(e.hasteT>0?BALANCE.eliteAuraSpeed:1);
+ if(e.attackState==="charge"){
+  e.attackCharge+=dt*tempo;
+  if(e.attackCharge>=e.attackWindup){
+   if(fireEnemyVolley(e,p)){e.attackState="recover";e.attackCharge=0;e.attackCd=p.cd;}
+   else e.attackCharge=e.attackWindup;
+  }
+ }else{
+  e.attackState="recover";e.attackCd-=dt*tempo;
+  if(e.attackCd<=0){
+   /* The visible aiming line and volley share a locked impact point. */
+   e.attackAimX=Math.max(24,Math.min(W-24,e.x+(W/2-e.x)*.32+Math.sin((e.phase||0)+(e.attackVolley||0)*2.3)*28));
+   e.attackAimY=BASEY-16;e.attackCharge=0;e.attackWindup=p.windup;e.attackState="charge";
+   if(e.kind==="phase"){e.cloakT=0;e.revealedT=Math.max(e.revealedT||0,p.windup+.15);}
+  }
+ }
+}
+/* Shared API for bullets and continuous weapon rays. No XP/healing/card points
+   for shooting ammunition: only the attacking creature is a scored enemy. */
+function interceptEnemyShot(shot,damage){
+ if(!shot||shot.dead||shot.hp<=0||!(damage>0))return false;
+ shot.hp-=damage;
+ if(shot.hp<=0){shot.dead=true;B.enemyShotsIntercepted=(B.enemyShotsIntercepted||0)+1;return true;}
+ return false;
+}
+function stepEnemyShots(dt){
+ var shots=B.enemyShots||(B.enemyShots=[]);
+ for(var i=shots.length-1;i>=0;i--){
+  var s=shots[i];s.life-=dt;
+  if(s.dead||s.hp<=0||s.life<=0){shots.splice(i,1);continue;}
+  var slow=1;
+  /* Disruption offers projectile cover as well as slowing the shooters. */
+  for(var k=0;k<B.fields.length;k++){
+   var f=B.fields[k];if(f.kind==="slow"&&f.life>0&&Math.hypot(s.x-f.x,s.y-f.y)<=f.r){slow=.5;break;}
+  }
+  s.x+=s.vx*dt*slow;s.y+=s.vy*dt*slow;
+  if(s.y>=BASEY-16){shots.splice(i,1);hitFortress(s.damage,"ranged",s.x);if(B.over)return;}
+  else if(s.x<-20||s.x>W+20||s.y<-40)shots.splice(i,1);
+ }
 }
 
 function update(dt){
@@ -42,10 +117,11 @@ function update(dt){
  /* Groups are atomic: at the enemy cap they wait rather than losing members. */
  if(B.waveQueue>0){
   B.spawnT-=dt;B.formationCd=Math.max(0,(B.formationCd||0)-dt);
-  var interval=Math.max(BALANCE.spawnMin,BALANCE.spawnBase-B.wave*BALANCE.spawnReduction);
+  var opening=campaignOpening(B.stage,B.wave,B.elite);
+  var interval=Math.max(BALANCE.spawnMin,BALANCE.spawnBase-B.wave*BALANCE.spawnReduction)*opening.spawn;
   if(B.spawnT<=0){
    var n=0;
-   if(B.formationCd<=0&&B.waveQueue>=3){n=spawnWaveGroup();if(n>0)B.formationCd=BALANCE.formationCd;}
+   if(B.formationCd<=0&&B.waveQueue>=3){n=spawnWaveGroup();if(n>0)B.formationCd=BALANCE.formationCd*opening.spawn;}
    else if(spawnEnemy(wavePickKind()))n=1;
    if(n>0)B.waveQueue-=n;
    B.spawnT=n>0?interval*(.7+Math.random()*.6):.16;
@@ -110,12 +186,11 @@ function update(dt){
    }
    e.phase+=dt*3;
    stepMove(e,dt);
-   if(e.cfg.id==="meteor"||e.cfg.id==="fast"||e.cfg.id==="armored"||e.cfg.id==="mini"){if(B.parts.length<250&&Math.random()<dt*9)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
-   if(e.y>=BASEY-16){
-     e.dead=true;B.enemies.splice(i,1);B.waveKilled++;B.leaks++;
-     B.baseHp-=e.dmg;B.baseFlashT=0.12;B.baseHitTextT=0.2;B.shake=Math.min(12,B.shake+5);burst(e.x,BASEY,14,"#ff5470");SFX.boom();
-     if(B.baseHp<=0){B.baseHp=0;endBattle(false);return;}
-   }
+   if(isMeteorEnemy(e)){if(B.parts.length<250&&Math.random()<dt*9)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
+   if(isMeteorEnemy(e)&&e.y>=BASEY-16){
+     e.dead=true;B.enemies.splice(i,1);B.waveKilled++;
+     hitFortress(e.dmg,"meteor",e.x);if(B.over)return;
+   }else stepEnemyAttack(e,dt);
  }
  /* Time-weighted enemy occupancy per wave, for headless calibration. */
  if(B.waveState==="fighting"&&B.wave>0){
@@ -220,8 +295,19 @@ function update(dt){
        var hitAt=sweptContact(p0x,p0y,pr.x,pr.y,en.x,en.y,en.r+5);
        if(hitAt!==null)intersections.push({enemy:en,at:hitAt});
      });
+     (B.enemyShots||[]).forEach(function(shot){
+       if(shot.dead||shot.hp<=0||pr.hitSet.indexOf(shot)>=0)return;
+       var at=sweptContact(p0x,p0y,pr.x,pr.y,shot.x,shot.y,shot.r+3);
+       if(at!==null)intersections.push({shot:shot,at:at});
+     });
      intersections.sort(function(a,b){return a.at-b.at;});
      for(var h=0;h<intersections.length;h++){
+       var hostile=intersections[h].shot;
+       if(hostile){
+        if(hostile.dead||hostile.hp<=0)continue;
+        pr.hitSet.push(hostile);interceptEnemyShot(hostile,pr.dmg*(pr.src.dmgMul||1)*(B.allDmgMul||1));
+        if(pr.pierce>0){pr.pierce--;continue;}dead=true;break;
+       }
        var en=intersections[h].enemy;
        if(en.dead||en.hp<=0)continue;
        pr.hitSet.push(en);
@@ -241,6 +327,7 @@ function update(dt){
    }
    if(dead)B.projs.splice(q,1);
  }
+ stepEnemyShots(dt);if(B.over)return;
  B.beams=B.beams.filter(function(b){b.t+=dt;return b.t<b.life;});
  B.parts=B.parts.filter(function(pt){pt.t+=dt;pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;return pt.t<pt.life;});
  B.rings=B.rings.filter(function(r){r.t+=dt;r.r+=r.vr*dt;return r.t<r.life;});
@@ -248,7 +335,7 @@ function update(dt){
  if(B.shake>0)B.shake=Math.max(0,B.shake-dt*26);
  /* wave clear? A wave by itself NO longer grants cards:
     the next wave starts immediately, and the draft opens only from points */
- if(B.waveState==="fighting"&&B.waveQueue<=0&&B.enemies.length===0&&!B.over){
+ if(B.waveState==="fighting"&&B.waveQueue<=0&&B.enemies.length===0&&!(B.enemyShots&&B.enemyShots.length)&&!B.over){
    if(B.wave>=finalWave()){if(!B.bossSpawned)return;endBattle(true);return;}
    if(B.pendingDrafts>0){B.waveState="draft";B.draftReturn="nextwave";openDraft();}
    else startWave(B.wave+1);

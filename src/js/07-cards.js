@@ -12,12 +12,17 @@
    Levels (owner decisions 2026-11-10 / 2026-11-11, docs/turrets-reference.md):
    - a turret is built at Lv.1 with 0/4 pips; every normal (teal) card fills one pip;
    - the card pool of a unit at level L = its normal cards of Star Tier ≤ L;
-   - after 3 pips one or two of the unit's Extra (purple) cards of Star Tier ≤ L are forced into
-     the draft; a purple fills the 4th pip and raises the level (max Lv.3). At Lv.3 a purple
+   - after 3 pips the unit's Extra (purple) cards of Star Tier ≤ L enter the weighted pool;
+     Extras are rarer than normal cards and are not guaranteed. A purple fills the 4th pip
+     and raises the level (max Lv.3). At Lv.3 a purple
      completes a "mastery" cycle: pips reset to 0 and the next purple can be earned again;
    - reaching Lv.3 switches on the unit's Super Mode automatically if R&D ≥ rdTierUnlock(id);
    - R&D gates: card.rd = the reference lock "🔒 Lv.X" or the Lv.2/6/10 unlock level. */
 var MAX_RUN_LV=3, PIPS_PER_LV=4;
+/* Relative offer weights, not fixed probabilities: the available card pool changes as cards
+   are taken. A higher Star Tier is always rarer than a lower one in the same unit's pool. */
+var CARD_DROP={tier:[1,0.5,0.25],extra:0.2,unitWeight:18,bonusWeight:0.8};
+function cardDropWeight(def){return CARD_DROP.tier[Math.max(0,Math.min(2,(def.lvl||1)-1))]*(def.rare?CARD_DROP.extra:1);}
 var SUPERS={
  skyguard:{name:"Rocket Barrage",desc:"+2 rockets per volley and +40% fire rate.",apply:function(u){u.extraProj+=2;u.haste*=1.4;}},
  laser:{name:"Mirror Resonator",desc:"The beam gains reflection and refraction at once, +60% damage.",apply:function(u){u.beamSplit=true;u.reflect=Math.max(u.reflect||0,2);u.refract=true;u.dmgMul*=1.6;}},

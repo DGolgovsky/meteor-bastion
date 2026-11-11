@@ -22,9 +22,9 @@ In every campaign the boss is in the last wave; stage progress carries over to t
 | Base | 1000 HP, no shield (before Chips bonuses) |
 | Healing | +2 base HP per enemy killed, capped at the maximum |
 | First card thresholds | 2, 4, 6, 9 points; then 14 + 10 per next pick + 2.5 per cleared wave |
-| Waves | `24 + round(8.4 × wave) + (stage−1)×6`; Elite adds enemies |
-| Spawn interval | `max(0.06,0.20 − wave×0.002)` s, then a ×0.7–1.3 random variation; formation cooldown 1.33 s |
-| HP multiplier per wave | `0.76 × (1 + (wave−1)×0.13)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; 0.78/0.14 before the 2026-11-11 reference card set, growth 0.06 before the 2026-11-10 card rework) |
+| Waves | `24 + round(8.4 × wave) + round((stage−1)×6×openingBonus)`; Elite adds enemies. Stages 4–12 openingBonus: 0/.35/.7/1 across waves 1–4; otherwise 1 |
+| Spawn interval | `max(0.06,0.20 − wave×0.002)` s, then a ×0.7–1.3 random variation; formation cooldown 1.33 s; both multiplied by the late-sector opening cadence (see `CAMPAIGN_OPENING`) |
+| HP multiplier per wave | `0.85 × (1 + (wave−1)×0.13)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; 0.78/0.14 before the 2026-11-11 reference card set, growth 0.06 before the 2026-11-10 card rework) |
 | Boss HP multiplier per wave | `0.88 × 1.1 × (1 + (wave−1)×0.07)`, on top of the stage |
 | Guardian | 12 damage (−8% from 13, a small round 4 nerf), 4 attacks/s, fires from both hands alternately; the triple burst is a tight group (3px spacing, one hand for the whole burst) |
 | Turret visibility top (VIS_TOP) | y=30 — enemies above the line (just below the HUD row) are not targeted; spawning (y=-30) is unchanged |
@@ -34,10 +34,10 @@ In every campaign the boss is in the last wave; stage progress carries over to t
 | Energy | 5 per run, regenerates 1 per 12 minutes, maximum 30 |
 | Meta R&D | Lv. 1–45, +8% base damage per level, stepped CD and secondary stat |
 | Global Crit DMG bonus | at most +100% |
-| Elite (on top of Stage) | HP ×1.68, speed ×1.10, contact damage ×1.18; separate champions |
+| Elite (on top of Stage) | HP ×1.4, speed ×1.10, contact damage ×1.18; separate champions |
 | Elite rewards | ×1.6 coins, materials and components; victories tracked separately from Normal |
 
-For the exact HP/speed of the 11 enemies and the attacks of the 11 turrets, use `src/js/00-config.js` — it is the **single source of truth**. This table must not diverge from the code.
+For the exact HP/speed of the 15 enemies and the attacks of the 11 turrets, use `src/js/00-config.js` — it is the **single source of truth**. This table must not diverge from the code.
 
 ## Mechanics added in this cycle
 
@@ -66,7 +66,7 @@ Source of truth: [`docs/turrets-reference.md`](docs/turrets-reference.md) (11 tu
 | Rule | Value |
 |---|---|
 | Star Tier N | in-run unit level N: the draft pool holds the unit's normal cards with tier ≤ its level (1–3, `MAX_RUN_LV`) |
-| Extra (purple) | eligible only at 3 pips. At 3 pips, up to 2 purples are forced into each draft (round-robin over the unit's eligible Extras) until one is taken. A purple card levels the unit up (pips → 0, damage ×1.25 `BALANCE.levelUpDmg`). At Lv.3, a purple starts a **mastery** cycle (pips reset, `u.mastery++`) |
+| Extra (purple) | eligible only at 3 pips, then enters the same weighted random pool. No forced offers or reroll retention. A purple card levels the unit up (pips → 0, damage ×1.25 `BALANCE.levelUpDmg`). At Lv.3, a purple starts a **mastery** cycle (pips reset, `u.mastery++`) |
 | Pips | normal unit cards and combos fill pips 1–3 |
 | Super Mode | automatic on reaching Lv.3 when R&D ≥ `rdTierUnlock` (Laser/Aeroblast/Gravity/Firewheel 10, Sky Guard/Railgun 14, others 18); recorded in the pick list as "SUPER MODE: …". There are no SUPER cards any more |
 | 🔒 Lv.X | the card needs turret R&D ≥ X |
@@ -74,7 +74,7 @@ Source of truth: [`docs/turrets-reference.md`](docs/turrets-reference.md) (11 tu
 | Guardian locks | Lv.61/71/101/121 exceed our R&D cap of 45 and are scaled ×45/121: **23 / 26 / 38 / 45** |
 | Lv.4/8/12 meta bumps | Lv.4 and Lv.12 (then 24/32/44): the secondary stat +20% (Hive: Wasp ATK count +1 per step, Railgun: Penetration +1 per step); Lv.8: Cooldown Speed +5% (later 16/28/36 keep −7.5% each). Secondary names: Gravity field radius, Field duration (Disruption), Strike width (Thunderbolt) |
 | Cross-turret cards | e.g. Tesla "Firewheel Thunder", Gravity "Hive Gravity", Beam "Bee Wave": they work only while the referenced unit is on the field |
-| Draft weights | each unit's normal cards share ≈18 weight (min 1.5 per card), tier ≥2 cards ×1.2 |
+| Draft weights | unit base `18/max(3, eligible normal count)`; Star Tier 1/2/3 ×1/0.5/0.25; Extra another ×0.2; module/combo 0.8 (was 3). These are relative weights, not fixed percentages |
 | Empty draft guard | "Field Patch" (+120 HP, repeatable) fills the draft only when nothing else is left |
 
 **Entity caps for mobile** (`FX_CAP` in `03b-effects.js`): mines 30, pulse waves 24, Thunderbolt bolts 8, black holes 6, portals 4, spinners 4, mini drones 12, delayed strikes 30, projectiles 400, fields 56, Ripping Lasers 10/s, wasps 90. The full-card stress test checks them.
@@ -478,7 +478,7 @@ Running the tests from a **clean checkout**:
 node tests/smoke.cjs
 ```
 
-The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **96 tests** (2026-11-11), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, a backward RAF timestamp cannot drive ring radii negative, and a ring with a negative radius still draws, and all models (Guardian, 11 turrets, 11 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
+The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **114 tests** (2026-11-11), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, a backward RAF timestamp cannot drive ring radii negative, and a ring with a negative radius still draws, and all models (Guardian, 11 turrets, 15 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
 
 ## Known limitations and next iterations
 
@@ -534,3 +534,66 @@ Owner's own playthrough, 2026-11-09 (b56e1e6b): cleared Stage 1 on the FIRST att
 - Bunker, mount floodlights, passive dome emitters and underground structure use Canvas primitives; no external images or font-dependent castle emoji. Recoil decays at 66 units/s in simulation time. Screen shake uses time-based offsets, so redrawing cannot consume combat randomness.
 - Regression: **78 smoke checks**, including slot construction, native-resolution sizing/touch mapping, HUD bounds, long timers, pause/FPS recoil and random-free rendering. Canvas raster checks cover empty/full mounts, liveries, damaged HP and a busy battlefield; these are not Android/browser layout or FPS measurements.
 - Same R&D 1 Stage 1 Normal benchmark, 12 fixed seeds per policy, before → after: sensible picks **4/12 → 5/12** victories (first victory stays attempt 3), first-card **2/12 → 2/12**. Mean breaches **23.9 → 17.3** / **31.3 → 30.2** respectively. Changing turret coordinates changes targeting, so identical combat outcomes are not expected; no balance coefficients were retuned. These small deterministic samples are calibration, not estimates of human win rate.
+
+
+## Artillery, rarity and recon pass (current, 2026-11-11)
+
+This pass starts from `9250c86`. It keeps all 270 reference card effects and save v1, changes offer probabilities and enemy behavior, and optimizes Laser rendering. Theme/roster, attack distance, projectile rules and reconnaissance are documented in [docs/enemies.md](docs/enemies.md).
+
+- **Offer rarity:** Tier 1/2/3 weights 1/.5/.25; Extra additionally ×.2; module/combo weight .8. Three pips unlock random Extras, with no guaranteed slots or pinned rerolls. These are relative weights among the remaining eligible cards, not fixed percentages.
+- **Incoming pressure:** `enemyHpMul .76 → .85`; wave HP growth stays .13. Replacing suicidal flyers with artillery at the old HP coefficient gave nearly free 3/3 wins. The fixed fresh Normal triplet now gives smart 1/3 (first victory attempt3), first-card 0/3; the unchanged 12-seed series gives smart 6/12 and first-card 1/12. Sensible-policy mean meteor/ranged incoming damage: 1163.4/132.8 HP, 22.4 breaches, 19.5 picks with 1.8 Extras. No seeds were replaced and no failure-dependent assistance was added.
+- **Late openings:** pre-recon S12/R&D45 Normal lost0/3 on wave1 before developing a build. Reconnaissance retains full enemy HP/contact damage but ramps early count/cadence; the final matrix below uses identical R&D, seeds and zero Chips, with no free turrets.
+- **Tests:** 114 smoke checks cover real offer frequencies, rarity eligibility/rerolls, all 15 enemy models, station/attack/control behavior, ammo interception/expiry/caps, wave completion, preview/actual roster agreement, individual weapons with all their cards, laser damage ticks and bounded visuals at 60/120 Hz. The cooperative all-card stress remains; per-weapon damage is tested separately so competing weapons cannot starve one another of targets.
+
+### Reproducible protocol
+
+`tests/balance.cjs` initializes through real `startBattle()`, including Elite multipliers, permanent R&D and Chips. Each run has its own seeded harness, dt=.05s, maximum 2400s simulated time. Victory requires the final wave, positive base HP, exactly one spawned and actually killed boss, and no living enemies. Timeout/nonfinite state is a failed check, not a loss silently counted as a completed campaign. Offer/taken tiers/Extras, meteor/ranged damage, firing/interception, duration, wave composition and per-unit DPS are recorded. HP-at-wave averages are conditional on reaching that wave.
+
+The original first-three seeds are 3121/777/42; broad probes keep3121,777,42,1234,9999,2026,555,8888,31415,2718,1618,4242. Policies are the established sensible ranking and first offered card; neither moves the Guardian or rerolls. They are reproducible probes, not human win-rate estimates.
+
+`--check-balance` is an explicit CI regression guard for fresh S1 Normal/R&D1/no Chips:1..2 smart wins on the unchanged first-three prefix, catching both 0/3 and free3/3. It rejects calibration overrides and other profiles. The noninteractive 1.2s intro is skipped consistently, matching the earlier fixed-clock benchmark. There is no such quota or reseeding in the game itself.
+
+```sh
+node tests/balance.cjs --runs 3 --policy smart --check-balance
+node tests/balance.cjs --check-balance
+node tests/balance.cjs --runs 3 --stage 9 --rd 30 --elite --policy smart
+node tests/balance.cjs --runs 3 --stage 12 --rd 45 --policy smart
+node tests/laser-perf.cjs
+```
+
+### Laser workload
+
+`tests/laser-perf.cjs`:330 static immortal targets,2s channel at 60/120 Hz,5 repetitions for the recorded median. Heavy load:4 deflections,2 sweeps, refraction,3 reflections,2 deflection reflections, split and double band. The native CPU raster pass uses a2× canvas; it is not whole-game FPS or an Android measurement. The unchanged target/base-damage/timestamp checksum is verified for all four base/heavy ×60/120 configurations.
+
+| Heavy workload | Before9250c86 | Current |
+|---|---:|---:|
+| Live ray visuals,60Hz |53|17|
+| Live ray visuals,120Hz |98|17|
+| Long blurred strokes/frame,120Hz |294|0|
+| CPU ray raster ms/frame,60Hz median |1.349|.285|
+| CPU ray raster ms/frame,120Hz median |2.614|.290|
+
+One cached visual slot per ray removes refresh-rate-dependent overdraw; tick-only scans and stable one-pass reflection selection reduce simulation work. Optional `--raster` needs `@napi-rs/canvas`; ordinary tests and the game have no added dependency. Native inspection also covered the new silhouettes, charge telegraphs, hostile projectile shapes and combat effects. Browser layout and Android FPS remain device checks.
+
+
+### Elite pressure after reducing Extra frequency
+
+Elite HP was retuned from ×1.68 to **×1.4**. Speed ×1.10, contact ×1.18, extra enemies, champions, support auras and boss bonuses are unchanged. In stages 4–12 the opening interval additionally uses ×1.5 / ×1⅓ / ×1⅙ on waves 1–3, returning to the ordinary full cadence on wave 4. This is fixed campaign pacing, independent of R&D, prior losses or the selected build.
+
+At the old Elite HP, even R&D 45 plus all Chips at 5 lost three S12 probes on waves 2/1/2. Cadence alone only moved the failure to waves 4–5. The new global coefficient and opening cadence allow the same no-Chips S12 profile to win one attempt and actually destroy the final boss. Elite remains harder than Normal in the paired probes below; final HP is insufficient as a pressure measure because kills restore HP.
+
+
+### Final paired verification
+
+The original seeds are unchanged. R&D applies to all units, all Chips are zero, and turrets must be earned from cards. Every reported victory kills its boss; no attempt timed out. Elite rows were rechecked on the final production implementation without calibration overrides. Normal recon rows are unaffected by the final Elite-only changes.
+
+| Stage / R&D | Normal wins | Elite wins | Incoming meteor + ranged HP, Normal / Elite (mean) |
+|---|---:|---:|---|
+| 1 / 1 | 6/12 | 0/3 | 1163.4 + 132.8 / 1298 + 48.3 |
+| 4 / 12 | 3/3 | 3/3 | 0 + 20 / 443.7 + 636.7 |
+| 9 / 30 | 3/3 | 2/3 | 291.7 + 183.7 / 459.7 + 1133.7 |
+| 12 / 45 | 1/3 | 1/3 | 836 + 137 / 969.3 + 184.3 |
+
+The S1 Normal first-three probe is 1/3 sensible wins; the wider first-card policy is 1/12. S4 Elite can win 3/3 while taking much more damage than Normal; one run falls to 185 HP. S9 Elite winners reach lows of 200/322 HP. S12 Elite's winner is seed 777 (wave 30, boss killed, 1107s); the other two lose on wave 2. End-of-battle HP often returns to 1000 because of healing, so it is not a substitute for breaches and incoming-damage metrics.
+
+Compact raw measurements, per-seed outcomes, coefficient metadata and the laser benchmark are checked in at [docs/balance-artillery-2026-11-11.json](docs/balance-artillery-2026-11-11.json). Builds, card effects and save compatibility are covered by the separate smoke suite. Android FPS and browser viewport behavior were not measured in this environment.

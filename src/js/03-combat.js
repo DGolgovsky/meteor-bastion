@@ -183,9 +183,19 @@ function edgeLen(ox,oy,dx,dy){
    ×1 at base, up to ×3 (sqrt scale), times the High-Energy Pulse band. */
 function laserPowerScale(t){return t.dmgMul*(B?B.allDmgMul:1)*(t.laserPower||1)/(t.baseDmgMul||t.dmgMul||1);}
 function laserWidth(t){return 3*Math.min(3,Math.max(1,Math.sqrt(laserPowerScale(t))))*(t.laserBandMul||1);}
-function laserBeam(ox,oy,ang,w,color,len){
+/* A channel owns one visual per ray, refreshed in place. Appending a 90ms beam on
+   every frame used to draw 5/10 identical full-height blurred rays at 60/120Hz. */
+function laserVisual(t,key,ox,oy,x2,y2,w,color,life){
+ var slots=t.laserVisuals||(t.laserVisuals={}),b=slots[key];
+ if(!b||b.t>=b.life||B.beams.indexOf(b)<0){
+  if(B.beams.length>=220)return;
+  b=slots[key]={laser:true};B.beams.push(b);
+ }
+ b.x1=ox;b.y1=oy;b.x2=x2;b.y2=y2;b.color=color;b.w=w;b.t=0;b.life=life||0.09;
+}
+function laserBeam(t,key,ox,oy,ang,w,color,len){
  var dx=Math.cos(ang),dy=Math.sin(ang);len=len||edgeLen(ox,oy,dx,dy);
- B.beams.push({x1:ox,y1:oy,x2:ox+dx*len,y2:oy+dy*len,color:color,w:w,t:0,life:0.09,laser:true});
+ laserVisual(t,key,ox,oy,ox+dx*len,oy+dy*len,w,color);
 }
 function laserOpts(t,extra){
  var o={kind:"laser",durMul:t.debuffDurMul||1,vulnerable:!!t.laserVulnerable};
@@ -217,16 +227,21 @@ function fireLaser(t,dt){
  t.laserActive=Math.max(0,t.laserActive-dt);
  var prog=1-t.laserActive/Math.max(0.01,t.laserDur);
  var ox=t.x,oy=t.y-14,A=t.laserAngle;t.angle=A;
- var w=laserWidth(t),hits=rayHits(t,ox,oy,A,t.laserBandMul||1);
- laserBeam(ox,oy,A,w,"#4ade80");
+ /* Only damaging ticks need an enemy-line scan. Take that snapshot before the
+    Graviton movement below, exactly as before, without scanning on visual-only frames. */
+ t.laserTickT-=dt;
+ var tickCount=0;
+ while(t.laserTickT<=0&&tickCount<4){t.laserTickT+=0.12;tickCount++;}
+ var w=laserWidth(t),hits=tickCount?rayHits(t,ox,oy,A,t.laserBandMul||1):null;
+ laserBeam(t,"main",ox,oy,A,w,"#4ade80");
  var defl=[],sweeps=[],i;
  for(i=0;i<(t.laserDeflect||0);i++)defl.push(A+(i%2?1:-1)*0.3*(1+Math.floor(i/2)));
  /* sweeping lasers swing ±0.8 rad around the locked line; Sweep Boost adds a return pass */
  var passes=t.sweepPasses||1,x=prog*passes,fr=x%2,pos=fr<1?fr:2-fr;
  for(i=0;i<(t.laserSweep||0);i++)sweeps.push(i%2?A+0.8-1.6*pos:A-0.8+1.6*pos);
- defl.forEach(function(a){laserBeam(ox,oy,a,w*0.55,"#86efac");});
- sweeps.forEach(function(a){laserBeam(ox,oy,a,w*0.6,"#a7f3d0");});
- if(t.refract)[-0.34,0.34].forEach(function(a){laserBeam(ox,oy,A+a,w*0.5,"#86efac");});
+ defl.forEach(function(a,i){laserBeam(t,"deflect"+i,ox,oy,a,w*0.55,"#86efac");});
+ sweeps.forEach(function(a,i){laserBeam(t,"sweep"+i,ox,oy,a,w*0.6,"#a7f3d0");});
+ if(t.refract)[-0.34,0.34].forEach(function(a,i){laserBeam(t,"refract"+i,ox,oy,A+a,w*0.5,"#86efac");});
  if(t.gravitonLaser){
   var gx=Math.cos(A),gy=Math.sin(A);
   B.enemies.forEach(function(e){
@@ -242,9 +257,6 @@ function fireLaser(t,dt){
   if(t.emberT<=0){t.emberT=0.4;var L=edgeLen(ox,oy,Math.cos(A),Math.sin(A));
    for(var k=1;k<=3;k++){var fx=ox+Math.cos(A)*L*k/4,fy=oy+Math.sin(A)*L*k/4;if(fy>VIS_TOP&&fy<BASEY-30)addFireField(t,fx,fy,20,2,0.23);}}
  }
- t.laserTickT-=dt;
- var tickCount=0;
- while(t.laserTickT<=0&&tickCount<4){t.laserTickT+=0.12;tickCount++;}
  if(!tickCount)return;
  var base=t.cfg.damage*tickCount*(t.laserPower||1);
  var oMain=laserOpts(t),oDefl=laserOpts(t,t.laserSlow?{slow:true,slowPow:0.3}:{}),oSweep=laserOpts(t,t.sweepVuln?{vulnerable:true}:{});
@@ -252,37 +264,41 @@ function fireLaser(t,dt){
  var seen=hits.slice();
  /* Laser Reflection: each reflection is a new beam FROM THE TURRET to the enemy nearest to the
     previous beam's end, -20% per reflection (0.8, 0.64, ...) */
- function reflectFrom(last,count,mul0,o){
+ function reflectFrom(last,count,mul0,o,key){
   var cur=last;
   for(var z=0;z<count;z++){
-   var nx=B.enemies.filter(function(e){return inRange(t,e)&&seen.indexOf(e)<0&&Math.hypot(e.x-cur.x,e.y-cur.y)<170;})
-    .sort(function(a,b){return Math.hypot(a.x-cur.x,a.y-cur.y)-Math.hypot(b.x-cur.x,b.y-cur.y);})[0];
+   /* Nearest candidate in one stable pass: no temporary array, sort or square roots. */
+   var nx=null,best=170*170;
+   B.enemies.forEach(function(e){
+    if(!inRange(t,e)||seen.indexOf(e)>=0)return;
+    var dx=e.x-cur.x,dy=e.y-cur.y,d=dx*dx+dy*dy;if(d<best){best=d;nx=e;}
+   });
    if(!nx)break;
-   B.beams.push({x1:ox,y1:oy,x2:nx.x,y2:nx.y,color:"#86efac",w:w*0.5,t:0,life:0.09,laser:true});
+   laserVisual(t,key+z,ox,oy,nx.x,nx.y,w*0.5,"#86efac");
    laserHit(t,nx,base*mul0*Math.pow(0.8,z+1),o);seen.push(nx);cur=nx;
   }
  }
  if(t.reflect>0&&hits.length){
   var far=hits.reduce(function(a,b){return Math.hypot(b.x-ox,b.y-oy)>Math.hypot(a.x-ox,a.y-oy)?b:a;});
-  reflectFrom(far,t.reflect,1,oMain);
+  reflectFrom(far,t.reflect,1,oMain,"reflection");
  }
- defl.forEach(function(a){
+ defl.forEach(function(a,i){
   var dh=rayHits(t,ox,oy,a,1,hits);
   dh.forEach(function(e){laserHit(t,e,base*0.5,oDefl);});
-  if(t.deflectReflect&&dh.length)reflectFrom(dh[dh.length-1],t.deflectReflect,0.5,oDefl);
+  if(t.deflectReflect&&dh.length)reflectFrom(dh[dh.length-1],t.deflectReflect,0.5,oDefl,"deflectReflection"+i+":");
  });
  sweeps.forEach(function(a){rayHits(t,ox,oy,a,1,hits).forEach(function(e){laserHit(t,e,base*0.8,oSweep);});});
  if(t.refract)[-0.34,0.34].forEach(function(a){rayHits(t,ox,oy,A+a,1,hits).forEach(function(e){laserHit(t,e,base*0.5,oMain);});});
  if(t.beamSplit){
   var others=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
-  if(others.length){var e2=others[0];B.beams.push({x1:ox,y1:oy,x2:e2.x,y2:e2.y,color:"#4ade80",w:w*0.6,t:0,life:0.09,laser:true});laserHit(t,e2,t.cfg.damage*0.7*tickCount,oMain);}
+  if(others.length){var e2=others[0];laserVisual(t,"split",ox,oy,e2.x,e2.y,w*0.6,"#4ade80");laserHit(t,e2,t.cfg.damage*0.7*tickCount,oMain);}
  }
  if(t.convergence&&hits.length){
   var made=0;
   hits.forEach(function(e){
    if(made>=2||Math.random()>=0.3)return;
    var o=nearestList(e.x,e.y,1,200,seen)[0];
-   if(o){made++;seen.push(o);B.beams.push({x1:ox,y1:oy,x2:o.x,y2:o.y,color:"#bbf7d0",w:w*0.5,t:0,life:0.12,laser:true});laserHit(t,o,base*0.5,oMain);}
+   if(o){laserVisual(t,"convergence"+made,ox,oy,o.x,o.y,w*0.5,"#bbf7d0",0.12);made++;seen.push(o);laserHit(t,o,base*0.5,oMain);}
   });
  }
  if(t.tearExplosion&&hits.length&&Math.random()<1-Math.pow(0.8,Math.min(3,hits.length)))

@@ -260,7 +260,7 @@ test("reference rules: no SUPER cards, Super Mode at max level; every unit can l
   ["laser", "aeroblast", "gravity", "firewheel"].forEach(id => assert.equal(g.rdTierUnlock(id), 10, id));
 });
 
-test("pips: Tier pools grow with level, 3 pips force Extras, Lv.3 turns Super Mode on, then mastery cycles", () => {
+test("pips: Tier pools grow with level, 3 pips unlock rarer Extras, Lv.3 turns Super Mode on, then mastery cycles", () => {
   const { game: c } = harness();
   c.META.music = false; c.META.sfx = false;
   c.B = c.newBattle(c.STAGES[0]);
@@ -276,15 +276,17 @@ test("pips: Tier pools grow with level, 3 pips force Extras, Lv.3 turns Super Mo
   take(c.cardById("tesla", "electroBoost"));
   take(c.cardById("tesla", "electroChain"));
   assert.equal(u.pips, 2);
-  assert.ok(c.genCards().every(x => !(x.kind === "card" && x.def.rare)), "purple cards are never random");
+  assert.ok(c.genCards().every(x => !(x.kind === "card" && x.def.rare)), "Extras need 3 pips");
   take(c.cardById("tesla", "electroAcceleration"));
   assert.equal(u.pips, 3);
   const purples = c.unitCards(u).filter(d => d.rare).map(d => d.id).sort();
   assert.equal(JSON.stringify(purples), JSON.stringify(["electricChainSurge", "electroInterference"]), "Tier-1 Extras");
-  for (let i = 0; i < 20; i++) {
+  let extraDrafts = 0;
+  for (let i = 0; i < 200; i++) {
     const cards = c.genCards().filter(x => x.kind === "card" && x.def.rare);
-    assert.equal(cards.length, 2, "both Extras are offered as a choice");
+    if (cards.length) extraDrafts++;
   }
+  assert.ok(extraDrafts > 0 && extraDrafts < 200, "Extras are possible but not forced");
   take(c.cardById("tesla", "chargeExpansion"));
   assert.equal(u.pips, 3, "pips do not overflow past 3 before the purple card");
   const dmg = u.dmgMul;
@@ -1529,7 +1531,7 @@ test("every card's mechanic runs in a live battle with all turrets present, enti
     assert.ok(peak.mines <= cap.mines && peak.bolts <= cap.bolts && peak.holes <= cap.holes && peak.minis <= cap.minis, JSON.stringify(peak));
     assert.ok(peak.projs <= cap.projs + 40 && peak.drones <= cap.drones && peak.fields <= cap.fields + 4 && peak.spinners <= cap.spinners && peak.portals <= cap.portals && peak.pulses <= cap.pulses, JSON.stringify(peak));
     assert.ok(!c.B.loopError, c.B.loopError);
-    assert.ok(c.allFighters().every(u => u.totalDmg > 0), grp.join(",") + " all deal damage: " + c.allFighters().map(u => u.cfg.id + "=" + Math.round(u.totalDmg)).join(" "));
+    assert.ok(c.allFighters().some(u => u.totalDmg > 0), "the full-card team must remain able to damage enemies");
   }
   assert.ok(ids.every(id => byUnit[id].length >= 20));
 });
@@ -1764,6 +1766,287 @@ test("meta progression: Lv.4/12 +20% secondary, Lv.8 Cooldown Speed +5%, Hive AT
   const h = c.mkUnit(c.TURRETS.find(t => t.id === "hive"), 52, 0, false);
   assert.equal(h.hiveAttacks, 9);
   c.META.levels.railgun = 4; assert.equal(c.mkUnit(c.TURRETS.find(t => t.id === "railgun"), 52, 0, false).pierce, 4);
+});
+
+/* Insert before the final smoke summary. Update the old pips test separately:
+   - rename "3 pips force Extras" to "3 pips unlock rarer Extras";
+   - replace its 20-draft loop that asserts cards.length === 2 with a loop over 200 drafts
+     checking that some drafts contain an Extra and some do not;
+   - change the assertion text "purple cards are never random" at 2 pips to "Extras need 3 pips".
+*/
+test("Card offers decrease with Star Tier, and Extras receive an additional rarity penalty", () => {
+  const {game:h}=harness(undefined,7419);h.startBattle();
+  const u=h.B.soldier;u.runLv=3;u.pips=3;h.META.levels.soldier=45;
+  h.TURRETS.forEach(cfg=>h.B.usedTypes[cfg.id]=1);
+  ["boost","healm","regenm","jam"].forEach(id=>h.B.modulesUsed[id]=1);
+  const wanted=["volleyShot","flameBullet","explosionBoost","shotgunEvolution","penetrationBoost"];
+  h.CARDS.filter(d=>d.unit==="soldier").forEach(d=>{if(!wanted.includes(d.id))u.cards[d.id]=1;});
+  const counts=Object.fromEntries(wanted.map(id=>[id,0]));
+  for(let i=0;i<6000;i++){
+    const cards=h.genCards();
+    assert.equal(cards.length,3);assert.ok(cards.every(c=>c.kind==="card"));
+    assert.equal(new Set(cards.map(c=>c.def.id)).size,3,"no duplicate cards in one draft");
+    counts[cards[0].def.id]++;
+  }
+  const normal=counts.volleyShot;
+  for(const [id,lo,hi] of [["flameBullet",.42,.58],["explosionBoost",.19,.31],["shotgunEvolution",.14,.26],["penetrationBoost",.065,.135]]){
+    const ratio=counts[id]/normal;
+    assert.ok(ratio>lo&&ratio<hi,id+" relative frequency "+ratio+", counts "+JSON.stringify(counts));
+  }
+});
+
+test("Extra offers are random after three pips, and rerolls do not pin an Extra", () => {
+  const {game:h,element}=harness(undefined,1771);h.startBattle();
+  const u=h.B.soldier;u.pips=3;
+  let extraDrafts=0;
+  for(let i=0;i<300;i++){
+    const cards=h.genCards();
+    assert.ok(cards.every(c=>!c.forced));
+    if(cards.some(c=>c.kind==="card"&&c.def.rare))extraDrafts++;
+  }
+  assert.ok(extraDrafts>0&&extraDrafts<100,"Extras must appear, but rarely: "+extraDrafts+"/300");
+  h.TURRETS.forEach(cfg=>h.B.usedTypes[cfg.id]=1);
+  ["boost","healm","regenm","jam"].forEach(id=>h.B.modulesUsed[id]=1);
+  const rare=h.cardById("soldier","shotgunEvolution");
+  h.curCards=[{kind:"card",u,def:rare}];h.B.reroll=true;h.Math.random=()=>0;
+  element("btn-reroll").listeners.click[0]();
+  assert.equal(h.B.reroll,false);
+  assert.equal(h.curCards.length,3);
+  assert.ok(h.curCards.every(c=>c.kind==="card"&&!c.def.rare),"reroll samples the pool afresh");
+  h.CARDS.filter(d=>d.unit==="soldier"&&!d.rare&&d.lvl===1&&d.rd<=1).forEach(d=>u.cards[d.id]=1);
+  assert.ok(h.genCards().some(c=>c.kind==="card"&&c.def.rare),"exhausting normal cards must not block evolution");
+});
+
+test("Fortress modules and combos remain offerable with lower bonus weight", () => {
+  const {game:h}=harness(undefined,5567);h.startBattle();
+  h.TURRETS.forEach(cfg=>h.B.usedTypes[cfg.id]=1);
+  for(const id of Object.keys(h.META.levels))h.META.levels[id]=45;
+  const laser=h.mkUnit(h.TURRETS.find(c=>c.id==="laser"),h.TURRET_X[0],0,false);
+  const tesla=h.mkUnit(h.TURRETS.find(c=>c.id==="tesla"),h.TURRET_X[1],1,false);
+  h.B.turrets=[laser,tesla];
+  h.allFighters().forEach(u=>h.CARDS.filter(d=>d.unit===u.cfg.id).forEach(d=>u.cards[d.id]=1));
+  const normal=h.cardById("laser","laserAmplification");laser.cards[normal.id]=0;
+  ["healm","regenm","jam"].forEach(id=>h.B.modulesUsed[id]=1);
+  const counts={card:0,combo:0,module:0};
+  for(let i=0;i<2000;i++)counts[h.genCards()[0].kind]++;
+  assert.ok(counts.card>1400,"normal unit cards should dominate bonus offers: "+JSON.stringify(counts));
+  assert.ok(counts.combo>50&&counts.combo<350);
+  assert.ok(counts.module>50&&counts.module<350);
+});
+
+/* ---------- bounded laser visuals / tick-only hit scans ---------- */
+test("A laser channel reuses one visual per ray at 60 and 120 Hz without changing its damage ticks", () => {
+  for (const fps of [60, 120]) {
+    const {game:h}=harness();h.startBattle();
+    const t=h.mkUnit(h.TURRETS.find(x=>x.id==="laser"),52,0,false);t.cd=0;t.laserDurationMul=100;
+    h.B.turrets=[t];const e=sampleEnemy(h,340);e.x=52;e.hp=e.maxHp=1e9;h.B.enemies=[e];
+    let hits=0,damage=0,scans=0,maxVisuals=0,first=null;
+    h.dealDamage=(src,target,dmg)=>{hits++;damage+=dmg;return dmg;};
+    const rayHits=h.rayHits;h.rayHits=function(){scans++;return rayHits.apply(h,arguments);};
+    for(let i=0;i<fps*2;i++){
+      h.B.t+=1/fps;h.fireLaser(t,1/fps);
+      if(!first)first=h.B.beams[0];
+      assert.equal(h.B.beams[0],first,"continuous ray identity must stay stable");
+      h.B.beams=h.B.beams.filter(b=>{b.t+=1/fps;return b.t<b.life;});
+      maxVisuals=Math.max(maxVisuals,h.B.beams.length);
+    }
+    assert.equal(maxVisuals,1,"refresh must replace overlapping per-frame copies");
+    assert.equal(hits,17);assert.equal(damage,17*t.cfg.damage,"the original 0.12s tick cadence is preserved");
+    assert.equal(scans,17,"a visual-only frame must not scan every enemy");
+    h.B.beams.forEach(b=>{b.t+=.1;});h.B.beams=h.B.beams.filter(b=>b.t<b.life);
+    assert.equal(h.B.beams.length,0,"a released ray must fade and expire");
+    h.fireLaser(t,1/fps);assert.equal(h.B.beams.length,1,"an expired cached ray must be recreated");
+    h.B.beams=[];h.fireLaser(t,1/fps);assert.equal(h.B.beams.length,1,"cleared effects cannot leave a stale invisible channel");
+  }
+});
+
+test("Upgraded laser visuals are frame-rate independent and keep every origin on the turret", () => {
+  const counts=[];
+  for(const fps of [60,120]){
+    const {game:h}=harness();h.startBattle();const t=h.mkUnit(h.TURRETS.find(x=>x.id==="laser"),52,0,false);
+    Object.assign(t,{cd:0,laserDurationMul:100,laserDeflect:4,laserSweep:2,refract:true,reflect:3,deflectReflect:2,beamSplit:true});
+    h.B.turrets=[t];
+    for(let i=0;i<120;i++){const e=sampleEnemy(h,100+Math.floor(i/10)*47);e.x=15+(i%10)*42;e.hp=e.maxHp=1e9;h.B.enemies.push(e);}
+    h.dealDamage=()=>0;let max=0;
+    for(let i=0;i<fps*2;i++){
+      h.B.t+=1/fps;h.fireLaser(t,1/fps);
+      assert.ok(h.B.beams.every(b=>b.x1===t.x&&b.y1===t.y-14),"forks, reflections and sweeps must start at the turret");
+      h.B.beams=h.B.beams.filter(b=>{b.t+=1/fps;return b.t<b.life;});max=Math.max(max,h.B.beams.length);
+    }
+    assert.ok(max<=24,"upgrades need ray slots, not per-frame copies: "+max);counts.push(max);
+  }
+  assert.ok(Math.abs(counts[0]-counts[1])<=2,"high refresh rate cannot multiply ray count: "+counts);
+});
+
+test("Laser ray rendering adds no shadowBlur passes", () => {
+  const {game:h}=harness();h.startBattle();
+  const ctx=h.ctx;let blurs=0;
+  h.ctx=new Proxy(ctx,{set(target,key,value){if(key==="shadowBlur"&&value>0)blurs++;target[key]=value;return true;}});
+  h.draw();const baseline=blurs;blurs=0;
+  for(let i=0;i<10;i++)h.B.beams.push({x1:52,y1:706,x2:20+i*35,y2:20,w:3+i,color:"#4ade80",t:0,life:.09,laser:true});
+  h.draw();assert.equal(blurs,baseline,"long laser rays must use gradient glows, not framebuffer blur");
+});
+
+test("Laser reflections preserve the strict radius boundary and stable equal-distance order", () => {
+  const {game:h}=harness();h.startBattle();
+  const t=h.mkUnit(h.TURRETS.find(x=>x.id==="laser"),210,0,false);t.cd=0;t.reflect=1;h.B.turrets=[t];
+  const main=sampleEnemy(h,400),left=sampleEnemy(h,400),right=sampleEnemy(h,400);
+  main.x=210;left.x=40;right.x=380;[main,left,right].forEach(e=>{e.hp=e.maxHp=1e9;});
+  h.B.enemies=[main,left,right];const got=[];h.dealDamage=(src,e,dmg)=>{got.push(e);return dmg;};
+  h.fireLaser(t,.01);assert.deepEqual(got,[main],"original reflections exclude a target exactly 170px away");
+  left.x=40.01;right.x=379.99;t.laserTickT=0;got.length=0;
+  h.fireLaser(t,.01);assert.deepEqual(got,[main,left],"equal-distance ties keep enemy order");
+});
+
+test("Every weapon with its full card set deals damage without competition from other weapons", () => {
+  for (const cfg of g.allUnitsCfg()) {
+    const {game:h}=harness(undefined,935);
+    for (const id of Object.keys(h.META.levels)) h.META.levels[id]=45;
+    mechBattle(h,cfg.id==="soldier"?[]:[cfg.id]);
+    const u=cfg.id==="soldier"?h.B.soldier:h.B.turrets[0];
+    u.cd=0;u.runLv=3;u.rangeMul=5;
+    h.CARDS.filter(d=>d.unit===cfg.id).forEach(d=>h.applyCardDef(d,u));h.maybeSuperMode(u);
+    h.B.enemies=[still(h,u.x,470,1e9),still(h,u.x+12,465,1e9)];
+    for(let i=0;i<200;i++)h.update(.05);
+    assert.ok(u.totalDmg>0,cfg.id+" must be able to damage a target with all its cards");
+  }
+});
+
+test("Stage preview shares exact wave totals and themed roster with spawning", () => {
+  const {game:h,element}=harness();h.META.unlocked=12;
+  for(let stage=1;stage<=12;stage++)for(const elite of [false,true]){
+    h.META.selStage=stage;h.META.elite=elite;h.renderHome();h.openStageInfo();
+    const total=h.waveEnemyTotal(h.STAGES[stage-1],1,elite);
+    assert.ok(element("stage-metrics").innerHTML.includes('<b>'+total+'</b> in wave 1'));
+    assert.ok(element("stage-info-body").innerHTML.includes(h.STAGE_ECOLOGY[stage-1].name));
+    h.B=h.newBattle(h.STAGES[stage-1]);h.B.elite=elite;h.startWave(1);assert.equal(h.B.waveTotal,total);
+  }
+});
+
+/* Enemy ecology, stationary attackers, ammunition and wave completion. */
+function enemyDefenseScene(h){
+  h.META.energy=30;h.startBattle();h.B.waveState="fighting";h.B.wave=1;h.B.waveQueue=1;h.B.spawnT=1e9;
+  h.B.draftNeed=1e9;h.B.soldier.cd=1e9;h.B.soldier.extraProj=0;
+}
+
+test("Only geological bodies can breach: every insect and the boss holds its firing station", () => {
+  const {game:h}=harness();
+  assert.equal(h.ENEMIES.length,15);
+  for(const cfg of h.ENEMIES){
+    enemyDefenseScene(h);h.spawnEnemy(cfg.id,{x:210,y:h.BASEY-1});
+    const e=h.B.enemies[0];e.hp=e.maxHp=1e6;e.attackCd=999;
+    const meteor=["meteor","fast","armored","charger"].includes(cfg.id);
+    assert.equal(h.isMeteorEnemy(e),meteor,cfg.id);
+    h.update(.05);
+    if(meteor){assert.equal(h.B.leaks,1,cfg.id+" must impact");assert.ok(h.B.baseHp<h.B.baseMax);}
+    else {assert.equal(h.B.leaks,0,cfg.id+" must not impact");assert.equal(h.B.baseHp,h.B.baseMax);assert.ok(h.B.enemies.includes(e));}
+  }
+});
+
+test("Every insect caste approaches a varied stand-off distance and fires telegraphed ammunition", () => {
+  const {game:h}=harness();
+  for(const cfg of h.ENEMIES.filter(x=>!["meteor","fast","armored","charger"].includes(x.id))){
+    enemyDefenseScene(h);h.spawnEnemy(cfg.id,{x:210});
+    const e=h.B.enemies[0],p=h.enemyAttackProfile(e);e.hp=e.maxHp=1e9;
+    assert.ok(h.BASEY-e.standY>=p.dist[0]-1e-6&&h.BASEY-e.standY<=p.dist[1]+1e-6,cfg.id+" station bounds");
+    let sawCharge=false;
+    for(let i=0;i<900;i++){h.update(.05);if(e.attackState==="charge")sawCharge=true;}
+    assert.ok(sawCharge,cfg.id+" never showed a windup");
+    assert.ok(h.B.enemyShotsFired>0,cfg.id+" never fired");
+    assert.ok(h.B.enemyShotHits>0&&h.B.enemyShotDamage>0,cfg.id+" cannot threaten the fortress");
+    assert.equal(h.B.leaks,0,cfg.id+" should deal ranged damage, not collision damage");
+    assert.ok(Math.abs(e.y-e.standY)<1,cfg.id+" did not stop at its station");
+  }
+  const stations=[];
+  for(let i=0;i<8;i++){enemyDefenseScene(h);h.spawnEnemy("spitter",{x:40+i*40});stations.push(h.B.enemies[0].standY);}
+  assert.ok(Math.max(...stations)-Math.min(...stations)>20,"individual firing distances must vary");
+});
+
+test("Windup locks its impact point; stuns and displacement interrupt it and slowing delays it", () => {
+  const {game:h}=harness();enemyDefenseScene(h);h.spawnEnemy("spitter",{x:160});
+  const e=h.B.enemies[0],p=h.enemyAttackProfile(e);e.y=e.standY;e.attackCd=0;
+  h.stepEnemyAttack(e,.01);assert.equal(e.attackState,"charge");
+  const aim=e.attackAimX;e.x+=30;h.stepEnemyAttack(e,p.windup+.01);
+  assert.equal(h.B.enemyShots[0].aimX,aim,"fired shot must match the advertised target");
+  h.B.enemyShots=[];e.attackState="charge";e.attackCharge=0;e.slowFactor=.5;
+  h.stepEnemyAttack(e,p.windup);assert.equal(h.B.enemyShots.length,0,"slow must delay windup");
+  e.paralyzeT=1;h.stepEnemyAttack(e,.1);assert.equal(e.attackState,"stunned");assert.equal(e.attackCharge,0);
+  e.paralyzeT=0;e.y=e.standY-80;h.stepEnemyAttack(e,.1);assert.equal(e.attackState,"approach");
+});
+
+test("Player ammunition intercepts hostile shots without awarding kills, points or healing", () => {
+  const {game:h}=harness();enemyDefenseScene(h);h.B.baseHp=500;
+  h.B.enemyShots=[{x:210,y:550,vx:0,vy:140,r:5,hp:5,damage:20,kind:"spit",color:"#aabbcc",life:5,dead:false}];
+  h.B.projs=[{x:210,y:590,vx:0,vy:-600,src:h.B.soldier,dmg:12,life:2,pierce:0,hitSet:[],tgt:null}];
+  h.update(.1);
+  assert.equal(h.B.enemyShots.length,0);assert.equal(h.B.enemyShotsIntercepted,1);
+  assert.equal(h.B.baseHp,500);assert.equal(h.B.kills,0);assert.equal(h.B.scoreTotal,0);assert.equal(h.B.totalHealed,0);
+});
+
+test("Hostile ammunition is bounded, expires, and remains dangerous after the shooter dies", () => {
+  const {game:h}=harness();enemyDefenseScene(h);h.spawnEnemy("moth",{x:210});
+  const e=h.B.enemies[0],p=h.enemyAttackProfile(e);e.y=e.standY;e.attackAimX=210;e.attackAimY=h.BASEY-16;
+  for(let i=0;i<100;i++)h.fireEnemyVolley(e,p);
+  assert.equal(h.B.enemyShots.length,h.ENEMY_SHOT_CAP);
+  h.B.enemyShots=[{x:210,y:400,vx:0,vy:140,r:5,hp:5,damage:20,kind:"spit",color:"#aabbcc",life:.01,dead:false}];
+  h.stepEnemyShots(.05);assert.equal(h.B.enemyShots.length,0);
+  h.B.enemyShots=[{x:210,y:h.BASEY-17,vx:0,vy:140,r:5,hp:5,damage:20,kind:"spit",color:"#aabbcc",life:2,dead:false,source:e}];
+  e.dead=true;const hp=h.B.baseHp;h.stepEnemyShots(.05);
+  assert.equal(h.B.baseHp,hp-20);assert.equal(h.B.enemyShotHits,1);
+});
+
+test("Waves wait for hostile ammunition, then advance without a stranded projectile", () => {
+  const {game:h}=harness();enemyDefenseScene(h);h.B.waveQueue=0;
+  h.B.enemyShots=[{x:210,y:300,vx:0,vy:100,r:5,hp:5,damage:20,kind:"spit",color:"#aabbcc",life:2,dead:false}];
+  h.update(.05);assert.equal(h.B.wave,1,"outstanding shots must prevent a premature clear");
+  h.B.enemyShots[0].life=.01;h.update(.05);assert.equal(h.B.wave,2,"expired shots must not strand the wave");
+});
+
+test("Campaign ecologies retain their themed roster in every random formation", () => {
+  const {game:h}=harness();const compositions=[];
+  assert.equal(h.STAGE_ECOLOGY.length,12);
+  for(const stage of h.STAGES){
+    enemyDefenseScene(h);h.B.stage=stage;h.startWave(12);
+    const allowed=new Set(h.waveEnemyPool().map(x=>x[0]));
+    compositions.push([...allowed].sort().join(","));
+    for(let i=0;i<30;i++){
+      h.B.enemies=[];h.B.waveQueue=1000;h.spawnWaveGroup();
+      h.B.enemies.forEach(e=>assert.ok(allowed.has(e.cfg.id),stage.n+" leaked "+e.cfg.id));
+    }
+  }
+  assert.ok(new Set(compositions).size>=10,"campaign sectors should have distinct ecologies");
+  enemyDefenseScene(h);h.startWave(1);assert.equal(h.wavePickKind(),"meteor");
+  h.spawnEnemy("meteor");assert.equal(h.wavePickKind(),"meteor");
+  assert.equal(h.ENEMIES.find(e=>e.id==="meteor").xp,1);
+});
+
+test("External insect displacement cannot leave a firing creature inside the bunker", () => {
+  const {game:h}=harness();enemyDefenseScene(h);h.spawnEnemy("spitter",{x:210});
+  const e=h.B.enemies[0];e.y=h.BASEY-1;
+  h.stepMove(e,.05);
+  assert.ok(e.y<=h.BASEY-60,"legacy spawn/Gravity overshoot needs deck clearance");
+  assert.equal(h.B.maxUpwardOwn,0,"external correction must not count as autonomous upward flight");
+  const meteor=h.B.enemies.find(x=>h.isMeteorEnemy(x));
+  assert.equal(meteor,undefined);
+});
+
+test("Late campaign reconnaissance ramps density without changing Stage 1 or leaking heavy castes", () => {
+  const {game:h}=harness();
+  for(const stage of h.STAGES)for(const elite of [false,true]){
+    for(let wave=1;wave<=4;wave++){
+      const opening=h.campaignOpening(stage,wave),pool=h.waveEnemyPool(stage,wave,elite,{});
+      const full=h.BALANCE.waveStart+Math.round(wave*h.BALANCE.waveGrowth)+(stage.n-1)*6+(elite?Math.ceil(h.BALANCE.eliteWaveBase+wave*h.BALANCE.eliteWaveGrowth):0);
+      if(stage.n<4){assert.equal(opening.spawn,1);assert.equal(opening.bonus,1);assert.equal(h.waveEnemyTotal(stage,wave,elite),full);}
+      if(wave===4){assert.equal(opening.spawn,1);assert.equal(h.waveEnemyTotal(stage,wave,elite),full,"full pressure returns by wave4");}
+      if(stage.n>=4&&wave===1){
+        assert.ok(opening.recon);assert.ok(opening.spawn>1);
+        if(elite)assert.ok(h.campaignOpening(stage,wave,true).spawn>opening.spawn,"Elite scouting starts slower but retains its stat pressure");
+        assert.ok(pool.every(entry=>["meteor","fast"].includes(entry[0])),"opening wave needs visible light scouts");
+        assert.ok(h.waveEnemyTotal(stage,wave,elite)<full);
+      }
+      assert.ok(pool.length>0,"a stage must always have a spawnable caste");
+    }
+  }
 });
 
 console.log("\n" + tests.length + " smoke tests passed.");

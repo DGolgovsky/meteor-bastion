@@ -98,8 +98,8 @@ function bindTop(){ /* Debug top-up buttons are deliberately removed from releas
 function bindTops(){bindTop($("home-cur"));bindTop($("tur-cur"));}
 var INTEL=[
  "Intel: meteors are weak to physical damage and resist fire; armored ones barely take physical damage, so hit them with electricity.",
- "Intel: flyers are vulnerable to electricity; from wave 5 come golem mothers (they split on death), from wave 6 regeneration stars (they heal their neighbors).",
- "Intel: elites resist energy but are weak to force fields; the boss resists fire and physical damage."
+ "Intel: insects stop above the fortress and charge ranged attacks. Shoot down their ammunition or interrupt the shooter with control effects.",
+ "Intel: each stage has its own hive castes. Needle Wasps fire from afar; Shell Beetles approach close. Only meteors hit the deck."
 ];
 function patrolAccrued(){var h=(Date.now()-META.lastPatrol)/3600000;return Math.floor(Math.min(8,h)*25*(1+META.unlocked*0.5));}
 function renderHome(){
@@ -117,9 +117,9 @@ function renderHome(){
  $("scene-stage-num").textContent=("0"+stage.n).slice(-2)+" / "+("0"+STAGES.length).slice(-2);
  var clearMap=elite?META.eliteCleared:META.normalCleared;
  $("scene-stage-status").textContent=clearMap[stage.n]?"✓ CLEARED":elite?"⚠ ELITE THREAT":"STAGE AVAILABLE";
- $("stage-brief").textContent=elite?"Elite enemies • reinforced waves":stage.desc;
+ $("stage-brief").textContent=(elite?"Elite · ":"")+stage.desc;
  $("stage-risk").textContent=elite?"ELITE ×"+BALANCE.eliteHp+" HP":"NORMAL";
- var waveCount=BALANCE.waveStart+Math.round(BALANCE.waveGrowth*1)+(stage.n-1)*2+(elite?Math.ceil(BALANCE.eliteWaveBase+BALANCE.eliteWaveGrowth):0);
+ var waveCount=waveEnemyTotal(stage,1,elite);
  $("stage-metrics").innerHTML='<span class="hq-metric">⚔ <b>'+stageWaves(stage)+'</b> waves</span>'+
  '<span class="hq-metric">▣ <b>'+waveCount+'</b> in wave 1</span>'+
  '<span class="hq-metric">✦ <b>'+(elite?"×1.6":"×1.0")+'</b> rewards</span>';
@@ -147,10 +147,16 @@ function openStageInfo(){
  var st=STAGES[META.selStage-1],mode=META.elite?"Elite":"Normal",clear=META.elite?META.eliteCleared:META.normalCleared;
  $("stage-info-title").textContent=mode+" Stage "+st.n;
  $("stage-info-sub").textContent=st.desc;
- $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>WAVES</span><b>'+stageWaves(st)+' · BOSS</b>The enemy attacks the fortress from above</div>'+
+ var roster=[],seen={};
+ for(var wave=1;wave<=stageWaves(st);wave++)waveEnemyPool(st,wave,META.elite,{}).forEach(function(entry){
+  if(seen[entry[0]])return;seen[entry[0]]=1;
+  var cfg=ENEMIES.find(function(e){return e.id===entry[0];});roster.push(cfg.name+' · W'+wave);
+ });
+ $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>WAVES</span><b>'+stageWaves(st)+' · BOSS</b>Meteor impacts + insect artillery</div>'+
  '<div class="hq-stage-info-cell"><span>MODE</span><b>'+mode.toUpperCase()+'</b>'+(META.elite?"Champions that speed up their allies":"Standard wave compositions")+'</div>'+
  '<div class="hq-stage-info-cell"><span>STATUS</span><b>'+(clear[st.n]?"CLEARED":"NOT CLEARED")+'</b>Saved on this device</div>'+
- '<div class="hq-stage-info-cell"><span>REWARDS</span><b>'+(META.elite?"×1.6":"×1")+'</b>On victory or defeat</div>';
+ '<div class="hq-stage-info-cell"><span>REWARDS</span><b>'+(META.elite?"×1.6":"×1")+'</b>On victory or defeat</div>'+
+ '<div class="hq-stage-info-cell" style="grid-column:1/-1"><span>ENEMY CASTES</span><b>'+STAGE_ECOLOGY[st.n-1].name+'</b>'+roster.join(' / ')+'</div>';
  $("ov-stage-info").classList.add("on");
 }
 $("btn-stage-chest").addEventListener("click",openStageInfo);

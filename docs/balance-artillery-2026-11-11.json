@@ -1,0 +1,1531 @@
+{
+  "source_base": "9250c86a2c1b2d2a308f485c0629d4e9fbe9c2cf",
+  "snapshot": "artillery, decreasing card offer rarity, recon and Elite HP 1.4; 2026-11-11",
+  "protocol": {
+    "dt": 0.05,
+    "maxSeconds": 2400,
+    "introSkipped": true,
+    "guardianMoved": false,
+    "rerollUsed": false,
+    "note": "Fixed seeded probes, not human win-rate estimates. All wins require an actually killed boss and no live hostile ammunition. Unchanged Normal rows retain recon verification results."
+  },
+  "balance": {
+    "enemyHpMul": 0.85,
+    "waveHpGrowth": 0.13,
+    "turretBasePower": 1.6,
+    "eliteHp": 1.4,
+    "eliteSpeed": 1.1,
+    "eliteContact": 1.18,
+    "eliteChampionHp": 1.37,
+    "eliteChampionContact": 1.14,
+    "eliteBossHp": 1.32
+  },
+  "opening": {
+    "startStage": 4,
+    "bonusRamp": [
+      0,
+      0.35,
+      0.7,
+      1
+    ],
+    "spawnRamp": [
+      1.7,
+      0.9,
+      0.3,
+      0
+    ],
+    "eliteCadence": 1.5
+  },
+  "profiles": [
+    {
+      "profile": "Stage 1 Normal fresh",
+      "policy": "smart",
+      "stage": 1,
+      "rd": 1,
+      "elite": false,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "smart",
+        "firstVictory": 3,
+        "wins": 6,
+        "attempts": 12,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 1,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": 829.3,
+        "meanHp20": 999.7,
+        "meanLeaks": 22.4,
+        "meanMeteorDamage": 1163.4,
+        "meanRangedDamage": 132.8,
+        "meanHealed": 756,
+        "meanElapsed": 298.8,
+        "meanDrafts": 19.5,
+        "meanExtras": 1.8,
+        "meanFirstShotAt": 92,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 16.8,
+            "peakAlive": 29.3,
+            "meanVisible": 14.4,
+            "peakVisible": 27.1
+          },
+          {
+            "wave": 10,
+            "meanAlive": 31.7,
+            "peakAlive": 60,
+            "meanVisible": 27,
+            "peakVisible": 53.7
+          },
+          {
+            "wave": 20,
+            "meanAlive": 30,
+            "peakAlive": 53.8,
+            "meanVisible": 23.8,
+            "peakVisible": 46.5
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": false,
+          "bossKilled": false,
+          "wave": 11,
+          "hp": 0,
+          "elapsed": 217,
+          "leaks": 28,
+          "meteorDamage": 1787,
+          "rangedDamage": 162,
+          "rangedHits": 21,
+          "shotsFired": 29,
+          "shotsBlocked": 7,
+          "firstShotWave": 7,
+          "healed": 916,
+          "drafts": 16
+        },
+        {
+          "seed": 777,
+          "win": false,
+          "bossKilled": false,
+          "wave": 9,
+          "hp": 0,
+          "elapsed": 166,
+          "leaks": 23,
+          "meteorDamage": 1497,
+          "rangedDamage": 106,
+          "rangedHits": 15,
+          "shotsFired": 18,
+          "shotsBlocked": 3,
+          "firstShotWave": 5,
+          "healed": 551,
+          "drafts": 14
+        },
+        {
+          "seed": 42,
+          "win": true,
+          "bossKilled": true,
+          "wave": 20,
+          "hp": 998,
+          "elapsed": 459,
+          "leaks": 47,
+          "meteorDamage": 1771,
+          "rangedDamage": 492,
+          "rangedHits": 59,
+          "shotsFired": 79,
+          "shotsBlocked": 20,
+          "firstShotWave": 7,
+          "healed": 2261,
+          "drafts": 26
+        },
+        {
+          "seed": 1234,
+          "win": true,
+          "bossKilled": true,
+          "wave": 20,
+          "hp": 1000,
+          "elapsed": 432,
+          "leaks": 13,
+          "meteorDamage": 616,
+          "rangedDamage": 101,
+          "rangedHits": 12,
+          "shotsFired": 17,
+          "shotsBlocked": 5,
+          "firstShotWave": 5,
+          "healed": 716,
+          "drafts": 26
+        },
+        {
+          "seed": 9999,
+          "win": true,
+          "bossKilled": true,
+          "wave": 20,
+          "hp": 1000,
+          "elapsed": 442,
+          "leaks": 4,
+          "meteorDamage": 112,
+          "rangedDamage": 42,
+          "rangedHits": 5,
+          "shotsFired": 6,
+          "shotsBlocked": 1,
+          "firstShotWave": 8,
+          "healed": 154,
+          "drafts": 26
+        },
+        {
+          "seed": 2026,
+          "win": true,
+          "bossKilled": true,
+          "wave": 20,
+          "hp": 1000,
+          "elapsed": 478,
+          "leaks": 50,
+          "meteorDamage": 2413,
+          "rangedDamage": 347,
+          "rangedHits": 42,
+          "shotsFired": 65,
+          "shotsBlocked": 23,
+          "firstShotWave": 5,
+          "healed": 2760,
+          "drafts": 26
+        },
+        {
+          "seed": 555,
+          "win": false,
+          "bossKilled": false,
+          "wave": 7,
+          "hp": 0,
+          "elapsed": 114,
+          "leaks": 20,
+          "meteorDamage": 1160,
+          "rangedDamage": 64,
+          "rangedHits": 9,
+          "shotsFired": 10,
+          "shotsBlocked": 1,
+          "firstShotWave": 6,
+          "healed": 154,
+          "drafts": 11
+        },
+        {
+          "seed": 8888,
+          "win": false,
+          "bossKilled": false,
+          "wave": 9,
+          "hp": 0,
+          "elapsed": 171,
+          "leaks": 27,
+          "meteorDamage": 1857,
+          "rangedDamage": 99,
+          "rangedHits": 13,
+          "shotsFired": 22,
+          "shotsBlocked": 8,
+          "firstShotWave": 6,
+          "healed": 652,
+          "drafts": 14
+        },
+        {
+          "seed": 31415,
+          "win": true,
+          "bossKilled": true,
+          "wave": 20,
+          "hp": 1000,
+          "elapsed": 422,
+          "leaks": 0,
+          "meteorDamage": 0,
+          "rangedDamage": 9,
+          "rangedHits": 1,
+          "shotsFired": 3,
+          "shotsBlocked": 2,
+          "firstShotWave": 8,
+          "healed": 9,
+          "drafts": 26
+        },
+        {
+          "seed": 2718,
+          "win": true,
+          "bossKilled": true,
+          "wave": 20,
+          "hp": 1000,
+          "elapsed": 439,
+          "leaks": 4,
+          "meteorDamage": 263,
+          "rangedDamage": 129,
+          "rangedHits": 16,
+          "shotsFired": 25,
+          "shotsBlocked": 9,
+          "firstShotWave": 8,
+          "healed": 392,
+          "drafts": 26
+        },
+        {
+          "seed": 1618,
+          "win": false,
+          "bossKilled": false,
+          "wave": 6,
+          "hp": 0,
+          "elapsed": 104,
+          "leaks": 30,
+          "meteorDamage": 1189,
+          "rangedDamage": 21,
+          "rangedHits": 3,
+          "shotsFired": 7,
+          "shotsBlocked": 4,
+          "firstShotWave": 3,
+          "healed": 195,
+          "drafts": 10
+        },
+        {
+          "seed": 4242,
+          "win": false,
+          "bossKilled": false,
+          "wave": 8,
+          "hp": 0,
+          "elapsed": 141,
+          "leaks": 23,
+          "meteorDamage": 1296,
+          "rangedDamage": 21,
+          "rangedHits": 3,
+          "shotsFired": 3,
+          "shotsBlocked": 0,
+          "firstShotWave": 6,
+          "healed": 312,
+          "drafts": 13
+        }
+      ]
+    },
+    {
+      "profile": "Stage 1 Normal first-card",
+      "policy": "first",
+      "stage": 1,
+      "rd": 1,
+      "elite": false,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "first",
+        "firstVictory": 9,
+        "wins": 1,
+        "attempts": 12,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 0,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": 1000,
+        "meanHp20": 1000,
+        "meanLeaks": 27.5,
+        "meanMeteorDamage": 1240.2,
+        "meanRangedDamage": 37.8,
+        "meanHealed": 339.7,
+        "meanElapsed": 133.6,
+        "meanDrafts": 12.1,
+        "meanExtras": 0.3,
+        "meanFirstShotAt": 72.3,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 18,
+            "peakAlive": 30.2,
+            "meanVisible": 15.9,
+            "peakVisible": 28.8
+          },
+          {
+            "wave": 10,
+            "meanAlive": 22.3,
+            "peakAlive": 42,
+            "meanVisible": 17.6,
+            "peakVisible": 35
+          },
+          {
+            "wave": 20,
+            "meanAlive": 31.6,
+            "peakAlive": 50,
+            "meanVisible": 24.8,
+            "peakVisible": 41
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": false,
+          "bossKilled": false,
+          "wave": 6,
+          "hp": 0,
+          "elapsed": 95,
+          "leaks": 16,
+          "meteorDamage": 1197,
+          "rangedDamage": 0,
+          "rangedHits": 0,
+          "shotsFired": 0,
+          "shotsBlocked": 0,
+          "firstShotWave": null,
+          "healed": 176,
+          "drafts": 11
+        },
+        {
+          "seed": 777,
+          "win": false,
+          "bossKilled": false,
+          "wave": 6,
+          "hp": 0,
+          "elapsed": 99,
+          "leaks": 21,
+          "meteorDamage": 1092,
+          "rangedDamage": 35,
+          "rangedHits": 5,
+          "shotsFired": 6,
+          "shotsBlocked": 1,
+          "firstShotWave": 5,
+          "healed": 124,
+          "drafts": 10
+        },
+        {
+          "seed": 42,
+          "win": false,
+          "bossKilled": false,
+          "wave": 6,
+          "hp": 0,
+          "elapsed": 95,
+          "leaks": 30,
+          "meteorDamage": 1504,
+          "rangedDamage": 21,
+          "rangedHits": 3,
+          "shotsFired": 5,
+          "shotsBlocked": 2,
+          "firstShotWave": 5,
+          "healed": 506,
+          "drafts": 10
+        },
+        {
+          "seed": 1234,
+          "win": false,
+          "bossKilled": false,
+          "wave": 8,
+          "hp": 0,
+          "elapsed": 156,
+          "leaks": 35,
+          "meteorDamage": 1595,
+          "rangedDamage": 82,
+          "rangedHits": 11,
+          "shotsFired": 11,
+          "shotsBlocked": 0,
+          "firstShotWave": 6,
+          "healed": 676,
+          "drafts": 13
+        },
+        {
+          "seed": 9999,
+          "win": false,
+          "bossKilled": false,
+          "wave": 6,
+          "hp": 0,
+          "elapsed": 98,
+          "leaks": 46,
+          "meteorDamage": 1452,
+          "rangedDamage": 42,
+          "rangedHits": 6,
+          "shotsFired": 7,
+          "shotsBlocked": 0,
+          "firstShotWave": 5,
+          "healed": 490,
+          "drafts": 10
+        },
+        {
+          "seed": 2026,
+          "win": false,
+          "bossKilled": false,
+          "wave": 6,
+          "hp": 0,
+          "elapsed": 99,
+          "leaks": 19,
+          "meteorDamage": 1136,
+          "rangedDamage": 42,
+          "rangedHits": 6,
+          "shotsFired": 8,
+          "shotsBlocked": 2,
+          "firstShotWave": 5,
+          "healed": 138,
+          "drafts": 11
+        },
+        {
+          "seed": 555,
+          "win": false,
+          "bossKilled": false,
+          "wave": 8,
+          "hp": 0,
+          "elapsed": 125,
+          "leaks": 23,
+          "meteorDamage": 1197,
+          "rangedDamage": 54,
+          "rangedHits": 7,
+          "shotsFired": 9,
+          "shotsBlocked": 1,
+          "firstShotWave": 5,
+          "healed": 182,
+          "drafts": 13
+        },
+        {
+          "seed": 8888,
+          "win": false,
+          "bossKilled": false,
+          "wave": 6,
+          "hp": 0,
+          "elapsed": 99,
+          "leaks": 30,
+          "meteorDamage": 1446,
+          "rangedDamage": 14,
+          "rangedHits": 2,
+          "shotsFired": 2,
+          "shotsBlocked": 0,
+          "firstShotWave": 4,
+          "healed": 452,
+          "drafts": 10
+        },
+        {
+          "seed": 31415,
+          "win": true,
+          "bossKilled": true,
+          "wave": 20,
+          "hp": 1000,
+          "elapsed": 424,
+          "leaks": 1,
+          "meteorDamage": 27,
+          "rangedDamage": 0,
+          "rangedHits": 0,
+          "shotsFired": 1,
+          "shotsBlocked": 1,
+          "firstShotWave": 6,
+          "healed": 27,
+          "drafts": 26
+        },
+        {
+          "seed": 2718,
+          "win": false,
+          "bossKilled": false,
+          "wave": 5,
+          "hp": 0,
+          "elapsed": 86,
+          "leaks": 33,
+          "meteorDamage": 1442,
+          "rangedDamage": 7,
+          "rangedHits": 1,
+          "shotsFired": 1,
+          "shotsBlocked": 0,
+          "firstShotWave": 3,
+          "healed": 386,
+          "drafts": 9
+        },
+        {
+          "seed": 1618,
+          "win": false,
+          "bossKilled": false,
+          "wave": 8,
+          "hp": 0,
+          "elapsed": 140,
+          "leaks": 50,
+          "meteorDamage": 1560,
+          "rangedDamage": 150,
+          "rangedHits": 20,
+          "shotsFired": 22,
+          "shotsBlocked": 2,
+          "firstShotWave": 5,
+          "healed": 701,
+          "drafts": 13
+        },
+        {
+          "seed": 4242,
+          "win": false,
+          "bossKilled": false,
+          "wave": 5,
+          "hp": 0,
+          "elapsed": 87,
+          "leaks": 26,
+          "meteorDamage": 1234,
+          "rangedDamage": 7,
+          "rangedHits": 1,
+          "shotsFired": 2,
+          "shotsBlocked": 1,
+          "firstShotWave": 4,
+          "healed": 218,
+          "drafts": 9
+        }
+      ]
+    },
+    {
+      "profile": "stage1-elite",
+      "policy": "smart",
+      "stage": 1,
+      "rd": 1,
+      "elite": true,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "smart",
+        "firstVictory": null,
+        "wins": 0,
+        "attempts": 3,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 0,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": null,
+        "meanHp20": null,
+        "meanLeaks": 34,
+        "meanMeteorDamage": 1298,
+        "meanRangedDamage": 48.3,
+        "meanHealed": 248.7,
+        "meanElapsed": 66,
+        "meanDrafts": 8.3,
+        "meanExtras": 0,
+        "meanFirstShotAt": 49.3,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 20.3,
+            "peakAlive": 37.7,
+            "meanVisible": 17.9,
+            "peakVisible": 36
+          },
+          {
+            "wave": 10,
+            "meanAlive": null,
+            "peakAlive": null,
+            "meanVisible": null,
+            "peakVisible": null
+          },
+          {
+            "wave": 20,
+            "meanAlive": null,
+            "peakAlive": null,
+            "meanVisible": null,
+            "peakVisible": null
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": false,
+          "bossKilled": false,
+          "wave": 6,
+          "hp": 0,
+          "elapsed": 92,
+          "leaks": 36,
+          "meteorDamage": 1225,
+          "rangedDamage": 62,
+          "rangedHits": 7,
+          "shotsFired": 8,
+          "shotsBlocked": 1,
+          "firstShotWave": 4,
+          "healed": 270,
+          "drafts": 11
+        },
+        {
+          "seed": 777,
+          "win": false,
+          "bossKilled": false,
+          "wave": 2,
+          "hp": 0,
+          "elapsed": 24,
+          "leaks": 31,
+          "meteorDamage": 1059,
+          "rangedDamage": 0,
+          "rangedHits": 0,
+          "shotsFired": 0,
+          "shotsBlocked": 0,
+          "firstShotWave": null,
+          "healed": 46,
+          "drafts": 4
+        },
+        {
+          "seed": 42,
+          "win": false,
+          "bossKilled": false,
+          "wave": 5,
+          "hp": 0,
+          "elapsed": 82,
+          "leaks": 35,
+          "meteorDamage": 1610,
+          "rangedDamage": 83,
+          "rangedHits": 10,
+          "shotsFired": 13,
+          "shotsBlocked": 1,
+          "firstShotWave": 3,
+          "healed": 430,
+          "drafts": 10
+        }
+      ]
+    },
+    {
+      "profile": "stage4-elite",
+      "policy": "smart",
+      "stage": 4,
+      "rd": 12,
+      "elite": true,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "smart",
+        "firstVictory": 1,
+        "wins": 3,
+        "attempts": 3,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 3,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": 913.3,
+        "meanHp20": 1000,
+        "meanLeaks": 13,
+        "meanMeteorDamage": 443.7,
+        "meanRangedDamage": 636.7,
+        "meanHealed": 1080.3,
+        "meanElapsed": 708.3,
+        "meanDrafts": 45.7,
+        "meanExtras": 7,
+        "meanFirstShotAt": 53.1,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 15.6,
+            "peakAlive": 28,
+            "meanVisible": 13.8,
+            "peakVisible": 26
+          },
+          {
+            "wave": 10,
+            "meanAlive": 29,
+            "peakAlive": 52,
+            "meanVisible": 24.2,
+            "peakVisible": 45.7
+          },
+          {
+            "wave": 20,
+            "meanAlive": 24.8,
+            "peakAlive": 43.3,
+            "meanVisible": 18.2,
+            "peakVisible": 34
+          },
+          {
+            "wave": 25,
+            "meanAlive": 25.7,
+            "peakAlive": 45,
+            "meanVisible": 18.1,
+            "peakVisible": 36.3
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": true,
+          "bossKilled": true,
+          "wave": 25,
+          "hp": 1000,
+          "elapsed": 726,
+          "leaks": 20,
+          "meteorDamage": 684,
+          "rangedDamage": 971,
+          "rangedHits": 54,
+          "shotsFired": 110,
+          "shotsBlocked": 56,
+          "firstShotWave": 3,
+          "healed": 1655,
+          "drafts": 46
+        },
+        {
+          "seed": 777,
+          "win": true,
+          "bossKilled": true,
+          "wave": 25,
+          "hp": 1000,
+          "elapsed": 716,
+          "leaks": 8,
+          "meteorDamage": 274,
+          "rangedDamage": 53,
+          "rangedHits": 3,
+          "shotsFired": 13,
+          "shotsBlocked": 10,
+          "firstShotWave": 3,
+          "healed": 327,
+          "drafts": 45
+        },
+        {
+          "seed": 42,
+          "win": true,
+          "bossKilled": true,
+          "wave": 25,
+          "hp": 1000,
+          "elapsed": 683,
+          "leaks": 11,
+          "meteorDamage": 373,
+          "rangedDamage": 886,
+          "rangedHits": 50,
+          "shotsFired": 81,
+          "shotsBlocked": 31,
+          "firstShotWave": 4,
+          "healed": 1259,
+          "drafts": 46
+        }
+      ]
+    },
+    {
+      "profile": "stage9-elite",
+      "policy": "smart",
+      "stage": 9,
+      "rd": 30,
+      "elite": true,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "smart",
+        "firstVictory": 1,
+        "wins": 2,
+        "attempts": 3,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 2,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": 1000,
+        "meanHp20": 1000,
+        "meanLeaks": 13.7,
+        "meanMeteorDamage": 459.7,
+        "meanRangedDamage": 1133.7,
+        "meanHealed": 1175.7,
+        "meanElapsed": 733,
+        "meanDrafts": 43.3,
+        "meanExtras": 6.3,
+        "meanFirstShotAt": 45.8,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 9.3,
+            "peakAlive": 14.7,
+            "meanVisible": 8.3,
+            "peakVisible": 13
+          },
+          {
+            "wave": 10,
+            "meanAlive": 18.7,
+            "peakAlive": 31.5,
+            "meanVisible": 15.2,
+            "peakVisible": 26
+          },
+          {
+            "wave": 20,
+            "meanAlive": 10.4,
+            "peakAlive": 20,
+            "meanVisible": 6.3,
+            "peakVisible": 14.5
+          },
+          {
+            "wave": 30,
+            "meanAlive": 9.4,
+            "peakAlive": 18.5,
+            "meanVisible": 4.5,
+            "peakVisible": 13
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": true,
+          "bossKilled": true,
+          "wave": 30,
+          "hp": 1000,
+          "elapsed": 1051,
+          "leaks": 15,
+          "meteorDamage": 493,
+          "rangedDamage": 1600,
+          "rangedHits": 161,
+          "shotsFired": 378,
+          "shotsBlocked": 217,
+          "firstShotWave": 2,
+          "healed": 2094,
+          "drafts": 58
+        },
+        {
+          "seed": 777,
+          "win": false,
+          "bossKilled": false,
+          "wave": 4,
+          "hp": 0,
+          "elapsed": 108,
+          "leaks": 2,
+          "meteorDamage": 64,
+          "rangedDamage": 1486,
+          "rangedHits": 142,
+          "shotsFired": 244,
+          "shotsBlocked": 87,
+          "firstShotWave": 2,
+          "healed": 546,
+          "drafts": 14
+        },
+        {
+          "seed": 42,
+          "win": true,
+          "bossKilled": true,
+          "wave": 30,
+          "hp": 1000,
+          "elapsed": 1040,
+          "leaks": 24,
+          "meteorDamage": 822,
+          "rangedDamage": 315,
+          "rangedHits": 31,
+          "shotsFired": 56,
+          "shotsBlocked": 25,
+          "firstShotWave": 3,
+          "healed": 887,
+          "drafts": 58
+        }
+      ]
+    },
+    {
+      "profile": "Stage 4 Normal R&D12",
+      "policy": "smart",
+      "stage": 4,
+      "rd": 12,
+      "elite": false,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "smart",
+        "firstVictory": 1,
+        "wins": 3,
+        "attempts": 3,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 3,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": 1000,
+        "meanHp20": 1000,
+        "meanLeaks": 0,
+        "meanMeteorDamage": 0,
+        "meanRangedDamage": 20,
+        "meanHealed": 20,
+        "meanElapsed": 634.3,
+        "meanDrafts": 42,
+        "meanExtras": 6.3,
+        "meanFirstShotAt": 93.4,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 16.1,
+            "peakAlive": 27.7,
+            "meanVisible": 13.7,
+            "peakVisible": 26.7
+          },
+          {
+            "wave": 10,
+            "meanAlive": 27,
+            "peakAlive": 49.7,
+            "meanVisible": 21.6,
+            "peakVisible": 41.3
+          },
+          {
+            "wave": 20,
+            "meanAlive": 27,
+            "peakAlive": 48,
+            "meanVisible": 20.4,
+            "peakVisible": 40.3
+          },
+          {
+            "wave": 25,
+            "meanAlive": 29.6,
+            "peakAlive": 50.7,
+            "meanVisible": 22.1,
+            "peakVisible": 40.3
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": true,
+          "bossKilled": true,
+          "wave": 25,
+          "hp": 1000,
+          "elapsed": 629,
+          "leaks": 0,
+          "meteorDamage": 0,
+          "rangedDamage": 0,
+          "rangedHits": 0,
+          "shotsFired": 0,
+          "shotsBlocked": 0,
+          "firstShotWave": null,
+          "healed": 0,
+          "drafts": 42
+        },
+        {
+          "seed": 777,
+          "win": true,
+          "bossKilled": true,
+          "wave": 25,
+          "hp": 1000,
+          "elapsed": 628,
+          "leaks": 0,
+          "meteorDamage": 0,
+          "rangedDamage": 0,
+          "rangedHits": 0,
+          "shotsFired": 0,
+          "shotsBlocked": 0,
+          "firstShotWave": null,
+          "healed": 0,
+          "drafts": 42
+        },
+        {
+          "seed": 42,
+          "win": true,
+          "bossKilled": true,
+          "wave": 25,
+          "hp": 1000,
+          "elapsed": 646,
+          "leaks": 0,
+          "meteorDamage": 0,
+          "rangedDamage": 60,
+          "rangedHits": 4,
+          "shotsFired": 16,
+          "shotsBlocked": 12,
+          "firstShotWave": 6,
+          "healed": 60,
+          "drafts": 42
+        }
+      ]
+    },
+    {
+      "profile": "Stage 9 Normal R&D30",
+      "policy": "smart",
+      "stage": 9,
+      "rd": 30,
+      "elite": false,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "smart",
+        "firstVictory": 1,
+        "wins": 3,
+        "attempts": 3,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 3,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": 1000,
+        "meanHp20": 1000,
+        "meanLeaks": 10.3,
+        "meanMeteorDamage": 291.7,
+        "meanRangedDamage": 183.7,
+        "meanHealed": 475.3,
+        "meanElapsed": 945.7,
+        "meanDrafts": 55,
+        "meanExtras": 8.3,
+        "meanFirstShotAt": 23.1,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 10.8,
+            "peakAlive": 19.7,
+            "meanVisible": 9.3,
+            "peakVisible": 17.7
+          },
+          {
+            "wave": 10,
+            "meanAlive": 17,
+            "peakAlive": 32.3,
+            "meanVisible": 13,
+            "peakVisible": 28
+          },
+          {
+            "wave": 20,
+            "meanAlive": 10.8,
+            "peakAlive": 23,
+            "meanVisible": 6.4,
+            "peakVisible": 17.7
+          },
+          {
+            "wave": 30,
+            "meanAlive": 8.8,
+            "peakAlive": 16,
+            "meanVisible": 3.7,
+            "peakVisible": 11
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": true,
+          "bossKilled": true,
+          "wave": 30,
+          "hp": 1000,
+          "elapsed": 972,
+          "leaks": 0,
+          "meteorDamage": 0,
+          "rangedDamage": 392,
+          "rangedHits": 47,
+          "shotsFired": 74,
+          "shotsBlocked": 27,
+          "firstShotWave": 2,
+          "healed": 392,
+          "drafts": 55
+        },
+        {
+          "seed": 777,
+          "win": true,
+          "bossKilled": true,
+          "wave": 30,
+          "hp": 1000,
+          "elapsed": 919,
+          "leaks": 0,
+          "meteorDamage": 0,
+          "rangedDamage": 93,
+          "rangedHits": 9,
+          "shotsFired": 17,
+          "shotsBlocked": 8,
+          "firstShotWave": 2,
+          "healed": 93,
+          "drafts": 55
+        },
+        {
+          "seed": 42,
+          "win": true,
+          "bossKilled": true,
+          "wave": 30,
+          "hp": 1000,
+          "elapsed": 946,
+          "leaks": 31,
+          "meteorDamage": 875,
+          "rangedDamage": 66,
+          "rangedHits": 6,
+          "shotsFired": 7,
+          "shotsBlocked": 1,
+          "firstShotWave": 2,
+          "healed": 941,
+          "drafts": 55
+        }
+      ]
+    },
+    {
+      "profile": "Stage 12 Normal R&D45",
+      "policy": "smart",
+      "stage": 12,
+      "rd": 45,
+      "elite": false,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "smart",
+        "firstVictory": 1,
+        "wins": 1,
+        "attempts": 3,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 1,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": 1000,
+        "meanHp20": 1000,
+        "meanLeaks": 11,
+        "meanMeteorDamage": 836,
+        "meanRangedDamage": 137,
+        "meanHealed": 269.7,
+        "meanElapsed": 393,
+        "meanDrafts": 29.3,
+        "meanExtras": 3,
+        "meanFirstShotAt": 60.9,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 9.5,
+            "peakAlive": 15.7,
+            "meanVisible": 8,
+            "peakVisible": 13.7
+          },
+          {
+            "wave": 10,
+            "meanAlive": 9,
+            "peakAlive": 32,
+            "meanVisible": 4.7,
+            "peakVisible": 26
+          },
+          {
+            "wave": 20,
+            "meanAlive": 12.5,
+            "peakAlive": 30,
+            "meanVisible": 6.7,
+            "peakVisible": 23
+          },
+          {
+            "wave": 30,
+            "meanAlive": 18.8,
+            "peakAlive": 41,
+            "meanVisible": 10.8,
+            "peakVisible": 32
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": true,
+          "bossKilled": true,
+          "wave": 30,
+          "hp": 1000,
+          "elapsed": 982,
+          "leaks": 0,
+          "meteorDamage": 0,
+          "rangedDamage": 0,
+          "rangedHits": 0,
+          "shotsFired": 0,
+          "shotsBlocked": 0,
+          "firstShotWave": null,
+          "healed": 0,
+          "drafts": 62
+        },
+        {
+          "seed": 777,
+          "win": false,
+          "bossKilled": false,
+          "wave": 3,
+          "hp": 0,
+          "elapsed": 70,
+          "leaks": 16,
+          "meteorDamage": 1264,
+          "rangedDamage": 10,
+          "rangedHits": 1,
+          "shotsFired": 2,
+          "shotsBlocked": 1,
+          "firstShotWave": 3,
+          "healed": 206,
+          "drafts": 10
+        },
+        {
+          "seed": 42,
+          "win": false,
+          "bossKilled": false,
+          "wave": 5,
+          "hp": 0,
+          "elapsed": 127,
+          "leaks": 17,
+          "meteorDamage": 1244,
+          "rangedDamage": 401,
+          "rangedHits": 34,
+          "shotsFired": 52,
+          "shotsBlocked": 13,
+          "firstShotWave": 3,
+          "healed": 603,
+          "drafts": 16
+        }
+      ]
+    },
+    {
+      "profile": "Stage 12 Elite R&D45",
+      "policy": "smart",
+      "stage": 12,
+      "rd": 45,
+      "elite": true,
+      "chips": {
+        "core": 0,
+        "speed": 0,
+        "fort": 0
+      },
+      "report": {
+        "policy": "smart",
+        "firstVictory": 2,
+        "wins": 1,
+        "attempts": 3,
+        "firstThree": {
+          "attempts": 3,
+          "wins": 1,
+          "seeds": [
+            3121,
+            777,
+            42
+          ]
+        },
+        "meanHp10": 1000,
+        "meanHp20": 1000,
+        "meanLeaks": 15,
+        "meanMeteorDamage": 969.3,
+        "meanRangedDamage": 184.3,
+        "meanHealed": 473.3,
+        "meanElapsed": 401.7,
+        "meanDrafts": 26,
+        "meanExtras": 2.7,
+        "meanFirstShotAt": 67.7,
+        "waves": [
+          {
+            "wave": 1,
+            "meanAlive": 7.5,
+            "peakAlive": 13,
+            "meanVisible": 6.5,
+            "peakVisible": 12
+          },
+          {
+            "wave": 10,
+            "meanAlive": 16.8,
+            "peakAlive": 29,
+            "meanVisible": 12,
+            "peakVisible": 22
+          },
+          {
+            "wave": 20,
+            "meanAlive": 11.5,
+            "peakAlive": 19,
+            "meanVisible": 6,
+            "peakVisible": 14
+          },
+          {
+            "wave": 30,
+            "meanAlive": 11.1,
+            "peakAlive": 20,
+            "meanVisible": 2.9,
+            "peakVisible": 14
+          }
+        ]
+      },
+      "runs": [
+        {
+          "seed": 3121,
+          "win": false,
+          "bossKilled": false,
+          "wave": 2,
+          "hp": 0,
+          "elapsed": 50,
+          "leaks": 17,
+          "meteorDamage": 1130,
+          "rangedDamage": 0,
+          "rangedHits": 0,
+          "shotsFired": 0,
+          "shotsBlocked": 0,
+          "firstShotWave": null,
+          "healed": 108,
+          "drafts": 6
+        },
+        {
+          "seed": 777,
+          "win": true,
+          "bossKilled": true,
+          "wave": 30,
+          "hp": 1000,
+          "elapsed": 1107,
+          "leaks": 14,
+          "meteorDamage": 648,
+          "rangedDamage": 553,
+          "rangedHits": 49,
+          "shotsFired": 74,
+          "shotsBlocked": 25,
+          "firstShotWave": 3,
+          "healed": 1200,
+          "drafts": 65
+        },
+        {
+          "seed": 42,
+          "win": false,
+          "bossKilled": false,
+          "wave": 2,
+          "hp": 0,
+          "elapsed": 48,
+          "leaks": 14,
+          "meteorDamage": 1130,
+          "rangedDamage": 0,
+          "rangedHits": 0,
+          "shotsFired": 0,
+          "shotsBlocked": 0,
+          "firstShotWave": null,
+          "healed": 112,
+          "drafts": 7
+        }
+      ]
+    }
+  ],
+  "laserWorkload": {
+    "protocol": {
+      "seconds": 2,
+      "targets": 330,
+      "repeats": 5,
+      "raster": true,
+      "device": "Node/native CPU raster; not Android FPS"
+    },
+    "before": [
+      {
+        "upgraded": false,
+        "hz": 60,
+        "targets": 330,
+        "seconds": 2,
+        "hits": 527,
+        "damage": 13702,
+        "checksum": "0d5ddd035e3a5f9a33d07aa5532afe42bd6c2612bd052802f2b38b38caa9a910",
+        "maxVisuals": 5,
+        "meanVisuals": 4.917,
+        "simulationMs": 16.184,
+        "rasterMsPerFrame": 0.105,
+        "blurredStrokesPerFrame": 15
+      },
+      {
+        "upgraded": false,
+        "hz": 120,
+        "targets": 330,
+        "seconds": 2,
+        "hits": 527,
+        "damage": 13702,
+        "checksum": "2e5ab97a73272c834f0c4b539f608b0db0606a4799d4341e3e06669f219825c3",
+        "maxVisuals": 10,
+        "meanVisuals": 9.813,
+        "simulationMs": 30.541,
+        "rasterMsPerFrame": 0.211,
+        "blurredStrokesPerFrame": 30
+      },
+      {
+        "upgraded": true,
+        "hz": 60,
+        "targets": 330,
+        "seconds": 2,
+        "hits": 3185,
+        "damage": 57669.664000000506,
+        "checksum": "5663c40b7c7a8c2e8c18f43386655489405583dbb1bffe359fb199edbb065722",
+        "maxVisuals": 53,
+        "meanVisuals": 49.917,
+        "simulationMs": 59.629,
+        "rasterMsPerFrame": 1.349,
+        "blurredStrokesPerFrame": 153
+      },
+      {
+        "upgraded": true,
+        "hz": 120,
+        "targets": 330,
+        "seconds": 2,
+        "hits": 3185,
+        "damage": 57669.664000000506,
+        "checksum": "d7193cf6f091cb7e5d1f00f220a50ccdeede9bb7e6a5d4d06931425b9ead259c",
+        "maxVisuals": 98,
+        "meanVisuals": 93.979,
+        "simulationMs": 79.423,
+        "rasterMsPerFrame": 2.614,
+        "blurredStrokesPerFrame": 294
+      }
+    ],
+    "after": [
+      {
+        "upgraded": false,
+        "hz": 60,
+        "targets": 330,
+        "seconds": 2,
+        "hits": 527,
+        "damage": 13702,
+        "checksum": "0d5ddd035e3a5f9a33d07aa5532afe42bd6c2612bd052802f2b38b38caa9a910",
+        "maxVisuals": 1,
+        "meanVisuals": 1,
+        "simulationMs": 3.247,
+        "rasterMsPerFrame": 0.04,
+        "blurredStrokesPerFrame": 0
+      },
+      {
+        "upgraded": false,
+        "hz": 120,
+        "targets": 330,
+        "seconds": 2,
+        "hits": 527,
+        "damage": 13702,
+        "checksum": "2e5ab97a73272c834f0c4b539f608b0db0606a4799d4341e3e06669f219825c3",
+        "maxVisuals": 1,
+        "meanVisuals": 1,
+        "simulationMs": 3.53,
+        "rasterMsPerFrame": 0.029,
+        "blurredStrokesPerFrame": 0
+      },
+      {
+        "upgraded": true,
+        "hz": 60,
+        "targets": 330,
+        "seconds": 2,
+        "hits": 3185,
+        "damage": 57669.664000000506,
+        "checksum": "5663c40b7c7a8c2e8c18f43386655489405583dbb1bffe359fb199edbb065722",
+        "maxVisuals": 17,
+        "meanVisuals": 14.667,
+        "simulationMs": 35.799,
+        "rasterMsPerFrame": 0.285,
+        "blurredStrokesPerFrame": 0
+      },
+      {
+        "upgraded": true,
+        "hz": 120,
+        "targets": 330,
+        "seconds": 2,
+        "hits": 3185,
+        "damage": 57669.664000000506,
+        "checksum": "d7193cf6f091cb7e5d1f00f220a50ccdeede9bb7e6a5d4d06931425b9ead259c",
+        "maxVisuals": 17,
+        "meanVisuals": 14.667,
+        "simulationMs": 37.205,
+        "rasterMsPerFrame": 0.29,
+        "blurredStrokesPerFrame": 0
+      }
+    ]
+  }
+}
