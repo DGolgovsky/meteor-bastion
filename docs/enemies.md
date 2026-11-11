@@ -1,10 +1,10 @@
 # Enemy ecology and siege behavior
 
-The campaign keeps 12 stages with 20/25/30 waves and distinct Normal/Elite modes. Enemy IDs are stable. Only `meteor`, `fast`, `armored` and `charger` collide with the fortress. All other types, including the boss and spawned Broodlings, establish firing stations instead of falling onto the deck.
+The campaign keeps 12 stages with 20/25/30 waves and distinct Normal/Elite modes. Enemy IDs are stable. Only `meteor`, `fast`, `armored` and `charger` collide with the fortress — plus the boss, which descends on it instead of holding a firing station. All other types, including spawned Broodlings, establish firing stations instead of falling onto the deck.
 
 ## Campaign themes
 
-The roster is declared once in `STAGE_ECOLOGY` (`04-waves.js`). Random flocks, scatters and wedges must draw from that stage's currently available pool. Elite unlocks castes one wave earlier and raises insect weights by 20%; during the first two waves of stages 4–12, it respects the opening reconnaissance gates. It keeps the same theme. A Hive Tyrant appears in the final wave of every stage. Carrier children belong to their parent's brood rather than the random spawn pool.
+The roster is declared once in `STAGE_ECOLOGY` (`04-waves.js`). Random flocks, scatters and wedges must draw from that stage's currently available pool. Elite unlocks castes one wave earlier and raises insect weights by 20%; during the first two waves of stages 4–12, it respects the opening reconnaissance gates. It keeps the same theme. A Hive Tyrant joins at 60% of the stage stream and descends on the fortress: if it arrives, it deals 90% of base max HP. Carrier children belong to their parent's brood rather than the random spawn pool.
 
 | Stage | Theme | Waves | Castes (first Normal wave) |
 |---:|---|---:|---|
@@ -55,6 +55,6 @@ The charge ring and dotted aiming line show a locked impact point. Moving after 
 
 Slow delays approach, windup and reload. Paralyze/Immobilize cancel a windup; knockback or Gravity above the station's approach threshold makes the insect approach again. Disruption fields also slow hostile rounds to half speed. Weak defenses cannot safely stall forever: after 20s at a station, siege damage grows gradually to ×1.6 over the next 60s.
 
-Ordinary player projectiles can intercept hostile ammunition through the same ordered swept-collision pass used for enemies. A shot consumes projectile penetration or the projectile itself, and awards no kills, XP, battle points or healing. Instant laser/beam damage is unchanged. Maximum hostile ammunition is 64 rounds; each lives at most 8s, and an already-fired round remains dangerous after its source dies. Wave clear and victory wait until that ammunition is cleared, intercepted or expires. Ranged hits/damage and meteor impacts/damage are recorded separately.
+Ordinary player projectiles can intercept hostile ammunition through the same ordered swept-collision pass used for enemies. A shot consumes projectile penetration or the projectile itself, and awards no kills, XP, battle points or healing. Instant laser/beam damage is unchanged. Maximum hostile ammunition is 64 rounds; each lives at most 8s, and an already-fired round remains dangerous after its source dies. The stage end waits until that ammunition is cleared, intercepted or expires. Ranged hits/damage and meteor impacts/damage are recorded separately.
 
 All values above are Meteor Bastion settings, not recovered coefficients of the reference game.

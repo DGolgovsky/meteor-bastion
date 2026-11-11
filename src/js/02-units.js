@@ -53,19 +53,26 @@ function mkUnit(cfg,x,slot,isSoldier){
  return u;
 }
 function newBattle(stage){
- return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:!!stage.elite,championsKilled:0,championsSpawned:0,guardianGoalX:SOLDIER_X,
+ /* One continuous stream per stage (2026-11-12, owner order): no waves, no pauses.
+    B.wave stays as an internal progress counter (virtual wave) for HP scaling,
+    ecology gates, elite champions, the recon ramp, spawn pacing and rewards;
+    the player never sees it. stageTotal is the whole stream, summed over the
+    stage's virtual waves; stageQueue drains with every spawn. */
+ var elite=!!stage.elite,stageTotal=0;
+ for(var w=1;w<=stageWaves(stage);w++)stageTotal+=waveEnemyTotal(stage,w,elite);
+ return {stage:stage,t:0,elapsed:0,speed:1,paused:false,over:false,elite:elite,championsKilled:0,championsSpawned:0,guardianGoalX:SOLDIER_X,
   baseHp:1000+40*META.chips.fort,baseMax:1000+40*META.chips.fort,
-  wave:0,waveQueue:0,waveTotal:0,waveKilled:0,spawnT:0,bossSpawned:false,
+  wave:0,waveQueue:0,waveTotal:0,waveKilled:0,stageTotal:stageTotal,stageQueue:stageTotal,spawnT:0,bossSpawned:false,
   kills:0,reroll:true,turrets:[],soldier:null,usedTypes:{},
   /* Battle points: kills accumulate points, and a card is granted when a threshold is reached.
-     Opening costs: 2, 4, 6, 9; later costs grow with drafts and cleared waves;
+     Opening costs: 2, 4, 6, 9; later costs grow with drafts and the stream's progress;
      as in the original, the first card arrives right after the second monster
-     (the first enemies of wave 1 are meteors worth 1 point each), then the pace slows with the waves. */
+     (the first enemies of the stream are meteors worth 1 point each), then the pace slows as the stream advances. */
   score:0,scoreTotal:0,draftNeed:BALANCE.draftFirst,draftsEarned:0,pendingDrafts:0,draftReturn:"fighting",totalHealed:0,
   enemies:[],enemyShots:[],enemyShotHits:0,enemyShotsFired:0,enemyShotDamage:0,enemyShotsIntercepted:0,meteorDamage:0,
   projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],mines:[],pulses:[],bolts:[],portals:[],spinners:[],delayed:[],
   shake:0,baseFlashT:0,baseHitTextT:0,waveDensity:{},maxUpwardOwn:0,picked:[],drafts:0,waveState:"intro",introT:1.2,
-  allDmgMul:1,enemySpdMul:1,combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
+  allDmgMul:1,enemySpdMul:0.75,/* 2026-11-12, owner order: enemies 25% slower */combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }
 function startBattle(){refillEnergy();
  if(META.energy<5)return;

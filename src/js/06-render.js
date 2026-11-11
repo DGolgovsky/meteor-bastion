@@ -344,7 +344,8 @@ function drawUnitPips(t){
 function combatHudLayout(){
  var dps=Math.round(allFighters().reduce(function(sum,t){return sum+t.totalDmg;},0)/Math.max(1,B.elapsed));
  var stage=(B.elite?"ELITE":"NORMAL")+" "+B.stage.n;
- var items=[stage,"W"+B.wave+"/"+finalWave(),"DPS "+fmt(dps),"K "+fmt(B.kills)];
+ /* no waves are shown: the stream progress is the enemies still to come plus those on the field */
+ var items=[stage,"▣ "+fmt((B.stageQueue||0)+B.enemies.length),"DPS "+fmt(dps),"K "+fmt(B.kills)];
  var fs=10.5,gap=7,left=136,time=mmss(B.elapsed),widths=[],timeWidth=0;
  function measure(){ctx.font="800 "+fs+"px 'Segoe UI',sans-serif";widths=items.map(function(s){return ctx.measureText(s).width;});timeWidth=ctx.measureText(time).width;}
  measure();

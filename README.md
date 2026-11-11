@@ -21,8 +21,8 @@ The suite assembles the script from `src/` in memory and runs on plain Node.js w
 
 ## What is already implemented
 
-- **A 12-stage campaign**: stages 1–3 have 20 waves each, 4–8 have 25 waves, 9–12 have 30 waves. A victory unlocks the next stage, and the final boss appears in the last wave of every stage.
-- **Normal / Elite** with separate wave compositions and champions that can speed up their allies.
+- **A 12-stage campaign**: each stage is one continuous, non-stop enemy stream (stages 1–3 run 20 virtual waves, 4–8 run 25, 9–12 run 30 — internal pacing counters, never shown). A victory unlocks the next stage, and the final boss appears in the last virtual wave of every stage.
+- **Normal / Elite** with separate stream compositions and champions that can speed up their allies.
 - **A movable Guardian and 4 turret slots**. The Guardian fires alternately from both hands. There is no turret micromanagement in battle; turrets pick their targets automatically.
 - **11 turrets**: Sky Guard, Laser, Disruption Drone, Aeroblast, Thunderbolt, Beam, Firewheel Drone, Hive, Railgun, Tesla Coil, Gravity Vortex Gun. Aeroblast uses an adaptive shotgun spread and a range of 540 instead of 200, so it can join the fight before enemies reach the fortress.
 - **15 enemy types and 12 thematic stage rosters**: only the four meteor classes hit the fortress. Insects establish varied firing stations, telegraph attacks and fire interceptable ammunition. New castes: Acid Spitter, Needle Wasp, Shell Beetle and Prism Moth. Brood Carriers split into Broodlings; Nurse Scarabs heal allies, Veilwings cloak, and the Hive Tyrant is a ranged final boss. See [enemy ecology](docs/enemies.md).
@@ -41,7 +41,7 @@ src/js/
   00-config.js     turrets, enemies, stages, difficulty coefficients
   01-state.js      saves, meta progression, Chips, Liveries, menus
   02-units.js      battle initialization, units, Guardian
-  04-waves.js      wave composition and enemy spawning
+  04-waves.js      virtual-wave composition and enemy spawning (one continuous stream per stage)
   03-combat.js     damage, targeting, weapon firing and hits
   03b-effects.js   shared card systems (statuses, mines, pulses, bolts, portals, wasps, wheels, fields) and entity caps
   05-update.js     battle simulation, physics, fields, breaches
@@ -78,7 +78,7 @@ node tests/balance.cjs --runs 3 --policy smart
 node tests/laser-perf.cjs
 ```
 
-Also manually check one full run in a mobile browser: Guardian smoothness, HUD readability, correct boss appearance in waves 20/25/30, enemies' ability to damage the base, and saves after a restart.
+Also manually check one full run in a mobile browser: Guardian smoothness, HUD readability, correct boss appearance in the final virtual wave of every stage, enemies' ability to damage the base, and saves after a restart.
 
 The fortress scene was updated on 2026-11-11: a charcoal city backdrop, a wide misty dome, a window-lit bunker, dark underground supports and floodlit empty mounts. Turrets stand in mirrored pairs with 44px between neighbors (previously 76px); the four-slot order and the movable Guardian are preserved. The canvas is now `420×820`, with the same combat/base line at `y=720`; the added bottom area is scenery. The field fits both viewport dimensions. The HP arc remains 120°, now compact above the bunker. HUD metrics reserve space for the timer, and recoil advances in simulation time instead of on each redraw.
 

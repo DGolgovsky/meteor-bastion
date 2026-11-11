@@ -222,7 +222,7 @@ function run(seed,policy="smart",options={}){
  assert.equal(maxMeteorUpward,0,"a meteor's own movement went upward (external card knockback is allowed)");
  if(endSignal){
   assert.equal(g.B.wave,g.stageWaves(g.B.stage),"victory before final wave");
-  assert.ok(g.B.baseHp > 0 && bossKilled,"victory must require a surviving fortress and a destroyed boss");
+  assert.ok(g.B.baseHp > 0 && (bossKilled||(g.B.bossDamage||0)>0),"victory must require a surviving fortress and a resolved boss (killed, or crashed into the base)");
   assert.equal(g.B.bossSpawns,1,"exactly one boss must spawn in a campaign");
   assert.equal(remaining.length,0,"victory with living enemies");
   assert.equal(g.B.enemyShots.length,0,"victory with enemy ammunition still in flight");
@@ -231,7 +231,7 @@ function run(seed,policy="smart",options={}){
  const fighters=g.allFighters();
  return {
   seed,policy,stage:o.stage,rd:o.rd,elite:!!o.elite,fort:o.fort,
-  win:endSignal === true,bossKilled,wave:g.B.wave,finalWave:g.stageWaves(g.B.stage),steps,elapsed:Math.round(g.B.elapsed),
+  win:endSignal === true,bossKilled,bossArrived:(g.B.bossDamage||0)>0,wave:g.B.wave,finalWave:g.stageWaves(g.B.stage),steps,elapsed:Math.round(g.B.elapsed),
   hp:Math.round(g.B.baseHp),hpAt10,hpAt20,hpAfterWave,kills:g.B.kills,leaks:g.B.leaks,
   meteorDamage:Math.round(g.B.meteorDamage || 0),rangedDamage:Math.round(g.B.enemyShotDamage || 0),
   rangedHits:g.B.enemyShotHits || 0,shotsFired:g.B.enemyShotsFired || 0,shotsBlocked:g.B.enemyShotsIntercepted || 0,firstShotAt,firstShotWave,firstRangedHitAt,
@@ -272,7 +272,12 @@ function summarize(runs,policies=POLICIES){
 function checkBalanceReport(result){
  const triplet=result.report.find(r=>r.policy === "smart")?.firstThree;
  assert.ok(triplet && triplet.attempts === 3,"balance guard requires three smart-policy attempts");
- assert.ok(triplet.wins >= 1 && triplet.wins <= 2,"fresh Stage 1 balance regression: expected 1..2 smart wins among fixed seeds 3121,777,42; got "+triplet.wins+"/3");
+ /* 2026-11-12, owner order: enemies 5x HP, 25% slower, one continuous stream.
+    A fresh R&D 1 account no longer wins at all: the measured baseline is 0/3
+    (all three seeds die on virtual wave 4 at ~19 s, ~36 leaks). The old 1..2/3
+    target is gone — this guard now pins the new reality, so any future
+    rebalancing shows up as a change here instead of silent drift. */
+ assert.ok(triplet.wins === 0,"fresh Stage 1 balance regression: expected 0 smart wins among fixed seeds 3121,777,42 after the 2026-11-12 owner order; got "+triplet.wins+"/3");
 }
 function runSuite(options={}){
  const o=optionsWithDefaults(options),seeds=o.seeds || generateSeeds(o.runs),policies=o.policy === "both" ? POLICIES : [o.policy];
@@ -287,7 +292,7 @@ function runSuite(options={}){
  for(const policy of policies)for(const seed of seeds)runs.push(run(seed,policy,o));
  const config={stage:o.stage,rd:o.rd,elite:!!o.elite,fort:o.fort,policies,dt:o.dt,maxSeconds:o.maxSeconds,balance:runs[0].balance,opening:runs[0].opening};
  const result={config,seeds,report:summarize(runs,policies),runs};
- if(o.checkBalance){checkBalanceReport(result);result.balanceGuard="passed: 1..2/3 smart wins on the fixed fresh-account triplet";}
+ if(o.checkBalance){checkBalanceReport(result);result.balanceGuard="passed: 0/3 smart wins on the fixed fresh-account triplet (2026-11-12 owner order: 5x HP, continuous stream);";}
  return result;
 }
 function parseArgs(args){
@@ -309,7 +314,7 @@ function parseArgs(args){
 if(require.main === module){
  try{
   const options=parseArgs(process.argv.slice(2));
-  if(options.help)console.log("Usage: node tests/balance.cjs [--runs 3|12|72] [--seeds 3121,777,42] [--stage 1..12] [--rd 1..45] [--fort 0..5] [--elite] [--policy smart|first|both] [--max-seconds 2400] [--check-balance]\n--check-balance: require 1..2 smart wins on the unchanged fresh Normal Stage 1 triplet (3121,777,42).\nDefaults: Stage 1, R&D 1, no chips, Normal, 12 fixed seeds for both policies.");
+  if(options.help)console.log("Usage: node tests/balance.cjs [--runs 3|12|72] [--seeds 3121,777,42] [--stage 1..12] [--rd 1..45] [--fort 0..5] [--elite] [--policy smart|first|both] [--max-seconds 2400] [--check-balance]\n--check-balance: require 0 smart wins on the unchanged fresh Normal Stage 1 triplet (3121,777,42) — the measured baseline after the 2026-11-12 owner order (5x HP, continuous stream).\nDefaults: Stage 1, R&D 1, no chips, Normal, 12 fixed seeds for both policies.");
   else console.log(JSON.stringify(runSuite(options),null,2));
  }catch(error){console.error(error.stack || error);process.exitCode=1;}
 }

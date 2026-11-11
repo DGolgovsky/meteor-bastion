@@ -1,6 +1,14 @@
 /* ---------- update ---------- */
 /* No intrinsic enemy flight ever moves upward. Knockback and Gravity are external forces. */
 function stepMove(e,dt){
+ /* The Hive Tyrant does not hold a firing station: it descends on the fortress
+    (2026-11-12, owner order). If it arrives, it deals 90% of base max HP. */
+ if(e.kind==="boss"){
+  var bspeed=e.baseSpeed===undefined?e.speed:e.baseSpeed;
+  var bvy=(e.paralyzeT>0||e.immobT>0)?0:Math.max(0,bspeed*(e.slowFactor===undefined?1:e.slowFactor)*(e.hasteT>0?BALANCE.eliteAuraSpeed:1));
+  e.vy=bvy;e.y+=bvy*dt;e.x+=Math.sin(B.t*.9+(e.phase||0))*12*dt;
+  e.x=Math.max(e.r,Math.min(W-e.r,e.x));return;
+ }
  if(!isMeteorEnemy(e)){stepInsectMove(e,dt);return;}
  var type=e.moveKind||(e.cfg&&e.cfg.id)||e.kind;
  var speed=e.baseSpeed===undefined?e.speed:e.baseSpeed;
@@ -43,10 +51,11 @@ function stepInsectMove(e,dt){
 function hitFortress(amount,kind,x){
  if(B.over||!(amount>0))return;
  if(kind==="meteor"){B.leaks++;B.meteorDamage=(B.meteorDamage||0)+amount;}
+ else if(kind==="boss"){B.bossDamage=(B.bossDamage||0)+amount;}
  else {B.enemyShotHits=(B.enemyShotHits||0)+1;B.enemyShotDamage=(B.enemyShotDamage||0)+amount;}
- B.baseHp=Math.max(0,B.baseHp-amount);B.baseFlashT=.12;B.baseHitTextT=.2;B.shake=Math.min(12,B.shake+(kind==="meteor"?5:2));
- burst(x,BASEY,kind==="meteor"?14:5,"#ff5470");
- if(kind==="meteor")SFX.boom();
+ B.baseHp=Math.max(0,B.baseHp-amount);B.baseFlashT=.12;B.baseHitTextT=.2;B.shake=Math.min(12,B.shake+(kind==="boss"?10:kind==="meteor"?5:2));
+ burst(x,BASEY,kind==="boss"?26:kind==="meteor"?14:5,"#ff5470");
+ if(kind==="meteor"||kind==="boss")SFX.boom();
  if(B.baseHp<=0)endBattle(false);
 }
 function fireEnemyVolley(e,p){
@@ -114,7 +123,10 @@ function update(dt){
  B.t+=dt;B.elapsed+=dt;
  B.baseFlashT=Math.max(0,(B.baseFlashT||0)-dt);B.baseHitTextT=Math.max(0,(B.baseHitTextT||0)-dt);
  if(B.waveState==="intro"){B.introT-=dt;if(B.introT<=0)startWave(1);syncHud();return;}
- /* Groups are atomic: at the enemy cap they wait rather than losing members. */
+ /* Groups are atomic: at the enemy cap they wait rather than losing members.
+    One continuous stream (2026-11-12, owner order): every spawn also drains the
+    stage queue; when a virtual wave's queue empties while the stream remains,
+    the next one starts silently — no pause, no draft, no wave shown. */
  if(B.waveQueue>0){
   B.spawnT-=dt;B.formationCd=Math.max(0,(B.formationCd||0)-dt);
   var opening=campaignOpening(B.stage,B.wave,B.elite);
@@ -123,12 +135,15 @@ function update(dt){
    var n=0;
    if(B.formationCd<=0&&B.waveQueue>=3){n=spawnWaveGroup();if(n>0)B.formationCd=BALANCE.formationCd*opening.spawn;}
    else if(spawnEnemy(wavePickKind()))n=1;
-   if(n>0)B.waveQueue-=n;
+   if(n>0){B.waveQueue-=n;B.stageQueue-=n;}
    B.spawnT=n>0?interval*(.7+Math.random()*.6):.16;
   }
  }
- /* Never lose the boss when the enemy cap is reached or the spawn queue empties. */
- if(B.wave===finalWave()&&!B.bossSpawned&&B.waveQueue<=Math.floor(B.waveTotal/2)){
+ if(B.waveState==="fighting"&&B.waveQueue<=0&&B.stageQueue>0)startWave(B.wave+1);
+ /* The boss joins at 60% of the stage stream (2026-11-12, owner order): once 60%
+    of the stream has spawned, the Tyrant descends on the fortress. Never lose it
+    when the enemy cap is reached: the block retries every frame until it spawns. */
+ if(!B.bossSpawned&&B.stageTotal>0&&B.stageQueue<=B.stageTotal*0.4){
    if(spawnBoss())B.bossSpawned=true;
  }
  /* enemies */
@@ -187,7 +202,12 @@ function update(dt){
    e.phase+=dt*3;
    stepMove(e,dt);
    if(isMeteorEnemy(e)){if(B.parts.length<250&&Math.random()<dt*9)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
-   if(isMeteorEnemy(e)&&e.y>=BASEY-16){
+   if(e.kind==="boss"&&e.y>=BASEY-16){
+     /* The Tyrant reached the fortress: 90% of base max HP (2026-11-12, owner order).
+        No score or kill credit — this is a base hit, not a kill. */
+     e.dead=true;B.enemies.splice(i,1);
+     hitFortress(Math.floor(0.9*B.baseMax),"boss",e.x);if(B.over)return;
+   }else if(isMeteorEnemy(e)&&e.y>=BASEY-16){
      e.dead=true;B.enemies.splice(i,1);B.waveKilled++;
      hitFortress(e.dmg,"meteor",e.x);if(B.over)return;
    }else stepEnemyAttack(e,dt);
@@ -333,13 +353,11 @@ function update(dt){
  B.rings=B.rings.filter(function(r){r.t+=dt;r.r+=r.vr*dt;return r.t<r.life;});
  B.nums=B.nums.filter(function(n){n.t+=dt;n.y-=26*dt;return n.t<0.85;});
  if(B.shake>0)B.shake=Math.max(0,B.shake-dt*26);
- /* wave clear? A wave by itself NO longer grants cards:
-    the next wave starts immediately, and the draft opens only from points */
- if(B.waveState==="fighting"&&B.waveQueue<=0&&B.enemies.length===0&&!(B.enemyShots&&B.enemyShots.length)&&!B.over){
-   if(B.wave>=finalWave()){if(!B.bossSpawned)return;endBattle(true);return;}
-   if(B.pendingDrafts>0){B.waveState="draft";B.draftReturn="nextwave";openDraft();}
-   else startWave(B.wave+1);
-   syncHud();return;
+ /* The stage is one continuous stream: it ends only when the whole stream has
+    spawned, the boss is dead and the field is clear (no wave pauses, no wave drafts).
+    Outstanding hostile ammunition still delays the end, like the field itself. */
+ if(B.waveState==="fighting"&&B.stageQueue<=0&&B.waveQueue<=0&&B.enemies.length===0&&!(B.enemyShots&&B.enemyShots.length)&&!B.over){
+   if(!B.bossSpawned)return;endBattle(true);return;
  }
  /* a card from accumulated points: the draft opens right in the middle of a wave */
  if(B.waveState==="fighting"&&B.pendingDrafts>0&&!B.over){

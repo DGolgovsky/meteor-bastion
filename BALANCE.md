@@ -1,16 +1,16 @@
 # Meteor Bastion — current balance and regression
 
-Current parameters updated 2026-11-11; historical measurements below retain their original dates. **All values below are parameters of our game**. Similarity to Galaxy Defense: Fortress TD does not mean these are the original's official numbers.
+Current parameters updated 2026-11-12; historical measurements below retain their original dates. **All values below are parameters of our game**. Similarity to Galaxy Defense: Fortress TD does not mean these are the original's official numbers.
 
 ## Campaign
 
-| Stages | Number of stages | Waves per stage | HP growth between stages | Speed between stages |
+| Stages | Number of stages | Virtual waves per stage (internal pacing only) | HP growth between stages | Speed between stages |
 |---|---:|---:|---|---|
 | Sector I, 1–3 | 3 | 20 | ×1.00 → ×1.65 | ×1.00 → ×1.06 |
 | Sector II, 4–8 | 5 | 25 | ×2.05 → ×4.60 | ×1.09 → ×1.19 |
 | Sector III, 9–12 | 4 | 30 | ×5.50 → ×9.10 | ×1.21 → ×1.25 |
 
-In every campaign the boss is in the last wave; stage progress carries over to the next playthrough. The saved `unlocked` maximum is no longer capped at the former three stages: old save v1 files still load.
+In every campaign the boss joins at 60% of the stage stream and descends on the fortress (if it arrives: 90% of base max HP); stage progress carries over to the next playthrough. Since 2026-11-12 (owner order) each stage is **one continuous stream, no waves**: enemies arrive non-stop, the player never sees a wave counter, a pause or a wave draft, and the stage ends only when the whole stream has spawned, the boss is dead and the field is clear. `B.wave` survives only as an internal "virtual wave" counter (HP scaling, ecology gates, elite champions, recon ramp, spawn pacing, draft costs, rewards). The saved `unlocked` maximum is no longer capped at the former three stages: old save v1 files still load.
 
 ## Current base numbers
 
@@ -21,11 +21,12 @@ In every campaign the boss is in the last wave; stage progress carries over to t
 | Armament | 4 turret slots + a movable Guardian |
 | Base | 1000 HP, no shield (before Chips bonuses) |
 | Healing | +2 base HP per enemy killed, capped at the maximum |
-| First card thresholds | 2, 4, 6, 9 points; then 14 + 10 per next pick + 2.5 per cleared wave |
-| Waves | `24 + round(8.4 × wave) + round((stage−1)×6×openingBonus)`; Elite adds enemies. Stages 4–12 openingBonus: 0/.35/.7/1 across waves 1–4; otherwise 1 |
+| First card thresholds | 2, 4, 6, 9 points; then 14 + 10 per next pick + 2.5 per virtual wave |
+| Virtual-wave totals (one continuous stream) | `24 + round(8.4 × wave) + round((stage−1)×6×openingBonus)`; Elite adds enemies. Stages 4–12 openingBonus: 0/.35/.7/1 across virtual waves 1–4; otherwise 1. A stage's stream total is the sum over its virtual waves (Stage 1 Normal: 2,244) |
 | Spawn interval | `max(0.06,0.20 − wave×0.002)` s, then a ×0.7–1.3 random variation; formation cooldown 1.33 s; both multiplied by the late-sector opening cadence (see `CAMPAIGN_OPENING`) |
-| HP multiplier per wave | `0.85 × (1 + (wave−1)×0.13)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; 0.78/0.14 before the 2026-11-11 reference card set, growth 0.06 before the 2026-11-10 card rework) |
-| Boss HP multiplier per wave | `0.88 × 1.1 × (1 + (wave−1)×0.07)`, on top of the stage |
+| HP multiplier per virtual wave | `4.25 × (1 + (wave−1)×0.13)`, on top of the stage multiplier (`enemyHpMul`, `waveHpGrowth`; 0.85/0.13 before the 2026-11-12 owner order — enemies 5x HP; 0.78/0.14 before the 2026-11-11 reference card set, growth 0.06 before the 2026-11-10 card rework) |
+| Boss HP multiplier per virtual wave | `13.2 × 1.1 × (1 + (wave−1)×0.07)`, on top of the stage (0.88 before the 2026-11-12 owner order — the boss is 15x HP, its own number) |
+| Enemy speed | `×0.75` on top of the stage multiplier (`enemySpdMul`, 1 before the 2026-11-12 owner order — enemies 25% slower); the boss has its own `×0.25` (75% slower, not stacked with the general 25%); the jam module ×0.85 stacks on top |
 | Guardian | 12 damage (−8% from 13, a small round 4 nerf), 4 attacks/s, fires from both hands alternately; the triple burst is a tight group (3px spacing, one hand for the whole burst) |
 | Turret visibility top (VIS_TOP) | y=30 — enemies above the line (just below the HUD row) are not targeted; spawning (y=-30) is unchanged |
 | Turret and Guardian sprite scale | ×0.88 — the level label under the unit is not scaled |
@@ -57,7 +58,7 @@ For the exact HP/speed of the 15 enemies and the attacks of the 11 turrets, use 
 - **Chips:** levels 0–5 for `core` (+3% turret damage per step), `speed` (+2% fire rate), `fort` (+40 to the base's maximum HP), paid in components using the formula `4 + 4×current level`. Liveries change only the appearance.
 - **Base HP:** a compact arc above the central bunker, inside the dome; center `(W/2, BASEY+14)`, radius 48, angle 120° (±60° from the apex). Arc length is proportional to HP, symmetric around the apex. Exact HP is centered 11px above the arc. The dome is scenery: an ellipse with radii 260/112 at the deck, not a second HP bar. The base has no shield: breaches damage HP directly; the "Fortress Shield" module was replaced by "Fortress Repair" (+250 HP).
 - **Notifications:** there are no pop-up notifications (toasts) in the game — not for super cards, patrol, or boss/champion warnings. The toast element and its styles were removed from the markup.
-- **HUD:** one transparent row: mode/stage, wave, average DPS, kills, timer. Labels shorten before the font shrinks (10.5 → 9px); the measured timer column is always reserved. Minutes display correctly after 10:00.
+- **HUD:** one transparent row: mode/stage, enemies remaining in the stream, average DPS, kills, timer. Labels shorten before the font shrinks (10.5 → 9px); the measured timer column is always reserved. Minutes display correctly after 10:00.
 
 ## Battle cards: the reference set (2026-11-11)
 
@@ -445,6 +446,19 @@ Enemies were retuned, cards were not: `enemyHpMul` 0.78 → **0.76**, `waveHpGro
 
 The measurement is very noisy (values from 0.70 to 0.78 scatter between 6 and 17 wins out of 36). Outcomes stay bimodal: runs collapse on waves 5–9 or win cleanly. Spot checks with developed meta (6 seeds, current numbers, sensible / first card): Stage 4 R&D 12 — 6/6, 4/6; Stage 9 R&D 30 — 5/6, 3/6; Stage 12 R&D 45 — 4/6, 3/6 (HEAD before this change: 5/6, 2/6 at Stage 12). Stage 12 losses happen on wave 1, when the headless policy picks a module instead of a second turret.
 
+### Stage 1 balance after the 2026-11-12 owner order (5x HP, 25% slower, continuous stream)
+
+`enemyHpMul` 0.85 → **4.25**, boss 0.88 → **13.2** (15x HP), `enemySpdMul` 1 → **0.75** (boss its own ×0.25, 75% slower); no waves — one non-stop stream per stage, drafts only from points. Boss joins at 60% of the stream and descends on the fortress: 90% of base max HP if it arrives.
+
+| Measurement | Sensible picks | First card |
+|---|---:|---:|
+| CI seeds (12), **current** (`node tests/balance.cjs`) | **0/12** (no first victory) | **0/12** (no first victory) |
+| Fixed triplet (3121, 777, 42), **current** | **0/3** | **0/3** |
+
+Every run dies on virtual wave 4 at ~19 s with ~36 leaks and 0–18 kills (mean ~2.9 smart / ~2.1 first-card): a fresh R&D 1 Guardian (12 DMG, 4 shots/s) needs ~23 hits per meteor at 276 HP and cannot keep up with the spawn rate, so the base takes ~36 meteor impacts in the first 20 seconds. This is a measured finding, not a bug — the game was **not** retuned to recover the old numbers.
+
+Control probe (same stream, same 0.75 speed, HP back at 0.85 via the in-memory calibration override): smart **1/3, first victory on attempt 3** (seed 42 wins at 304 s, 2,245 kills, 0 leaks) — the old target still holds without the 5x HP, so the collapse is the HP alone, not the stream. The old "first win no earlier than the 3rd attempt" target no longer applies; `--check-balance` now pins **0/3** on the fixed triplet so any future rebalancing shows up as a change.
+
 ## Aeroblast usefulness check (round 5)
 
 | Stage 1 Normal, R&D 1, 4 starting turrets (Sky Guard, Aeroblast, Hive, Laser), no new card picks, seed | Aeroblast before | Aeroblast after |
@@ -470,7 +484,7 @@ Below are **selected reproducible headless runs**, not on-device measurements an
 
 Check parameters may change slightly with later weapon edits; the table records a pass made during balance tuning. Battles apply healing of +2 HP per kill, so 1000 HP at the finish does not mean there were no breaches. **The table rows were recorded before the shield was removed (round 3, 2026-11-08).** After the shield removal, a fresh account (R&D 1) loses on Stage 1: the "first card" policy reaches wave 10 (seed 3121, 125 kills, 23 breaches) and wave 7 (seed 777, 65 kills, 13 breaches); random cards reach wave 17 (seed 3121, 334 kills, 25 breaches) and wave 15 (seed 777, 267 kills, 17 breaches). The victories in the table above use sensible card picks; a fresh account without upgrades became noticeably weaker after the shield removal (−150 effective HP at fort 0).
 
-**Round 4 goal (2026-11-08): the first clear of Stage 1 Normal on a fresh account (R&D 1) should come no earlier than the 3rd attempt.** Measured with the headless run `~/workspace/meteor-bastion/balance-attempts.cjs` (12 attempts, a fresh account each time, seeds 3121, 777, 42, 1234, 9999, 2026, 555, 8888, 31415, 2718, 1618, 4242): the "sensible player" policy (super > strong new turret > upgrade top damage dealer > chain > damage mod) — **first victory on the 3rd attempt** (2 wins out of 12: seed 42, 615 kills, HP 866; seed 31415, 583 kills, HP 383); the "first card" policy — first victory on the 8th attempt (1 out of 12); random cards — 0 out of 3. **There is no gate in the code:** no attempt counters and no locks — the goal is achieved purely through balance (wave density 5 + round(2.0×wave), Guardian nerf 13→12). The measurement is noisy (seeds are not comparable across edits — the random number stream diverges), so the target is a sensible-player win rate of ~17–33%, not an exact attempt number in one series.
+**Round 4 goal (2026-11-08): the first clear of Stage 1 Normal on a fresh account (R&D 1) should come no earlier than the 3rd attempt.** Measured with the headless run `~/workspace/meteor-bastion/balance-attempts.cjs` (12 attempts, a fresh account each time, seeds 3121, 777, 42, 1234, 9999, 2026, 555, 8888, 31415, 2718, 1618, 4242): the "sensible player" policy (super > strong new turret > upgrade top damage dealer > chain > damage mod) — **first victory on the 3rd attempt** (2 wins out of 12: seed 42, 615 kills, HP 866; seed 31415, 583 kills, HP 383); the "first card" policy — first victory on the 8th attempt (1 out of 12); random cards — 0 out of 3. **There is no gate in the code:** no attempt counters and no locks — the goal is achieved purely through balance (wave density 5 + round(2.0×wave), Guardian nerf 13→12). The measurement is noisy (seeds are not comparable across edits — the random number stream diverges), so the target is a sensible-player win rate of ~17–33%, not an exact attempt number in one series. **Superseded 2026-11-12 by the owner order (5x HP, continuous stream): fresh-account sims now win 0/12 — see the section above.**
 
 Running the tests from a **clean checkout**:
 
@@ -478,7 +492,7 @@ Running the tests from a **clean checkout**:
 node tests/smoke.cjs
 ```
 
-The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **114 tests** (2026-11-11), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, a backward RAF timestamp cannot drive ring radii negative, and a ring with a negative radius still draws, and all models (Guardian, 11 turrets, 15 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
+The tests concatenate the source JS by `src/order.txt` without `index.html`. They cover v1 saves, the Guardian, 12 stages and final waves, Firewheel, Hive, Gravity, Phase, Charger, R&D T1/T2/T3, Chips, Liveries, the meta economy and breaches; **116 tests** (2026-11-12), including regressions from rounds 4–5, ×3 enemies (wave totals 32/108/192, cap 330, spawn pace ×3) and level rewards cut tenfold (except gems): Aeroblast (5 pellets, increased range, adaptive spread, hits on moving targets, range boundary, splash R&D), wasps (lifetime ≥8 s, max 2 per target), the guardian's tight triple burst, Tesla's sequential bounce with damage falloff, deterministic laserSweep, parallel extra projectiles, as well as bug regressions: Gravity does not "teleport" freshly spawned enemies, burn DPS resets after the burn ends, card text matches the effect, the ×2 label resets between battles, rewards are credited immediately, a backward RAF timestamp cannot drive ring radii negative, and a ring with a negative radius still draws, and all models (Guardian, 11 turrets, 15 enemies) render in every state. To produce a single self-contained HTML release, run `python3 build.py`. Additionally, `node tests/balance.cjs` runs 12 games for each of the two policies; GitHub Actions runs smoke, balance and the build.
 
 ## Known limitations and next iterations
 

@@ -56,20 +56,21 @@ var ENEMY_SHOT_CAP=64;
    earn a build. Full stage density returns by wave 4; Elite's HP/speed/contact
    modifiers still apply. Stages 1–3 retain their established opening exactly. */
 var CAMPAIGN_OPENING={startStage:4,bonusRamp:[0,.35,.7,1],spawnRamp:[1.7,.9,.3,0],eliteCadence:1.5};
-/* Campaign progression: early stages have 20 waves, sectors II/III have longer runs. */
+/* Campaign progression: one continuous stream per stage; early stages run 20 virtual
+   waves, sectors II/III 25/30 (internal pacing counters only, never shown to the player). */
 var STAGES=[
  {n:1,name:"Normal Stage 1",hpMul:1.00,spdMul:1.00,waves:20,desc:"Debris Front: meteor rain, then scattered Dartwings and long-range Needle Wasps."},
  {n:2,name:"Normal Stage 2",hpMul:1.30,spdMul:1.03,waves:20,desc:"Hive Outskirts: fast debris, darting scouts and the first Acid Spitters."},
  {n:3,name:"Hard Stage 3",hpMul:1.65,spdMul:1.06,waves:20,desc:"Brood Gardens: Brood Carriers hatch Broodlings; Nurse Scarabs support the swarm."},
- {n:4,name:"Sector II · Stage 4",hpMul:2.05,spdMul:1.09,waves:25,desc:"Acid Marsh: massed Spitters behind the first armored Shell Beetles. 25 waves."},
- {n:5,name:"Sector II · Stage 5",hpMul:2.50,spdMul:1.12,waves:25,desc:"Needle Passage: distant Needle Wasps and cloaking Veilwings. 25 waves."},
- {n:6,name:"Sector II · Stage 6",hpMul:3.10,spdMul:1.15,waves:25,desc:"Brood Furnace: splitting carriers mix with iron meteors and acid fire. 25 waves."},
- {n:7,name:"Sector II · Stage 7",hpMul:3.80,spdMul:1.17,waves:25,desc:"Prism Bloom: Prism Moths fire broad fans behind a veil of scouts. 25 waves."},
- {n:8,name:"Sector II · Stage 8",hpMul:4.60,spdMul:1.19,waves:25,desc:"Iron Carapace: armored meteor wedges and close-range Shell Beetles. 25 waves."},
- {n:9,name:"Sector III · Stage 9",hpMul:5.50,spdMul:1.21,waves:30,desc:"Phantom Nebula: cloaked Veilwings and Prism Moths. 30 waves."},
- {n:10,name:"Sector III · Stage 10",hpMul:6.50,spdMul:1.23,waves:30,desc:"Storm Swarm: fast wasp formations protected by Royal Hornets. 30 waves."},
- {n:11,name:"Sector III · Stage 11",hpMul:7.70,spdMul:1.24,waves:30,desc:"Siege Ring: Shell Beetles, acid artillery and assault meteors. 30 waves."},
- {n:12,name:"Sector III · Stage 12",hpMul:9.10,spdMul:1.25,waves:30,desc:"Queen's Nexus: all hive castes and the empowered Hive Tyrant. 30 waves."}
+ {n:4,name:"Sector II · Stage 4",hpMul:2.05,spdMul:1.09,waves:25,desc:"Acid Marsh: massed Spitters behind the first armored Shell Beetles."},
+ {n:5,name:"Sector II · Stage 5",hpMul:2.50,spdMul:1.12,waves:25,desc:"Needle Passage: distant Needle Wasps and cloaking Veilwings."},
+ {n:6,name:"Sector II · Stage 6",hpMul:3.10,spdMul:1.15,waves:25,desc:"Brood Furnace: splitting carriers mix with iron meteors and acid fire."},
+ {n:7,name:"Sector II · Stage 7",hpMul:3.80,spdMul:1.17,waves:25,desc:"Prism Bloom: Prism Moths fire broad fans behind a veil of scouts."},
+ {n:8,name:"Sector II · Stage 8",hpMul:4.60,spdMul:1.19,waves:25,desc:"Iron Carapace: armored meteor wedges and close-range Shell Beetles."},
+ {n:9,name:"Sector III · Stage 9",hpMul:5.50,spdMul:1.21,waves:30,desc:"Phantom Nebula: cloaked Veilwings and Prism Moths."},
+ {n:10,name:"Sector III · Stage 10",hpMul:6.50,spdMul:1.23,waves:30,desc:"Storm Swarm: fast wasp formations protected by Royal Hornets."},
+ {n:11,name:"Sector III · Stage 11",hpMul:7.70,spdMul:1.24,waves:30,desc:"Siege Ring: Shell Beetles, acid artillery and assault meteors."},
+ {n:12,name:"Sector III · Stage 12",hpMul:9.10,spdMul:1.25,waves:30,desc:"Queen's Nexus: all hive castes and the empowered Hive Tyrant."}
 ];
 var WAVES=20, MAX_ENEMIES=330;
 function stageWaves(stage){return stage&&stage.waves||WAVES;}
@@ -83,8 +84,9 @@ var BALANCE={
  waveStart:24,waveGrowth:8.4,
  spawnBase:0.20,spawnReduction:0.002,spawnMin:0.06,formationCd:1.33,
  /* Stationary insect artillery + rarer Extras, calibrated against fixed Stage 1
-    attempts. .85/.13: a win on attempt 3 for the sensible fresh-account draft. */
- enemyHpMul:0.85,
+    attempts. .85/.13: a win on attempt 3 for the sensible fresh-account draft.
+    4.25 (2026-11-12, owner order): enemies 5x HP. */
+ enemyHpMul:4.25,
  waveHpGrowth:0.13,bossHpGrowth:0.07,turretBasePower:1.6,
  /* a purple card raises the unit level (max 3); each level-up multiplies its damage */
  levelUpDmg:0.25,

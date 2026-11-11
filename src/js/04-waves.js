@@ -122,9 +122,9 @@ function spawnWaveGroup(){
 function spawnBoss(){
  if(B.enemies.length>=MAX_ENEMIES)return false;
  var cfg=ENEMIES.filter(function(e){return e.id==="boss";})[0];
- var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*BALANCE.bossHpGrowth)*(B.elite?BALANCE.eliteBossHp:1)*0.88;
+ var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*BALANCE.bossHpGrowth)*(B.elite?BALANCE.eliteBossHp:1)*13.2; /* 2026-11-12, owner order: boss 15x HP (0.88*15), its own number, not the general 5x */
  B.enemies.push({cfg:cfg,kind:"boss",x:W/2,y:-50,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
-  speed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1),baseSpeed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1),
+  speed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1)*0.25,baseSpeed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1)*0.25, /* 2026-11-12, owner order: boss 75% slower, its own factor, not stacked with the general 25% */
   vx:0,vy:cfg.speed,moveKind:"boss",hoverCd:8,hoverT:0,hoverCount:0,driftDir:1,driftT:5,speedPhase:0,visualScale:1,dmg:cfg.dmg*(B.stage.contactMul||1)*(B.elite?BALANCE.eliteBossContact:1),
   armor:cfg.armor+(B.elite?0.10:0),xp:cfg.xp,r:cfg.r+(B.elite?6:0),color:B.elite?"#df4d9c":cfg.color,
   champion:!!B.elite,eliteMode:B.elite,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,hasteT:0,auraT:2});

@@ -119,9 +119,8 @@ function renderHome(){
  $("scene-stage-status").textContent=clearMap[stage.n]?"✓ CLEARED":elite?"⚠ ELITE THREAT":"STAGE AVAILABLE";
  $("stage-brief").textContent=(elite?"Elite · ":"")+stage.desc;
  $("stage-risk").textContent=elite?"ELITE ×"+BALANCE.eliteHp+" HP":"NORMAL";
- var waveCount=waveEnemyTotal(stage,1,elite);
- $("stage-metrics").innerHTML='<span class="hq-metric">⚔ <b>'+stageWaves(stage)+'</b> waves</span>'+
- '<span class="hq-metric">▣ <b>'+waveCount+'</b> in wave 1</span>'+
+ var streamTotal=0;for(var w=1;w<=stageWaves(stage);w++)streamTotal+=waveEnemyTotal(stage,w,elite);
+ $("stage-metrics").innerHTML='<span class="hq-metric">▣ <b>'+streamTotal+'</b> enemies, non-stop</span>'+
  '<span class="hq-metric">✦ <b>'+(elite?"×1.6":"×1.0")+'</b> rewards</span>';
  var pa=patrolAccrued();
  $("btn-patrol").innerHTML='<span class="hq-action-ico">◉</span><span>Auto-patrol</span><span style="font-size:10px;color:#f6d078">'+pa+' ⬤</span>';
@@ -150,10 +149,10 @@ function openStageInfo(){
  var roster=[],seen={};
  for(var wave=1;wave<=stageWaves(st);wave++)waveEnemyPool(st,wave,META.elite,{}).forEach(function(entry){
   if(seen[entry[0]])return;seen[entry[0]]=1;
-  var cfg=ENEMIES.find(function(e){return e.id===entry[0];});roster.push(cfg.name+' · W'+wave);
+  var cfg=ENEMIES.find(function(e){return e.id===entry[0];});roster.push(cfg.name);
  });
- $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>WAVES</span><b>'+stageWaves(st)+' · BOSS</b>Meteor impacts + insect artillery</div>'+
- '<div class="hq-stage-info-cell"><span>MODE</span><b>'+mode.toUpperCase()+'</b>'+(META.elite?"Champions that speed up their allies":"Standard wave compositions")+'</div>'+
+ $("stage-info-body").innerHTML='<div class="hq-stage-info-cell"><span>STREAM</span><b>non-stop · BOSS</b>Meteor impacts + insect artillery</div>'+
+ '<div class="hq-stage-info-cell"><span>MODE</span><b>'+mode.toUpperCase()+'</b>'+(META.elite?"Champions that speed up their allies":"Standard compositions")+'</div>'+
  '<div class="hq-stage-info-cell"><span>STATUS</span><b>'+(clear[st.n]?"CLEARED":"NOT CLEARED")+'</b>Saved on this device</div>'+
  '<div class="hq-stage-info-cell"><span>REWARDS</span><b>'+(META.elite?"×1.6":"×1")+'</b>On victory or defeat</div>'+
  '<div class="hq-stage-info-cell" style="grid-column:1/-1"><span>ENEMY CASTES</span><b>'+STAGE_ECOLOGY[st.n-1].name+'</b>'+roster.join(' / ')+'</div>';

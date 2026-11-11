@@ -526,18 +526,64 @@ test("draft shows the 5-slot level/pip row; Selected Cards overview opens from d
   c.draw();
 });
 
-test("final boss appears even after the regular spawn queue is empty", () => {
+test("the boss joins at 60% of the stream, and the stage ends only when the stream is done", () => {
   g.B = g.newBattle(g.STAGES[0]);
   g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
-  g.B.wave = 20;
+  var threshold=Math.floor(g.B.stageTotal*0.4);
   g.B.waveState = "fighting";
-  g.B.waveQueue = 0;
+  g.B.stageQueue = threshold+1; g.B.waveQueue = 0;
+  g.update(0.05);
+  assert.ok(!g.B.bossSpawned, "the boss must not join before 60% of the stream");
+  g.B.stageQueue = threshold;
   g.update(0.05);
   assert.ok(g.B.bossSpawned);
   assert.ok(g.B.enemies.some(e => e.kind === "boss"));
+  assert.ok(!g.B.over, "the battle must not end while the stream remains");
+  /* stream exhausted, boss dead, field clear: the stage ends */
+  g.B.enemies = []; g.B.waveQueue = 0; g.B.stageQueue = 0;
+  g.update(0.05);
+  assert.ok(g.B.over, "stage must end once the stream, the boss and the field are all done");
 });
 
-test("draft progression slows with waves", () => {
+test("the stage is one continuous stream: virtual waves advance silently, the queue drains, no wave is ever shown", () => {
+  const {game:h}=harness();
+  h.startBattle();
+  h.startWave(1);
+  const total=h.B.stageTotal;
+  assert.ok(total>2000,"stage 1 stream must hold the whole stage: "+total);
+  assert.equal(h.B.stageQueue,total);
+  /* spawn the whole first virtual wave through the real spawn path */
+  h.B.spawnT=0;
+  let guard=0;
+  while(h.B.wave===1&&guard++<20000){
+    if(h.B.waveState==="draft")h.applyCard(h.curCards[0]);
+    else h.update(0.05);
+    if(h.B.over)break;
+  }
+  assert.ok(!h.B.over,"the stream must not kill the base while spawning virtual wave 1");
+  assert.equal(h.B.wave,2,"the virtual wave must advance once its queue empties");
+  assert.equal(h.B.waveState,"fighting","no pause and no draft between virtual waves");
+  assert.ok(h.B.stageQueue<total&&h.B.stageQueue>0,"the stage queue must drain with spawns");
+  assert.ok(!/W\d+\//.test(h.combatHudLayout().items.join(" ")),"the HUD must not show a wave counter");
+});
+
+test("enemies are 5x HP and 25% slower; the boss is 15x HP and 75% slower (owner order 2026-11-12)", () => {
+  assert.equal(g.BALANCE.enemyHpMul,4.25);
+  const {game:h}=harness();h.startBattle();h.startWave(1);
+  assert.equal(h.B.enemySpdMul,0.75);
+  assert.ok(h.spawnEnemy("meteor"));
+  const e=h.B.enemies[0];
+  assert.equal(e.hp,65*4.25,"meteor HP must be 5x");
+  assert.ok(e.baseSpeed>=82*0.75*0.85*0.93&&e.baseSpeed<=82*0.75*0.85*1.11,"meteor speed must carry the 0.75 multiplier, got "+e.baseSpeed);
+  h.B.wave=1;
+  assert.ok(h.spawnBoss());
+  const boss=h.B.enemies.find(x=>x.kind==="boss");
+  assert.ok(boss,"boss must spawn");
+  assert.ok(Math.abs(boss.hp-2200*1.1*13.2)<1e-6,"boss HP must be 15x (0.88 -> 13.2), got "+boss.hp);
+  assert.equal(boss.baseSpeed,30*0.25,"boss speed must carry its own 0.25 multiplier");
+});
+
+test("draft progression slows as the stream advances", () => {
   g.B = g.newBattle(g.STAGES[0]);
   g.addDraftScore(1791);
   const earlyCards=g.B.draftsEarned;
@@ -545,7 +591,7 @@ test("draft progression slows with waves", () => {
   g.B = g.newBattle(g.STAGES[0]);
   g.B.wave = 20;
   g.addDraftScore(1791);
-  assert.ok(g.B.draftsEarned<earlyCards,"late-wave draft progression should slow down");
+  assert.ok(g.B.draftsEarned<earlyCards,"late-stream draft progression should slow down");
 });
 
 test("smoke combat loops do not crash during spawning and drawing", () => {
@@ -581,7 +627,7 @@ test("Elite changes composition, champion strength and first-wave pressure", () 
   assert.ok(champion.armor > standard.armor);
 });
 
-test("enemy counts are tripled: wave totals, spawn pacing and cap", () => {
+test("enemy counts are tripled: virtual-wave totals, spawn pacing and cap", () => {
   assert.equal(g.MAX_ENEMIES, 330);
   assert.equal(g.BALANCE.waveStart, 24);
   assert.equal(g.BALANCE.waveGrowth, 8.4);
@@ -684,7 +730,7 @@ test("mode switch and stage arrows update the actual lobby state", () => {
   assert.equal(element("home-stage-title").textContent,"NORMAL STAGE 2");
 });
 
-test("12 campaign stages, 20/25/30 waves and saved progress", () => {
+test("12 campaign stages, 20/25/30 virtual waves and saved progress", () => {
   assert.equal(g.STAGES.length,12);
   assert.deepEqual(Array.from(g.STAGES.map(s=>s.waves)),[20,20,20,25,25,25,25,25,30,30,30,30]);
   assert.equal(g.TURRETS.some(t=>t.id==="gravity"),true);
@@ -694,9 +740,10 @@ test("12 campaign stages, 20/25/30 waves and saved progress", () => {
   late.META.music=false;late.META.sfx=false;
   late.startBattle();
   assert.equal(late.B.stage.waves,30);
-  late.B.wave=30;late.B.waveState="fighting";late.B.waveQueue=0;
+  /* stream exhausted (past the 60% boss join): the boss must still appear */
+  late.B.wave=30;late.B.waveState="fighting";late.B.waveQueue=0;late.B.stageQueue=0;
   late.update(.05);
-  assert.equal(late.B.bossSpawned,true,"stage 12 boss must spawn on wave 30");
+  assert.equal(late.B.bossSpawned,true,"stage 12 boss must spawn on virtual wave 30");
 });
 
 test("R&D gates follow the reference locks and Lv.2/6/10 unlocks; Star Tier gates the in-run level", () => {
@@ -1912,14 +1959,17 @@ test("Every weapon with its full card set deals damage without competition from 
   }
 });
 
-test("Stage preview shares exact wave totals and themed roster with spawning", () => {
+test("Stage preview shares exact stream totals and themed roster with spawning", () => {
   const {game:h,element}=harness();h.META.unlocked=12;
   for(let stage=1;stage<=12;stage++)for(const elite of [false,true]){
     h.META.selStage=stage;h.META.elite=elite;h.renderHome();h.openStageInfo();
-    const total=h.waveEnemyTotal(h.STAGES[stage-1],1,elite);
-    assert.ok(element("stage-metrics").innerHTML.includes('<b>'+total+'</b> in wave 1'));
+    let total=0;for(let w=1;w<=h.stageWaves(h.STAGES[stage-1]);w++)total+=h.waveEnemyTotal(h.STAGES[stage-1],w,elite);
+    assert.ok(element("stage-metrics").innerHTML.includes('<b>'+total+'</b> enemies, non-stop'));
     assert.ok(element("stage-info-body").innerHTML.includes(h.STAGE_ECOLOGY[stage-1].name));
-    h.B=h.newBattle(h.STAGES[stage-1]);h.B.elite=elite;h.startWave(1);assert.equal(h.B.waveTotal,total);
+    assert.ok(element("stage-info-body").innerHTML.includes("non-stop"));
+    h.B=h.newBattle(Object.assign({},h.STAGES[stage-1],{elite:elite}));h.B.elite=elite;
+    assert.equal(h.B.stageQueue,total,"new battle must queue the whole stream");
+    h.startWave(1);assert.equal(h.B.waveTotal,h.waveEnemyTotal(h.STAGES[stage-1],1,elite));
   }
 });
 
@@ -1929,7 +1979,7 @@ function enemyDefenseScene(h){
   h.B.draftNeed=1e9;h.B.soldier.cd=1e9;h.B.soldier.extraProj=0;
 }
 
-test("Only geological bodies can breach: every insect and the boss holds its firing station", () => {
+test("Only geological bodies can breach: every insect holds its firing station; the boss descends and deals 90% of base max HP", () => {
   const {game:h}=harness();
   assert.equal(h.ENEMIES.length,15);
   for(const cfg of h.ENEMIES){
@@ -1938,14 +1988,22 @@ test("Only geological bodies can breach: every insect and the boss holds its fir
     const meteor=["meteor","fast","armored","charger"].includes(cfg.id);
     assert.equal(h.isMeteorEnemy(e),meteor,cfg.id);
     h.update(.05);
-    if(meteor){assert.equal(h.B.leaks,1,cfg.id+" must impact");assert.ok(h.B.baseHp<h.B.baseMax);}
+    if(cfg.id==="boss"){
+      /* the Tyrant descends on the fortress: 90% of base max HP, no meteor leak */
+      assert.equal(h.B.leaks,0,"boss must not count as a meteor leak");
+      assert.equal(h.B.baseHp,h.B.baseMax-Math.floor(0.9*h.B.baseMax),"boss impact must deal 90% of base max HP");
+      assert.equal(h.B.bossDamage,Math.floor(0.9*h.B.baseMax));
+      assert.ok(!h.B.enemies.includes(e),"the boss is gone after reaching the fortress");
+    }
+    else if(meteor){assert.equal(h.B.leaks,1,cfg.id+" must impact");assert.ok(h.B.baseHp<h.B.baseMax);}
     else {assert.equal(h.B.leaks,0,cfg.id+" must not impact");assert.equal(h.B.baseHp,h.B.baseMax);assert.ok(h.B.enemies.includes(e));}
   }
 });
 
 test("Every insect caste approaches a varied stand-off distance and fires telegraphed ammunition", () => {
   const {game:h}=harness();
-  for(const cfg of h.ENEMIES.filter(x=>!["meteor","fast","armored","charger"].includes(x.id))){
+  /* the boss no longer holds a station — it descends on the fortress (see the breach test above) */
+  for(const cfg of h.ENEMIES.filter(x=>!["meteor","fast","armored","charger","boss"].includes(x.id))){
     enemyDefenseScene(h);h.spawnEnemy(cfg.id,{x:210});
     const e=h.B.enemies[0],p=h.enemyAttackProfile(e);e.hp=e.maxHp=1e9;
     assert.ok(h.BASEY-e.standY>=p.dist[0]-1e-6&&h.BASEY-e.standY<=p.dist[1]+1e-6,cfg.id+" station bounds");
@@ -1995,11 +2053,12 @@ test("Hostile ammunition is bounded, expires, and remains dangerous after the sh
   assert.equal(h.B.baseHp,hp-20);assert.equal(h.B.enemyShotHits,1);
 });
 
-test("Waves wait for hostile ammunition, then advance without a stranded projectile", () => {
-  const {game:h}=harness();enemyDefenseScene(h);h.B.waveQueue=0;
+test("The stage waits for hostile ammunition, then ends only when the stream, the boss and the field are all done", () => {
+  const {game:h}=harness();enemyDefenseScene(h);
+  h.B.waveQueue=0;h.B.stageQueue=0;h.B.bossSpawned=true;
   h.B.enemyShots=[{x:210,y:300,vx:0,vy:100,r:5,hp:5,damage:20,kind:"spit",color:"#aabbcc",life:2,dead:false}];
-  h.update(.05);assert.equal(h.B.wave,1,"outstanding shots must prevent a premature clear");
-  h.B.enemyShots[0].life=.01;h.update(.05);assert.equal(h.B.wave,2,"expired shots must not strand the wave");
+  h.update(.05);assert.ok(!h.B.over,"outstanding shots must prevent a premature stage end");
+  h.B.enemyShots[0].life=.01;h.update(.05);assert.ok(h.B.over,"expired shots must not strand the stage");
 });
 
 test("Campaign ecologies retain their themed roster in every random formation", () => {

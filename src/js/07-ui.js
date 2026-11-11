@@ -3,7 +3,7 @@
    All offers use weighted sampling without replacement. Higher tiers and bonuses are rarer. */
 function freeSlot(){for(var i=0;i<4;i++){if(!B.turrets.some(function(t){return t.slot===i;}))return i;}return -1;}
 var COMBOS={spin:["Spinning Laser","Laser + Tesla Coil: an extra beam and +20% Laser damage."],det:["Detonation Lightning","Sky Guard + Thunderbolt: rockets shock nearby enemies."],blaze:["Blazing Swarm","Firewheel + Hive: wasps set enemies on fire."],disr:["Disrupting Beam","Beam + Disruption Drone: the beam slows its target."],vortexWheel:["Vortex Disc","Firewheel + Gravity: the disc gains +25% damage and +2 s lifetime."],binaryStars:["Binary Singularity","Gravity + Hive: stronger pull, field radius +30%."],surgePierce:["Surge Rail","Railgun + Tesla: pierce +2, damage +25%."]};
-var MODULES={boost:["Battlefield Boost","All units deal +12% damage until the end of the battle."],healm:["Fortress Repair","Instantly restore 250 HP to the base."],regenm:["Regeneration Cycle","Instantly restore 200 HP to the base."],jam:["Wave Jammer","All enemies are 15% slower until the end of the battle."],patch:["Field Patch","Instantly restore 120 HP to the base. Offered only when no other cards are left."]};
+var MODULES={boost:["Battlefield Boost","All units deal +12% damage until the end of the battle."],healm:["Fortress Repair","Instantly restore 250 HP to the base."],regenm:["Regeneration Cycle","Instantly restore 200 HP to the base."],jam:["Signal Jammer","All enemies are 15% slower until the end of the battle."],patch:["Field Patch","Instantly restore 120 HP to the base. Offered only when no other cards are left."]};
 function genCards(){
  var picks=[];
  var pool=[];
@@ -124,8 +124,7 @@ function applyCard(c){
  B.pendingDrafts=Math.max(0,B.pendingDrafts-1);
  if(B.pendingDrafts>0){openDraft();lastTs=performance.now();return;}
  $("ov-levelup").classList.remove("on");
- if(B.draftReturn==="nextwave"){startWave(B.wave+1);}
- else B.waveState="fighting";
+ B.waveState="fighting";
  lastTs=performance.now();
 }
 /* 5-slot level/pip row, in field order: far left, center left, Guardian, center right, far right. */
@@ -184,7 +183,7 @@ function endBattle(win){
  persist();
  $("res-title").textContent=win?"Victory":"Defeat";
  $("res-title").className=win?"win":"lose";
- $("res-sub").textContent=B.stage.name+" · Waves cleared: "+(win?finalWave():B.wave)+" · Kills: "+B.kills+" · Time: "+mmss(B.elapsed)+" · 🎴 Cards taken: "+B.drafts+" · ❤ Base HP restored: "+Math.floor(B.totalHealed)+" HP";
+ $("res-sub").textContent=B.stage.name+" · Kills: "+B.kills+" · Time: "+mmss(B.elapsed)+" · 🎴 Cards taken: "+B.drafts+" · ❤ Base HP restored: "+Math.floor(B.totalHealed)+" HP";
  renderRewards();
  var tb=$("res-stats");tb.innerHTML="";
  stats.forEach(function(s){tb.innerHTML+="<tr><td>"+s.t.cfg.icon+" "+s.t.cfg.name+" <span style='color:var(--muted)'>Lv."+s.t.runLv+"</span></td><td>"+fmt(s.dmg)+"</td><td>"+fmt(s.dps)+"</td></tr>";});
