@@ -60,7 +60,7 @@ var BALANCE={
     72-seed Stage 1 R&D 1 check gives sensible picks 23/72 (~4/12) and first card 12/72 (~2/12).
     waveHpGrowth 0.06 -> 0.14 (2026-11-10): the reference card numbers (+50%, +200%) made Stage 1 a
     75% win for the sensible headless policy; enemies, not cards, were retuned back to ~1/3 */
- enemyHpMul:0.78,
+ enemyHpMul:0.76,
  waveHpGrowth:0.13,bossHpGrowth:0.07,turretBasePower:1.6,
  /* a purple card raises the unit level (max 3); each level-up multiplies its damage */
  levelUpDmg:0.25,

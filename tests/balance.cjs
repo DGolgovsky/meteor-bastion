@@ -109,7 +109,7 @@ function chooseCard(cards,policy){
  if(policy==="first")return cards[0];
  const ranks={skyguard:85,laser:82,tesla:81,hive:79,firewheel:76,aeroblast:73,beam:73,gravity:70,railgun:68,thunder:68,disruption:59};
  function value(c){
-  if(c.kind==="card"&&c.def.rare)return 120; /* purple: evolution / SUPER, levels the unit up */
+  if(c.kind==="card"&&c.def.rare)return 120; /* purple (Extra): levels the unit up; Super Mode is automatic at Lv3 */
   if(c.kind==="new")return ranks[c.cfg.id]||65;
   if(c.kind==="module")return c.modId==="healm"?83:c.modId==="patch"?10:30;
   if(c.kind==="combo")return 75;
