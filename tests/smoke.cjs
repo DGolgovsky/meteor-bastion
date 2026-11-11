@@ -479,8 +479,11 @@ test("Beam Refraction adds 2 refracted beams, Beam Penetration makes every beam 
   g.applyCardDef(g.cardById("beam", "beamRefraction"), beam);
   g.applyCardDef(g.cardById("beam", "beamPenetration"), beam);
   beam.cd = 0; g.unitFire(beam, 0.05);
-  assert.ok(t1.vulnerableStacks > 0, "main beam inflicts Vulnerable");
-  assert.ok(n1.hp < 1000 && n2.hp < 1000 && n3.hp === 1000, "exactly the 2 nearest enemies are refracted to");
+  /* Beam targets the enemy closest to the base (2026-11-12, owner order): the
+     main beam hits n3 (y=470), the 2 refracted beams jump to the nearest
+     enemies to it (n2, n1); the tough far enemy t1 is untouched. */
+  assert.ok(n3.vulnerableStacks > 0, "main beam inflicts Vulnerable on the closest-to-base enemy");
+  assert.ok(n1.hp < 1000 && n2.hp < 1000 && t1.hp === 5000, "exactly the 2 nearest enemies are refracted to");
   assert.ok(n1.vulnerableStacks > 0);
 });
 
@@ -778,6 +781,7 @@ test("R&D gates follow the reference locks and Lv.2/6/10 unlocks; Star Tier gate
 
 test("Gravity Vortex creates damaging fields that pull enemies", () => {
   g.B=g.newBattle(g.STAGES[0]);g.B.soldier=g.mkUnit(g.SOLDIER_CFG,210,-1,true);
+  g.B.soldier.cd=99999;
   g.B.wave=4;g.B.waveState="fighting";g.B.waveQueue=1;g.B.spawnT=999;
   const gravity=g.mkUnit(g.TURRETS.find(t=>t.id==="gravity"),52,0,false);
   const victim=sampleEnemy(g,550);victim.x=280;
@@ -785,6 +789,10 @@ test("Gravity Vortex creates damaging fields that pull enemies", () => {
   gravity.cd=0;g.unitFire(gravity,0.4);
   assert.ok(g.B.fields.some(f=>f.kind==="gravity"));
   const field=g.B.fields[0];
+  /* The field is born at the deck, inside the dome: an enemy placed there now
+     impacts the dome (2026-11-12). Lift the field above the dome for the
+     pull/damage check, and freeze the soldier so the damage is the field's own. */
+  field.x=210;field.y=400;field.vx=0;field.vy=0;
   victim.x=Math.min(410,field.x+field.r*.75);victim.y=field.y;
   const dist=Math.abs(field.x-victim.x),initialHp=victim.hp;
   g.update(0.5);
@@ -863,6 +871,16 @@ test("Laser beam is fixed at the moment of firing and does not track the target"
   const second=g.B.beams[g.B.beams.length-1];
   const a2=Math.atan2(second.y2-second.y1,second.x2-second.x1);
   assert.ok(Math.abs(a2-a1)<1e-9,"beam must not follow the target after firing: "+a1+" vs "+a2);
+});
+
+test("Beam targets the enemy closest to the base, not the toughest (owner order 2026-11-12)", () => {
+  g.B=g.newBattle(g.STAGES[0]);g.B.soldier=g.mkUnit(g.SOLDIER_CFG,210,-1,true);
+  const beam=g.mkUnit(g.TURRETS.find(t=>t.id==="beam"),52,0,false);
+  g.B.turrets=[beam];
+  const far=sampleEnemy(g,400);far.x=210;far.maxHp=1e6;far.hp=1e6;
+  const near=sampleEnemy(g,600);near.x=210;near.maxHp=10;near.hp=10;
+  g.B.enemies=[far,near];
+  assert.equal(g.pickTarget(beam),near,"Beam must pick the enemy closest to the base even when the farther one is far tougher");
 });
 
 test("no popup toasts exist anywhere in the game", () => {
@@ -1134,6 +1152,46 @@ test("fortress HP arc/dome flash after damage without shield absorption", () => 
   assert.equal(m.B.shield,undefined);
   assert.equal(m.B.baseFlashT,.12);
   assert.equal(m.B.baseHitTextT,.2);
+});
+
+test("enemies impact on the dome surface and never pass behind it (owner order 2026-11-12)", () => {
+  const {game:m}=harness();
+  m.B=m.newBattle(m.STAGES[0]);m.B.soldier=m.mkUnit(m.SOLDIER_CFG,210,-1,true);
+  m.B.soldier.cd=99999;m.B.wave=1;m.B.waveState="fighting";m.B.waveQueue=0;m.B.spawnT=99999;
+  const surf=m.domeY(180);
+  assert.ok(surf>600&&surf<640,"dome surface at x=180 is ~623: "+surf);
+  const above=sampleEnemy(m,surf-40);above.x=180;above.speed=0;above.hp=10000;
+  const touching=sampleEnemy(m,surf-above.r+1);touching.x=180;touching.speed=0;touching.hp=10000;
+  m.B.enemies=[above,touching];const hp=m.B.baseHp;
+  m.update(.05);
+  assert.equal(m.B.enemies.length,1,"the meteor touching the dome impacts; the one above it survives");
+  assert.equal(m.B.enemies[0],above);
+  assert.equal(m.B.baseHp,hp-touching.dmg);
+});
+
+test("a displaced insect is clamped to the dome surface, never inside it (owner order 2026-11-12)", () => {
+  const {game:m}=harness();
+  m.B=m.newBattle(m.STAGES[0]);m.B.soldier=m.mkUnit(m.SOLDIER_CFG,210,-1,true);
+  m.B.soldier.cd=99999;m.B.wave=1;m.B.waveState="fighting";m.B.waveQueue=0;m.B.spawnT=99999;
+  const cfg=m.ENEMIES.find(c=>!m.isMeteorEnemy({cfg:c}));
+  const e=Object.assign(sampleEnemy(m,m.BASEY-10),{cfg:cfg,kind:cfg.kind,x:180,hp:10000,maxHp:10000,speed:0,baseSpeed:0});
+  m.B.enemies=[e];
+  m.update(.05);
+  assert.ok(e.y+e.r<=m.domeY(e.x)+1,"displaced insect must not sit inside the dome: y+r="+(e.y+e.r)+" dome="+m.domeY(e.x)+" (1px slack: one frame of strafe moves the dome surface under it)");
+});
+
+test("Disruption fields are wide enough to matter (radius 80, owner order 2026-11-12)", () => {
+  const {game:c}=harness();
+  const [d]=mechBattle(c,["disruption"]);
+  const f=c.addDisruptionField(d,200,300);
+  assert.ok(f&&f.r>=80,"field radius must be 80, got "+(f&&f.r));
+});
+
+test("wasps live 50% longer at base (12.75 s, owner order 2026-11-12)", () => {
+  const {game:c}=harness();
+  const [h]=mechBattle(c,["hive"]);
+  const w=c.newWasp(h,h.x,h.y-10,{});
+  assert.ok(Math.abs(w.life-12.75*h.durationMul)<1e-9,"wasp base life must be 12.75*durationMul, got "+w.life);
 });
 
 test("three hits aggregate; numbers stay within the screen; healing is green-channel", () => {

@@ -7,7 +7,7 @@ var TURRETS=[
  {id:"disruption",name:"Disruption Drone",icon:"🛸",dmgType:"Force field",damage:7,attackSpeed:1.1,range:180,projSpeed:340,crit:0.05,critMul:1.7,target:"closestBase",effect:"slow",rarity:"rare",color:"#38c8ff",desc:"Force-field pulses slow enemies by 35%."},
  {id:"aeroblast",name:"Aeroblast",icon:"🌀",dmgType:"Air",damage:10,attackSpeed:0.8,range:540,projSpeed:520,crit:0.06,critMul:1.8,target:"nearest",effect:"knockback",rarity:"common",color:"#7dd7ff",desc:"A medium-range air shotgun: 5 pellets, a tight spread at range and strong knockback up close."},
  {id:"thunder",name:"Thunderbolt",icon:"⚡",dmgType:"Electric",damage:16,attackSpeed:0.8,range:560,projSpeed:0,crit:0.12,critMul:2.0,target:"closestBase",effect:"chain",rarity:"rare",color:"#c084fc",desc:"Calls vertical lightning strikes that hit every enemy in the bolt's column."},
- {id:"beam",name:"Beam",icon:"🔷",dmgType:"Energy",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"strongest",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Fires a focused series of energy hits at the toughest targets."},
+ {id:"beam",name:"Beam",icon:"🔷",dmgType:"Energy",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"closestBase",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Fires a focused series of energy hits at the enemies closest to the base."},
  {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Fire",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Releases a long-lived bouncing fire disc that repeatedly hits enemies."},
  {id:"hive",name:"Hive",icon:"🐝",dmgType:"Drones",damage:14,attackSpeed:0.5,range:390,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:"#facc15",desc:"Releases persistent wasps within range. Released wasps hunt across the whole field and strike repeatedly."},
  {id:"railgun",name:"Railgun",icon:"🎯",dmgType:"Rail",damage:70,attackSpeed:0.45,range:230,projSpeed:900,crit:0.15,critMul:2.4,target:"closestBase",effect:"pierce",rarity:"legend",color:"#f472b6",desc:"The projectile pierces straight through enemies along its line."},
@@ -87,6 +87,7 @@ var BALANCE={
     attempts. .85/.13: a win on attempt 3 for the sensible fresh-account draft.
     4.25 (2026-11-12, owner order): enemies 5x HP. */
  enemyHpMul:4.25,
+ enemyDmgMul:0.8,/* 2026-11-12, owner order: enemy damage down a bit ("nemnogo") */
  waveHpGrowth:0.13,bossHpGrowth:0.07,turretBasePower:1.6,
  /* a purple card raises the unit level (max 3); each level-up multiplies its damage */
  levelUpDmg:0.25,

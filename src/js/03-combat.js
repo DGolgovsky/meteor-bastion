@@ -37,6 +37,7 @@ function pickTarget(t){
  if(!inR.length)return null;
  switch(t.cfg.target){
   case "strongest":return inR.reduce(function(a,b){return b.maxHp>a.maxHp?b:a;});
+  case "closestBase":return inR.reduce(function(a,b){return b.y>a.y?b:a;});
   case "weakest":return inR.reduce(function(a,b){return b.hp<a.hp?b:a;});
   case "nearest":return inR.reduce(function(a,b){return Math.hypot(b.x-t.x,b.y-t.y)<Math.hypot(a.x-t.x,a.y-t.y)?b:a;});
   case "random":return inR[Math.floor(Math.random()*inR.length)];
@@ -135,7 +136,7 @@ function killEnemy(e){
    [-16,16].forEach(function(off){
      if(B.enemies.length>=MAX_ENEMIES)return;
       B.enemies.push({cfg:mini,kind:mini.kind,x:Math.max(16,Math.min(W-16,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
-      speed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,baseSpeed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,dmg:mini.dmg*.8,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
+      speed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,baseSpeed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,dmg:mini.dmg*.8*BALANCE.enemyDmgMul,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
        moveKind:"mini",visualScale:.85+Math.random()*.3,vx:0,vy:0,hoverCd:5,hoverT:0,hoverCount:0,driftDir:off<0?-1:1,driftT:2,speedPhase:Math.random()*6.28,
       phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:0});
    });
@@ -412,7 +413,7 @@ function fireThunder(t,target){
 function addDisruptionField(t,x,y,o){
  if(B.fields.length>=FX_CAP.fields)return null;
  o=o||{};
- var f={kind:"slow",x:x,y:y,r:o.r||Math.max(30,t.splash),life:(o.life||3.0)*(o.small?1:t.durationMul*(t.fieldDurMul||1)),age:0,seed:Math.random()*1000,
+ var f={kind:"slow",x:x,y:y,r:o.r||Math.max(80,t.splash),life:(o.life||3.0)*(o.small?1:t.durationMul*(t.fieldDurMul||1)),age:0,seed:Math.random()*1000,
   src:t,tick:0.1,dmgScale:o.dmgScale||1,shotT:0.5,laserAng:Math.random()*6.28,laserT:0,small:!!o.small,fortress:!!o.fortress};
  B.fields.push(f);return f;
 }

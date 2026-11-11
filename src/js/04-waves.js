@@ -88,7 +88,7 @@ function spawnEnemy(kind,opts){
  var x=opts.x===undefined?26+Math.random()*(W-52):Math.max(spawnR,Math.min(W-spawnR,opts.x));
  x=Math.max(spawnR,Math.min(W-spawnR,x));
  B.enemies.push({cfg:cfg,kind:cfg.kind,x:x,y:opts.y===undefined?-30:opts.y,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
-  speed:speed*(champion?BALANCE.eliteChampionSpeed:1),baseSpeed:speed*(champion?BALANCE.eliteChampionSpeed:1),dmg:cfg.dmg*(["meteor","fast","mini","flyer"].indexOf(cfg.id)>=0?0.8:1)*(B.stage.contactMul||1)*(champion?BALANCE.eliteChampionContact:1),
+  speed:speed*(champion?BALANCE.eliteChampionSpeed:1),baseSpeed:speed*(champion?BALANCE.eliteChampionSpeed:1),dmg:cfg.dmg*(["meteor","fast","mini","flyer"].indexOf(cfg.id)>=0?0.8:1)*(B.stage.contactMul||1)*(champion?BALANCE.eliteChampionContact:1)*BALANCE.enemyDmgMul,
   armor:Math.min(0.65,cfg.armor+(champion?BALANCE.eliteChampionArmor:0)),xp:cfg.xp,
   r:cfg.r+(champion?2:0),visualScale:.85+Math.random()*.3,color:champion?"#cc65ef":cfg.color,champion:champion,eliteMode:B.elite,
   phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,
@@ -125,7 +125,7 @@ function spawnBoss(){
  var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*BALANCE.bossHpGrowth)*(B.elite?BALANCE.eliteBossHp:1)*13.2; /* 2026-11-12, owner order: boss 15x HP (0.88*15), its own number, not the general 5x */
  B.enemies.push({cfg:cfg,kind:"boss",x:W/2,y:-50,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
   speed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1)*0.25,baseSpeed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1)*0.25, /* 2026-11-12, owner order: boss 75% slower, its own factor, not stacked with the general 25% */
-  vx:0,vy:cfg.speed,moveKind:"boss",hoverCd:8,hoverT:0,hoverCount:0,driftDir:1,driftT:5,speedPhase:0,visualScale:1,dmg:cfg.dmg*(B.stage.contactMul||1)*(B.elite?BALANCE.eliteBossContact:1),
+  vx:0,vy:cfg.speed,moveKind:"boss",hoverCd:8,hoverT:0,hoverCount:0,driftDir:1,driftT:5,speedPhase:0,visualScale:1,dmg:cfg.dmg*(B.stage.contactMul||1)*(B.elite?BALANCE.eliteBossContact:1)*BALANCE.enemyDmgMul,
   armor:cfg.armor+(B.elite?0.10:0),xp:cfg.xp,r:cfg.r+(B.elite?6:0),color:B.elite?"#df4d9c":cfg.color,
   champion:!!B.elite,eliteMode:B.elite,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,hasteT:0,auraT:2});
  initEnemyStation(B.enemies[B.enemies.length-1]);

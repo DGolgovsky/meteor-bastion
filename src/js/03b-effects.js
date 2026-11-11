@@ -171,7 +171,7 @@ function addDelayed(src,e,dmg,delay,r){
 }
 function newWasp(src,x,y,o){
  o=o||{};
- return {x:x,y:y,src:src,life:o.life||8.5*src.durationMul,tgt:null,hitT:0,hits:o.hits||src.hiveAttacks||5,boost:o.boost||1,
+ return {x:x,y:y,src:src,life:o.life||12.75*src.durationMul,tgt:null,hitT:0,hits:o.hits||src.hiveAttacks||5,boost:o.boost||1,/* 2026-11-12, owner order: wasps live 50% longer at base (8.5 -> 12.75 s) */
   tier:o.tier||1,echoed:!!o.isEcho,isEcho:!!o.isEcho,launchT:o.launchT||0,vx:o.vx||0,vy:o.vy||0,fury:0,attacks:0};
 }
 function addEchoWasp(src,x,y,power,tier){

@@ -36,8 +36,10 @@ function stepInsectMove(e,dt){
  initEnemyStation(e);
  /* Only an external pull or a legacy/manual spawn can put an insect below its
     station. Correct deck overshoot before recording intrinsic motion: it is not
-    a spontaneous upward flight, and a displaced shooter never occupies the bunker. */
- if(e.y>BASEY-60)e.y=BASEY-60;
+    a spontaneous upward flight, and a displaced shooter never occupies the bunker.
+    The dome is the boundary (2026-11-12, owner order): it never sits inside it. */
+ var cap=Math.min(BASEY-60,domeY(e.x)-(e.r||0));
+ if(e.y>cap)e.y=cap;
  var speed=e.baseSpeed===undefined?e.speed:e.baseSpeed,stopped=e.paralyzeT>0||e.immobT>0;
  var sf=stopped?0:Math.max(0,e.slowFactor===undefined?1:e.slowFactor),gap=Math.max(0,e.standY-e.y);
  var vy=Math.max(0,(speed||0)*sf*(e.hasteT>0?BALANCE.eliteAuraSpeed:1));
@@ -47,6 +49,13 @@ function stepInsectMove(e,dt){
  var oldY=e.y,oldX=e.x;e.y+=vy*dt;e.x=Math.max(e.r,Math.min(W-e.r,e.x+vx*dt));
  e.vx=dt>0?(e.x-oldX)/dt:0;e.vy=vy;e.hoverT=anchored?1:0;
  B.maxUpwardOwn=Math.max(B.maxUpwardOwn||0,Math.max(0,oldY-e.y));
+}
+/* The dome is the fortress boundary (2026-11-12, owner order): enemies impact
+   on its surface and never pass behind it. domeY(x) is the upper edge of the
+   dome ellipse at that x; the enemy's leading (bottom) edge touches it. */
+function domeY(x){
+ var q=(x-W/2)/FORTRESS.domeRx;
+ return FORTRESS.deckY-FORTRESS.domeRy*Math.sqrt(Math.max(0,1-q*q));
 }
 function hitFortress(amount,kind,x){
  if(B.over||!(amount>0))return;
@@ -130,10 +139,15 @@ function update(dt){
  if(B.waveQueue>0){
   B.spawnT-=dt;B.formationCd=Math.max(0,(B.formationCd||0)-dt);
   var opening=campaignOpening(B.stage,B.wave,B.elite);
-  var interval=Math.max(BALANCE.spawnMin,BALANCE.spawnBase-B.wave*BALANCE.spawnReduction)*opening.spawn;
+  /* Enemy count ramps with stream progress (2026-11-12, owner order): the stream
+     starts gentle — about 4-6 enemies on the field — and the spawn pace grows to
+     full pressure by the end. progress 0 → 5x slower spawning, 1 → current pace. */
+  var progress=B.stageTotal>0?Math.max(0,Math.min(1,1-B.stageQueue/B.stageTotal)):0;
+  var rampMul=1+4*(1-progress);
+  var interval=Math.max(BALANCE.spawnMin,BALANCE.spawnBase-B.wave*BALANCE.spawnReduction)*opening.spawn*rampMul;
   if(B.spawnT<=0){
    var n=0;
-   if(B.formationCd<=0&&B.waveQueue>=3){n=spawnWaveGroup();if(n>0)B.formationCd=BALANCE.formationCd*opening.spawn;}
+   if(B.formationCd<=0&&B.waveQueue>=3){n=spawnWaveGroup();if(n>0)B.formationCd=BALANCE.formationCd*opening.spawn*rampMul;}
    else if(spawnEnemy(wavePickKind()))n=1;
    if(n>0){B.waveQueue-=n;B.stageQueue-=n;}
    B.spawnT=n>0?interval*(.7+Math.random()*.6):.16;
@@ -202,12 +216,12 @@ function update(dt){
    e.phase+=dt*3;
    stepMove(e,dt);
    if(isMeteorEnemy(e)){if(B.parts.length<250&&Math.random()<dt*9)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
-   if(e.kind==="boss"&&e.y>=BASEY-16){
+   if(e.kind==="boss"&&e.y+e.r>=domeY(e.x)){
      /* The Tyrant reached the fortress: 90% of base max HP (2026-11-12, owner order).
         No score or kill credit — this is a base hit, not a kill. */
      e.dead=true;B.enemies.splice(i,1);
      hitFortress(Math.floor(0.9*B.baseMax),"boss",e.x);if(B.over)return;
-   }else if(isMeteorEnemy(e)&&e.y>=BASEY-16){
+   }else if(isMeteorEnemy(e)&&e.y+e.r>=domeY(e.x)){
      e.dead=true;B.enemies.splice(i,1);B.waveKilled++;
      hitFortress(e.dmg,"meteor",e.x);if(B.over)return;
    }else stepEnemyAttack(e,dt);
