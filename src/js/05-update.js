@@ -266,11 +266,15 @@ function update(dt){
    if(dr.tgt){
     var dx=dr.tgt.x-dr.x,dy=dr.tgt.y-dr.y,a=Math.atan2(dy,dx),travel=240*dt;
     if(dx*dx+dy*dy<=travel*travel){dr.x=dr.tgt.x;dr.y=dr.tgt.y;}
-    else {dr.x+=Math.cos(a)*travel;dr.y+=Math.sin(a)*travel;}
+    else {dr.x+=Math.cos(a)*travel;dr.y+=Math.sin(a)*travel;
+     /* flutter: a perpendicular weave so wasps do not fly straight like projectiles (owner order 2026-11-12) */
+     var wob=Math.sin(B.t*9+(dr.phase||0))*45*dt;
+     dr.x+=-Math.sin(a)*wob;dr.y+=Math.cos(a)*wob;}
     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:WEAPON_COLOR.hive,r:1.5});
     /* the wasp strikes while UNDER the enemy: touching its bottom edge */
     if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
       if(waspSting(dr)){waspDies(dr);B.drones.splice(j,1);continue;}
+      dr.lastTgt=dr.tgt;
       dr.x+=Math.cos(a+Math.PI)*14;dr.y+=Math.sin(a+Math.PI)*14;
       dr.tgt=null;
     }

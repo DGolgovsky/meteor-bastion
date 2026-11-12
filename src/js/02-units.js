@@ -106,7 +106,7 @@ function mkUnit(cfg,x,slot,isSoldier){
   portalDurMul:1,portalRMul:1,bhRMul:1,bhPullMul:1,bhDmgMul:1,extraFields:0,
   pulseRMul:1,waspBullets:0,stored:0,volleys:0,
   wheelSizeMul:1,wheelDurMul:1,trailDmgMul:1,trailDurBonus:0,miniDmgMul:1,miniDurMul:1,wheelIgnite:0,fireTrail:false,wheelMax:1,
-  bulletExplode:0,bulletExplR:1,bulletExplDmg:1,chargeGain:1,chargeShots:1,chargePts:0,chargedLeft:0,shotCount:0};
+  bulletExplode:0,bulletExplR:1,bulletExplDmg:1,chargeGain:1,chargeShots:1,chargePts:0,chargedLeft:0,chargeMax:60,chargedTotal:0,shotCount:0};
  return u;
 }
 function newBattle(stage){
@@ -129,7 +129,7 @@ function newBattle(stage){
   enemies:[],enemyShots:[],enemyShotHits:0,enemyShotsFired:0,enemyShotDamage:0,enemyShotsIntercepted:0,meteorDamage:0,bossDamage:0,
   projs:[],beams:[],parts:[],nums:[],drones:[],rings:[],wheels:[],fields:[],mines:[],pulses:[],bolts:[],portals:[],spinners:[],delayed:[],
   shake:0,baseFlashT:0,baseHitTextT:0,waveDensity:{},maxUpwardOwn:0,picked:[],drafts:0,waveState:"intro",introT:1.2,
-  allDmgMul:1,enemySpdMul:0.1875,/* 2026-11-12, owner order: enemies 25% slower, then another 50% (0.75*0.5), then another 50% (0.375*0.5); boss keeps its own x0.25 */combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
+  allDmgMul:1,enemySpdMul:0.1875,/* 2026-11-12, owner order: enemies 25% slower, then another 50% (0.75*0.5), then another 50% (0.375*0.5); boss keeps its own x0.2 (0.25 -> 0.2, even slower, owner order 2026-11-12) */combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }
 function startBattle(){refillEnergy();
  if(META.energy<BATTLE_ENERGY_COST){renderHome();return;}

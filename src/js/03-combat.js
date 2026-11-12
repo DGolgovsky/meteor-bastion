@@ -20,10 +20,14 @@ function pickDroneTarget(dr){
   var target=drones[i].tgt;
   if(target)assigned.set(target,(assigned.get(target)||0)+1);
  }
- var best=null,bestScore=Infinity,least=null,leastScore=Infinity;
+ var best=null,bestScore=Infinity,least=null,leastScore=Infinity,fallback=null;
  for(var j=0;j<enemies.length;j++){
   var e=enemies[j];
   if(!waspCanTarget(e))continue;
+  /* 2026-11-12, owner order: after a sting the wasp changes its target instead of
+     re-picking the same one it is standing under; the last target is only a fallback
+     when it is the only valid target left */
+  if(e===dr.lastTgt){if(!fallback)fallback=e;continue;}
   var count=assigned.get(e)||0;
   if(count>=2&&best)continue;
   var distance=Math.hypot(e.x-dr.x,e.y-dr.y);
@@ -35,7 +39,7 @@ function pickDroneTarget(dr){
    if(loadScore<leastScore){leastScore=loadScore;least=e;}
   }
  }
- return best||least;
+ return best||least||fallback;
 }
 function waspCanTarget(e){
  return e&&!e.dead&&e.hp>0&&e.y<=BASEY+12&&!(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0));
@@ -194,6 +198,18 @@ function edgeLen(ox,oy,dx,dy){
  if(dy>1e-6)t=Math.min(t,(H-oy)/dy);if(dy<-1e-6)t=Math.min(t,(0-oy)/dy);
  return isFinite(t)?t:400;
 }
+/* Where a ray from (ox,oy) along (dx,dy) hits the screen edge, and that edge's outward
+   normal — for the laser refraction (owner order 2026-11-12): the beam refracts off the
+   screen edge instead of spawning a duplicate from the turret. */
+function edgeHit(ox,oy,dx,dy){
+ var best=Infinity,nx=0,ny=0;
+ if(dx>1e-6){var t=(W-ox)/dx;if(t<best){best=t;nx=1;ny=0;}}
+ if(dx<-1e-6){var t=(0-ox)/dx;if(t<best){best=t;nx=-1;ny=0;}}
+ if(dy>1e-6){var t=(H-oy)/dy;if(t<best){best=t;nx=0;ny=1;}}
+ if(dy<-1e-6){var t=(0-oy)/dy;if(t<best){best=t;nx=0;ny=-1;}}
+ if(!isFinite(best))return null;
+ return {x:ox+dx*best,y:oy+dy*best,nx:nx,ny:ny};
+}
 /* Laser width follows the laser's damage power relative to its build-time power:
    ×1 at base, up to ×3 (sqrt scale), times the High-Energy Pulse band. */
 function laserPowerScale(t){return t.dmgMul*(B?B.allDmgMul:1)*(t.laserPower||1)/(t.baseDmgMul||t.dmgMul||1);}
@@ -226,7 +242,8 @@ function laserHit(t,e,base,o){
  if(t.disruptionLaser&&Math.random()<0.1)addDisruption(e,t,1);
 }
 /* Laser: finite channel with the direction LOCKED at pulse start. Every laser of this turret
-   (main, deflected, sweeping, reflected, refracted, convergence, ripping) starts AT THE TURRET. */
+   (main, deflected, sweeping, reflected, convergence, ripping) starts AT THE TURRET; the
+   refracted beams start where the main beam hits the screen edge, at the reflected angle. */
 function fireLaser(t,dt){
  t.cd-=dt;
  if(t.laserActive<=0){
@@ -243,6 +260,17 @@ function fireLaser(t,dt){
  var prog=1-t.laserActive/Math.max(0.01,t.laserDur);
  var A=t.laserAngle;t.angle=A;
  var muzzle=turretMuzzle(t),ox=muzzle.x,oy=muzzle.y;
+ /* Laser Refraction (owner order 2026-11-12): the main beam refracts off the screen edge —
+    the refracted beams start at the edge hit point, at the reflected angle, instead of
+    spawning as duplicates from the turret. Computed once per frame from the locked angle. */
+ var refractHit=null,refractAng=0;
+ if(t.refract){
+  var eh=edgeHit(ox,oy,Math.cos(A),Math.sin(A));
+  if(eh){
+   var dn=Math.cos(A)*eh.nx+Math.sin(A)*eh.ny;
+   refractHit=eh;refractAng=Math.atan2(Math.sin(A)-2*dn*eh.ny,Math.cos(A)-2*dn*eh.nx);
+  }
+ }
  /* Only damaging ticks need an enemy-line scan. Take that snapshot before the
     Graviton movement below, exactly as before, without scanning on visual-only frames. */
  t.laserTickT-=dt;
@@ -259,7 +287,7 @@ function fireLaser(t,dt){
  }
  defl.forEach(function(a,i){laserBeam(t,"deflect"+i,ox,oy,a,w*0.55,"#bfea65");});
  for(i=0;i<t.laserSweep;i++)laserBeam(t,"sweep"+i,ox,oy,sweepAngle(prog,i),w*.6,"#d7fb94");
- if(t.refract)[-0.34,0.34].forEach(function(a,i){laserBeam(t,"refract"+i,ox,oy,A+a,w*0.5,"#bfea65");});
+ if(refractHit)[-0.34,0.34].forEach(function(a,i){laserBeam(t,"refract"+i,refractHit.x,refractHit.y,refractAng+a,w*0.5,"#bfea65");});
  if(t.gravitonLaser){
   var gx=Math.cos(A),gy=Math.sin(A);
   B.enemies.forEach(function(e){
@@ -310,7 +338,7 @@ function fireLaser(t,dt){
  for(i=0;i<t.laserSweep;i++){
   rayHits(t,ox,oy,sweepAngle(tickProgress,i),1,hits).forEach(function(e){laserHit(t,e,base*.8,oSweep);});
  }
- if(t.refract)[-0.34,0.34].forEach(function(a){rayHits(t,ox,oy,A+a,1,hits).forEach(function(e){laserHit(t,e,base*0.5,oMain);});});
+ if(refractHit)[-0.34,0.34].forEach(function(a){rayHits(t,refractHit.x,refractHit.y,refractAng+a,1,hits).forEach(function(e){laserHit(t,e,base*0.5,oMain);});});
  if(t.beamSplit){
   var e2=B.enemies.find(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
   if(e2){laserVisual(t,"split",ox,oy,e2.x,e2.y,w*0.6,t.cfg.color);laserHit(t,e2,t.cfg.damage*0.7*tickCount,oMain);}
@@ -563,7 +591,7 @@ function guardianCharge(t,shots){
  if(!t.chargeActive)return;
  if(t.chargedLeft>0){t.chargedLeft=Math.max(0,t.chargedLeft-1);return;}
  t.chargePts=(t.chargePts||0)+shots*(t.chargeGain||1);
- if(t.chargePts>=60){t.chargePts=0;t.chargedLeft=Math.round(20*(t.chargeShots||1));ringFx(t.x,t.y-10,"#fde047",140);}
+ if(t.chargePts>=(t.chargeMax||60)){t.chargePts=0;t.chargedLeft=Math.round(20*(t.chargeShots||1));t.chargedTotal=t.chargedLeft;ringFx(t.x,t.y-10,"#fde047",140);}
 }
 function mirrorX(t){return t.x<W/2?t.x+40:t.x-40;}
 /* Parallel volleys cycle through the visible ports. The Guardian alternates shoulders. */

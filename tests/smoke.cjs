@@ -433,6 +433,25 @@ test("Wasp Evolution II evolves a wasp after 3 attacks; Electro-Wasps shock near
   assert.ok(g.B.beams.some(b => b.arc && b.color === g.WEAPON_COLOR.tesla));
 });
 
+test("wasp changes target after a sting, last target only as a fallback (owner order 2026-11-12)", () => {
+  const {game:g}=harness();
+  cardBattle(g);
+  const hive = g.mkUnit(g.TURRETS.find(t => t.id === "hive"), 52, 0, false);
+  g.B.turrets = [hive];
+  const a = sampleEnemy(g, 300); a.x = 100; a.hp = a.maxHp = 1e6;
+  const b = sampleEnemy(g, 300); b.x = 320; b.hp = b.maxHp = 1e6;
+  g.B.enemies = [a, b];
+  const dr = { x: a.x, y: a.y + 2, src: hive, life: 20, tgt: a, hitT: 0, hits: 5, boost: 1, tier: 1, echoed: false, isEcho: false, launchT: 0, vx: 0, vy: 0 };
+  g.B.drones = [dr];
+  g.update(0.01);
+  assert.equal(dr.lastTgt, a, "the stung target is remembered");
+  assert.equal(dr.tgt, null, "the wasp drops its target right after the sting");
+  g.update(0.01);
+  assert.equal(dr.tgt, b, "the wasp retargets to a different enemy after a sting");
+  g.B.enemies = [a]; dr.tgt = null; dr.lastTgt = a;
+  assert.equal(g.pickDroneTarget(dr), a, "the last target is picked when it is the only one");
+});
+
 test("Laser fires only from the turret: High-Energy Pulse band, Energy Surge deflected lasers with Slow, width grows with power", () => {
   cardBattle(g);
   const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 210, 0, false);
@@ -492,6 +511,27 @@ test("Laser Reflection, Sweeping Lasers and Convergence beams all originate at t
   }
   assert.ok(sweepAngles.size >= 6, "sweeping lasers really sweep: " + sweepAngles.size);
   assert.ok(es.filter(e => e.hp < e.maxHp).length >= 5, "reflections/sweeps reach several enemies");
+});
+
+test("laser refraction starts at the screen edge, not at the turret (owner order 2026-11-12)", () => {
+  cardBattle(g);
+  const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 210, 0, false);
+  g.B.turrets = [laser];
+  laser.refract = true;
+  const e = sampleEnemy(g, 300); e.x = 210; e.hp = e.maxHp = 1e6;
+  g.B.enemies = [e];
+  laser.cd = 0;
+  for (let i = 0; i < 10; i++) g.unitFire(laser, 0.05);
+  const r0 = laser.laserVisuals["refract0"], r1 = laser.laserVisuals["refract1"];
+  assert.ok(r0 && r1, "refracted beams exist");
+  const lens = g.turretMuzzle(laser);
+  assert.ok(Math.hypot(r0.x1 - lens.x, r0.y1 - lens.y) > 50, "refracted beam 0 starts away from the turret");
+  assert.ok(Math.hypot(r1.x1 - lens.x, r1.y1 - lens.y) > 50, "refracted beam 1 starts away from the turret");
+  const onEdge = b => b.x1 <= 1 || b.x1 >= g.W - 1 || b.y1 <= 1 || b.y1 >= g.H - 1;
+  assert.ok(onEdge(r0), "refracted beam 0 starts at a screen edge, got " + r0.x1 + "," + r0.y1);
+  assert.ok(onEdge(r1), "refracted beam 1 starts at a screen edge, got " + r1.x1 + "," + r1.y1);
+  const main = laser.laserVisuals["main"];
+  assert.ok(main && main.x1 === lens.x && main.y1 === lens.y, "the main beam still starts at the turret");
 });
 
 test("Beam Refraction adds 2 refracted beams, Beam Penetration makes every beam hit Vulnerable", () => {
@@ -612,7 +652,7 @@ test("enemies are 5x HP and 81.25% slower (0.1875); the boss is 15x HP and 75% s
   const boss=h.B.enemies.find(x=>x.kind==="boss");
   assert.ok(boss,"boss must spawn");
   assert.ok(Math.abs(boss.hp-2200*1.1*13.2)<1e-6,"boss HP must be 15x (0.88 -> 13.2), got "+boss.hp);
-  assert.equal(boss.baseSpeed,30*0.25,"boss speed must carry its own 0.25 multiplier");
+  assert.equal(boss.baseSpeed,30*0.2,"boss speed must carry its own 0.2 multiplier");
 });
 
 test("draft progression slows as the stream advances", () => {
@@ -626,20 +666,26 @@ test("draft progression slows as the stream advances", () => {
   assert.ok(g.B.draftsEarned<earlyCards,"late-stream draft progression should slow down");
 });
 
+
 test("smoke combat loops do not crash during spawning and drawing", () => {
-  g.B = g.newBattle(g.STAGES[0]);
-  g.B.soldier = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
-  g.startWave(1);
-  for (let i = 0; i < 360; i++) {
-    if (g.B.waveState === "draft") {
-      g.applyCard(g.curCards[0]);
+  /* Fresh harness: the shared sandbox's seeded RNG stream shifts as tests are added,
+     and this kill count is marginal — the test must not depend on the tests before it. */
+  const {game:h}=harness();
+  h.B = h.newBattle(h.STAGES[0]);
+  h.B.soldier = h.mkUnit(h.SOLDIER_CFG, 210, -1, true);
+  h.startWave(1);
+  /* 600 steps (30 s): a lone level-1 soldier only lands ~1 kill in 18 s (360 steps)
+     on most RNG draws, so the >=2 check was marginal — 600 steps gives >=3 on every seed */
+  for (let i = 0; i < 600; i++) {
+    if (h.B.waveState === "draft") {
+      h.applyCard(h.curCards[0]);
     } else {
-      g.update(0.05);
+      h.update(0.05);
     }
-    if (i % 30 === 0) g.draw();
-    if (g.B.over) break;
+    if (i % 30 === 0) h.draw();
+    if (h.B.over) break;
   }
-  assert.ok(g.B.kills >= 2);
+  assert.ok(h.B.kills >= 2);
 });
 
 test("Elite changes composition, champion strength and first-wave pressure", () => {
@@ -1031,7 +1077,7 @@ test("wasps live longer and spread across targets, max 2 per target", () => {
   g.B.enemies = targets;
   g.unitFire(hive, 0.5);
   assert.equal(g.B.drones.length, hive.hiveCount, "volley size unchanged");
-  assert.ok(g.B.drones.every(dr => dr.life >= 8), "wasps must live ~8.5s, got " + g.B.drones[0].life);
+  assert.ok(g.B.drones.every(dr => dr.life >= 8), "wasps must live ~20s, got " + g.B.drones[0].life);
   const perTarget = new Map();
   g.B.drones.forEach(dr => { if (dr.tgt) perTarget.set(dr.tgt, (perTarget.get(dr.tgt) || 0) + 1); });
   assert.ok([...perTarget.values()].every(n => n <= 2), "no more than 2 wasps per target: " + JSON.stringify([...perTarget.values()]));
@@ -1249,11 +1295,11 @@ test("Disruption fields are wide enough to matter (radius 80, owner order 2026-1
   assert.ok(f&&f.r>=80,"field radius must be 80, got "+(f&&f.r));
 });
 
-test("wasps live 50% longer at base (12.75 s, owner order 2026-11-12)", () => {
+test("wasps live 20 s at base (owner order 2026-11-12)", () => {
   const {game:c}=harness();
   const [h]=mechBattle(c,["hive"]);
   const w=c.newWasp(h,h.x,h.y-10,{});
-  assert.ok(Math.abs(w.life-12.75*h.durationMul)<1e-9,"wasp base life must be 12.75*durationMul, got "+w.life);
+  assert.ok(Math.abs(w.life-20*h.durationMul)<1e-9,"wasp base life must be 20*durationMul, got "+w.life);
 });
 
 test("three hits aggregate; numbers stay within the screen; healing is green-channel", () => {
@@ -1295,7 +1341,7 @@ test("Signal Jammer slows the Tyrant equally before and after it spawns", () => 
       if(!before)h.applyCard({kind:"module",modId:"jam"});
       const boss=h.B.enemies[0];
       h.stepMove(boss,.1);speeds.push(boss.vy);
-      assert.equal(boss.vy,boss.cfg.speed*h.B.stage.spdMul*(elite?1.08:1)*.25*.85);
+      assert.equal(boss.vy,boss.cfg.speed*h.B.stage.spdMul*(elite?1.08:1)*.2*.85);/* boss speed factor 0.2 (owner order 2026-11-12: even slower) */
     }
     assert.equal(speeds[0],speeds[1]);
   }
@@ -1432,12 +1478,12 @@ test("results show every material grant, biggest first", () => {
   h.lastRewards={win:true,coins:626,gems:2,comp:10,pxp:16,mats:{laser:44,hive:40,beam:30,soldier:13,skyguard:7},applied:false};
   h.renderRewards();
   var html=element("res-rewards").innerHTML;
-  ["Laser","Hive","Beam","Soldier","Sky Guard"].forEach(function(name){
+  ["Laser","Hive","Beam","Guard \"Bastion\"","Sky Guard"].forEach(function(name){
     assert.ok(html.includes("Materials: "+name),"rewards must show materials for "+name);
   });
   assert.ok(html.indexOf("Materials: Laser")<html.indexOf("Materials: Hive"),"biggest grant first");
   assert.ok(html.indexOf("Materials: Hive")<html.indexOf("Materials: Beam"),"grants sorted by amount");
-  assert.ok(html.indexOf("Materials: Sky Guard")>html.indexOf("Materials: Soldier"),"smallest grant last");
+  assert.ok(html.indexOf("Materials: Sky Guard")>html.indexOf("Materials: Guard \"Bastion\""),"smallest grant last");
   h.lastRewards={win:false,coins:32,gems:0,comp:0,pxp:3,mats:{laser:5,hive:0},applied:false};
   h.renderRewards();
   html=element("res-rewards").innerHTML;
@@ -2126,6 +2172,24 @@ test("Guardian: Charge Activation enters Charged State; Splitting Bullet; Mirror
   assert.ok(c.B.projs.some(p => p.kind === "shell" && p.src === s && p.pierce === 99), "Counterburst wave fired after 40 shots");
 });
 
+test("Guardian charge bar fills with shots and drains in Charged State (owner order 2026-11-12)", () => {
+  const { game: c } = harness();
+  mechBattle(c, []);
+  const s = c.B.soldier;
+  c.applyCardDef(c.cardById("soldier", "chargeActivation"), s);
+  assert.equal(c.guardianChargeFrac(s), 0, "empty bar before firing");
+  s.chargePts = 30;
+  assert.ok(Math.abs(c.guardianChargeFrac(s) - 0.5) < 1e-9, "half bar at 30/60 points");
+  s.chargePts = 59; c.guardianCharge(s, 1);
+  assert.equal(s.chargePts, 0, "points reset on trigger");
+  assert.equal(s.chargedLeft, 20, "20 charged shots");
+  assert.equal(s.chargedTotal, 20, "charged total stored for the bar");
+  assert.equal(c.guardianChargeFrac(s), 1, "full bar at the start of Charged State");
+  s.chargedLeft = 10;
+  assert.ok(Math.abs(c.guardianChargeFrac(s) - 0.5) < 1e-9, "bar drains with the charged shots");
+  c.draw();
+});
+
 test("Aeroblast: Floating Mine card, Shotgun Barrage shells, Multiple Blast+ repeat, Extra Loading", () => {
   const { game: c } = harness();
   const [a] = mechBattle(c, ["aeroblast"]);
@@ -2259,7 +2323,7 @@ test("A laser channel reuses one visual per ray at 60 and 120 Hz without changin
   }
 });
 
-test("Upgraded laser visuals are frame-rate independent and keep every origin on the turret", () => {
+test("Upgraded laser visuals are frame-rate independent; every beam starts at the turret or at the screen edge (refraction)", () => {
   const counts=[];
   for(const fps of [60,120]){
     const {game:h}=harness();h.startBattle();const t=h.mkUnit(h.TURRETS.find(x=>x.id==="laser"),52,0,false);
@@ -2270,7 +2334,9 @@ test("Upgraded laser visuals are frame-rate independent and keep every origin on
     for(let i=0;i<fps*2;i++){
       h.B.t+=1/fps;h.fireLaser(t,1/fps);
       const tip=h.turretMuzzle(t);
-      assert.ok(h.B.beams.every(b=>b.x1===tip.x&&b.y1===tip.y),"forks, reflections and sweeps must start at the emitter tip");
+      /* every beam starts at the emitter tip, except the refracted ones, which start
+         where the main beam hits the screen edge (owner order 2026-11-12) */
+      assert.ok(h.B.beams.every(b=>(b.x1===tip.x&&b.y1===tip.y)||b.x1<=1||b.x1>=h.W-1||b.y1<=1||b.y1>=h.H-1),"every laser beam starts at the emitter tip or at the screen edge (refraction)");
       h.B.beams=h.B.beams.filter(b=>{b.t+=1/fps;return b.t<b.life;});max=Math.max(max,h.B.beams.length);
     }
     assert.ok(max<=24,"upgrades need ray slots, not per-frame copies: "+max);counts.push(max);

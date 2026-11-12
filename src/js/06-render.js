@@ -135,6 +135,19 @@ function drawUnit(t){
  drawUnitPips(t);
  ctx.font="700 9px 'Segoe UI',sans-serif";ctx.textAlign="center";ctx.fillStyle="#cfe8e2";
  ctx.fillText("Lv."+t.runLv,t.x,t.y+31);
+ /* Guardian charge bar (Charge Activation card, 2026-11-12 owner order): fills while the
+    Guardian fires, drains while it fires enhanced charges in Charged State */
+ if(t.isSoldier&&t.chargeActive){
+  var bw=36,bx=t.x-bw/2,by=t.y+38,frac=guardianChargeFrac(t);
+  ctx.fillStyle="rgba(10,20,32,.85)";ctx.fillRect(bx-1,by-1,bw+2,6);
+  ctx.fillStyle=t.chargedLeft>0?"#fde047":"#d9a514";
+  ctx.fillRect(bx,by,bw*Math.max(0,Math.min(1,frac)),4);
+ }
+}
+/* Charge bar fill: charging = points / max, charged = remaining charged shots / total */
+function guardianChargeFrac(t){
+ if(t.chargedLeft>0)return t.chargedLeft/Math.max(1,t.chargedTotal||t.chargedLeft);
+ return (t.chargePts||0)/Math.max(1,t.chargeMax||60);
 }
 function drawUnitPips(t){
  var n=PIPS_PER_LV,step=7,x0=t.x-(n-1)*step/2,y=t.y+19;

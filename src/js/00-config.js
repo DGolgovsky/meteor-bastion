@@ -21,7 +21,7 @@ var TURRETS=[
  {id:"tesla",name:"Tesla Coil",icon:"🌩️",dtype:"electric",damage:15,attackSpeed:0.88,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:WEAPON_COLOR.tesla,desc:"Launches a ball of lightning that explodes on contact and arcs to nearby enemies."},
  {id:"gravity",name:"Gravity Vortex Gun",icon:"🕳️",dtype:"force",damage:9,attackSpeed:0.48,range:390,projSpeed:0,crit:0.04,critMul:1.65,target:"closestBase",effect:"gravity",rarity:"epic",color:WEAPON_COLOR.gravity,desc:"Creates a gravity field that pulls enemies in and deals damage over time."}
 ];
-var SOLDIER_CFG={id:"soldier",name:"Soldier \"Bastion\"",icon:"🪖",dtype:"phys",damage:12,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Your movable fighter on the fortress deck. Range: the whole field."};
+var SOLDIER_CFG={id:"soldier",name:"Guard \"Bastion\"",icon:"🪖",dtype:"phys",damage:12,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Your movable fighter on the fortress deck. Range: the whole field."};/* 2026-11-12, owner order: the soldier is called Guard in all cards and texts (internal id stays "soldier": save keys must not change) */
 TURRETS.concat([SOLDIER_CFG]).forEach(function(cfg){cfg.dmgType=DAMAGE_TYPE_NAME[cfg.dtype];});
 /* res: incoming damage multipliers by type (like the ±50% resistances in Galaxy Defense):
    <1 is resistance, >1 is vulnerability */
