@@ -140,6 +140,20 @@ test("legacy v1 saves load and level is clamped at 45", () => {
   assert.equal(old.META.music, false);
 });
 
+test("Guard cards and settings use the display name with the original v1 save keys", () => {
+  const {game:h}=harness({v:1,levels:{soldier:12},mats:{soldier:46}});
+  freshBattle(h);
+  const guard=h.B.soldier;
+  assert.equal(guard.cfg.id,"soldier");
+  assert.equal(h.META.levels.soldier,12);
+  assert.equal(h.META.mats.soldier,46);
+  const card=h.cardHTML({kind:"card",u:guard,def:h.cardById("soldier","chargeActivation")});
+  assert.equal(card.unit,'Guard "Bastion"');
+  assert.match(card.desc,/the Guard\b/i);
+  assert.match(shell,/Guard and fortress liveries/);
+  assert.match(shell,/turret and Guard levels/);
+});
+
 test("fractional stage indices in a v1 save still open the lobby and the correct battle", () => {
   const {game:h,element}=harness({v:1,unlocked:3.9,selStage:5.2,energy:19.7,coins:777,mats:{hive:35}});
   assert.equal(element("home-stage-title").textContent,"NORMAL STAGE 3");
@@ -534,6 +548,33 @@ test("laser refraction starts at the screen edge, not at the turret (owner order
   assert.ok(main && main.x1 === lens.x && main.y1 === lens.y, "the main beam still starts at the turret");
 });
 
+test("both Laser refractions return to the field on grazing side hits and exact corners", () => {
+  for (const left of [true, false]) for (const hitY of [330, 0]) {
+    const {game:h}=harness(); freshBattle(h);
+    const edgeX=left ? 0 : h.W;
+    const laser=h.mkUnit(h.TURRETS.find(t=>t.id==="laser"), left ? 52 : 368, 0, false);
+    h.SUPERS.laser.apply(laser);
+    laser.reflect=0; laser.beamSplit=false; // isolate the two edge rays
+    const pivot=h.aimOrigin(laser);
+    const aim=still(h,(edgeX+pivot.x)/2,(hitY+pivot.y)/2);
+    h.B.enemies=[aim]; laser.cd=0;
+    h.unitFire(laser,1/60);
+    const rays=[laser.laserVisuals.refract0,laser.laserVisuals.refract1];
+    const victims=rays.map(ray=>{
+      assert.ok(Math.abs(ray.x1-edgeX)<1e-6 && Math.abs(ray.y1-hitY)<1e-6);
+      const dx=ray.x2-ray.x1, dy=ray.y2-ray.y1;
+      assert.ok(Math.hypot(dx,dy)>80, "refraction stops on the wall at "+edgeX+","+hitY);
+      const x=ray.x1+dx*.8, y=ray.y1+dy*.8;
+      assert.ok(x>0 && x<h.W && y>h.VIS_TOP && y<h.BASEY);
+      const enemy=still(h,x,y); enemy.r=1; return enemy;
+    });
+    assert.ok(Math.hypot(victims[0].x-victims[1].x,victims[0].y-victims[1].y)>8);
+    h.B.enemies=victims;
+    h.unitFire(laser,.13);
+    assert.ok(victims.every(e=>e.hp<e.maxHp), "each visible return ray must deal damage");
+  }
+});
+
 test("Beam Refraction adds 2 refracted beams, Beam Penetration makes every beam hit Vulnerable", () => {
   cardBattle(g);
   const beam = g.mkUnit(g.TURRETS.find(t => t.id === "beam"), 52, 0, false);
@@ -639,7 +680,7 @@ test("the stage is one continuous stream: virtual waves advance silently, the qu
   assert.ok(!/W\d+\//.test(h.combatHudLayout().items.join(" ")),"the HUD must not show a wave counter");
 });
 
-test("enemies are 5x HP and 81.25% slower (0.1875); the boss is 15x HP and 75% slower (owner order 2026-11-12)", () => {
+test("enemies are 5x HP and 81.25% slower; the boss is 15x HP and 80% slower", () => {
   assert.equal(g.BALANCE.enemyHpMul,4.25);
   const {game:h}=harness();h.startBattle();h.startWave(1);
   assert.equal(h.B.enemySpdMul,0.1875);
@@ -1097,6 +1138,32 @@ test("one Hive target search counts the swarm once even with a full field", () =
   assert.equal(h.pickDroneTarget(drone),targets[0],"equally loaded targets use distance");
   h.B.drones.push({tgt:targets[0]});
   assert.equal(h.pickDroneTarget(drone),targets[1],"all targets occupied: prefer the least loaded");
+});
+
+test("Hive retargets within the visible battlefield and a waiting wasp stays on screen", () => {
+  const {game:h}=harness(); freshBattle(h);
+  const hive=h.mkUnit(h.TURRETS.find(t=>t.id==="hive"),52,0,false);
+  const live=still(h,210,70), incoming=still(h,210,-30);
+  const wasp=h.newWasp(hive,210,h.VIS_TOP+8);
+  wasp.lastTgt=live; h.B.enemies=[live,incoming]; h.B.drones=[wasp];
+  assert.equal(h.pickDroneTarget(wasp),live,"a new spawn above the field must not steal a wasp");
+  h.B.enemies=[incoming];
+  for(let i=0;i<100;i++) h.update(.05);
+  assert.equal(wasp.tgt,null);
+  assert.ok(wasp.y>=h.VIS_TOP);
+  incoming.y=h.VIS_TOP+3;
+  h.update(.05);
+  assert.ok(wasp.tgt===incoming || wasp.lastTgt===incoming,"acquire a spawn once it enters view");
+});
+
+test("a wasp whose lifetime has ended cannot land another sting", () => {
+  const {game:h}=harness(); freshBattle(h);
+  const hive=h.mkUnit(h.TURRETS.find(t=>t.id==="hive"),52,0,false);
+  const target=still(h,180,450), wasp=h.newWasp(hive,target.x,target.y,{life:.01});
+  h.B.enemies=[target]; h.B.drones=[wasp]; wasp.tgt=target; wasp.hitT=.04;
+  h.update(.05);
+  assert.equal(h.B.drones.length,0);
+  assert.equal(target.hp,target.maxHp);
 });
 
 test("wasps drop newly cloaked targets and can sting at the largest x2 step", () => {
@@ -2188,6 +2255,21 @@ test("Guardian charge bar fills with shots and drains in Charged State (owner or
   s.chargedLeft = 10;
   assert.ok(Math.abs(c.guardianChargeFrac(s) - 0.5) < 1e-9, "bar drains with the charged shots");
   c.draw();
+});
+
+test("Guard charge counts only main bullets that actually leave a capped volley", () => {
+  const {game:h}=harness(); freshBattle(h);
+  const guard=h.B.soldier;
+  guard.chargeActive=true; guard.extraProj=2; guard.chargePts=58; guard.cd=0;
+  h.B.enemies=[still(h,210,420)];
+  h.B.projs=Array(h.FX_CAP.projs-1).fill({});
+  h.unitFire(guard,.05);
+  assert.equal(h.B.projs.length,h.FX_CAP.projs);
+  assert.equal(guard.chargePts,59,"only one bullet fitted in the volley");
+  guard.chargedLeft=4; guard.chargedTotal=20; guard.cd=0;
+  h.unitFire(guard,.05);
+  assert.equal(guard.chargedLeft,4,"a blocked volley must not drain a charged shot");
+  assert.equal(h.guardianChargeFrac(guard),.2);
 });
 
 test("Aeroblast: Floating Mine card, Shotgun Barrage shells, Multiple Blast+ repeat, Extra Loading", () => {

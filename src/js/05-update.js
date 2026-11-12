@@ -254,13 +254,14 @@ function update(dt){
  allFighters().forEach(function(t){t.recoil=Math.max(0,(t.recoil||0)-66*dt);unitFire(t,dt);});
  /* Persistent multi-hit wasps, retargeting instead of exploding at first contact. */
  for(var j=B.drones.length-1;j>=0;j--){
-   var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);
+   var dr=B.drones[j];dr.life-=dt;
+   if(dr.life<=0){waspDies(dr);B.drones.splice(j,1);continue;}
+   dr.hitT=Math.max(0,dr.hitT-dt);
    if(!waspCanTarget(dr.tgt)||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
    if(dr.launchT>0){
      /* launch phase: the wasp flies outward from the turret; the target is reassigned if it died */
      dr.launchT-=dt;dr.x+=dr.vx*dt;dr.y+=dr.vy*dt;
      if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:WEAPON_COLOR.hive,r:1.5});
-     if(dr.life<=0){waspDies(dr);B.drones.splice(j,1);}
      continue;
    }
    if(dr.tgt){
@@ -278,8 +279,7 @@ function update(dt){
       dr.x+=Math.cos(a+Math.PI)*14;dr.y+=Math.sin(a+Math.PI)*14;
       dr.tgt=null;
     }
-   }else dr.y-=35*dt;
-   if(dr.life<=0){waspDies(dr);B.drones.splice(j,1);}
+   }else dr.y=Math.max(VIS_TOP+8,dr.y-35*dt);
  }
  /* Bouncing Firewheel drones (and mini Firewheels): each foe can be hit repeatedly, 0.3 s per target. */
  for(var wi=B.wheels.length-1;wi>=0;wi--){

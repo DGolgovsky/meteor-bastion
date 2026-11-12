@@ -140,7 +140,7 @@ defCard("aeroblast",2,"Secondary Explosion",18,1,"Enemies hit by an Aeroblast pr
 defCard("aeroblast",3,"Shotgun Penetration",1,0,"",[{k:"shellDmgMul",mul:1.5,base:1,l:"Shotgun Shell DMG"},{k:"shellRangeMul",mul:1.7,base:1,l:"range"}]);
 defCard("aeroblast",3,"Gravity Bomb",1,0,"The projectile pulls enemies to the center before exploding.",[{k:"dmgMul",mul:2,l:"Aeroblast projectile DMG"},fxFlag("gravityBomb")]);
 defCard("aeroblast",3,"Shatter Impact",22,0,"On hit, the Aeroblast projectile creates 2 extra Ripping Lasers.",[fxFlag("shatterImpact")]);
-defCard("aeroblast",3,"Charge Blast",38,0,"30% chance to fire Charge Shots, and keeps firing them while the Guardian is in Charged State.",[fxFlag("chargeBlast")]);
+defCard("aeroblast",3,"Charge Blast",38,0,"30% chance to fire Charge Shots, and keeps firing them while the Guard is in Charged State.",[fxFlag("chargeBlast")]);
 /* ---- Thunderbolt (Electric) ---- */
 defCard("thunder",1,"Continuous Strike",1,0,"",[{k:"strikes",add:1,base:1,l:"Thunderbolts"},{k:"dmgMul",mul:0.85,l:"Lightning strike DMG"}]);
 defCard("thunder",1,"Swift Strike",1,0,"",[{k:"haste",mul:1.1,l:"Lightning strike cooldown speed"},{k:"dmgMul",mul:1.3,l:"DMG"}]);
@@ -309,7 +309,7 @@ defCard("soldier",1,"Volley Shot",1,0,"",[{k:"extraProj",add:1,l:"Bullets"},{k:"
 defCard("soldier",1,"Bullets Boost",1,0,"",[{k:"dmgMul",mul:1.5,l:"Bullet DMG"}]);
 defCard("soldier",1,"Piercing Bullet",1,0,"",[{k:"pierce",add:1,l:"Penetration"}]);
 defCard("soldier",1,"Bullet Explosion",1,0,"A bullet has a 10% chance to explode on hit.",[{k:"bulletExplode",add:0.1}]);
-defCard("soldier",1,"Charge Activation",1,0,"The Guardian enters Charged State, gaining Charge Points by firing bullets.",[fxFlag("chargeActive")]);
+defCard("soldier",1,"Charge Activation",1,0,"The Guard gains Charge Points by firing bullets and enters Charged State when the bar is full.",[fxFlag("chargeActive")]);
 defCard("soldier",1,"Volley Shot+",23,0,"",[{k:"extraProj",add:1,l:"Bullets"}]);
 defCard("soldier",1,"Rapid Fire",26,0,"",[{k:"haste",mul:1.2,l:"Fire rate"}]);
 defCard("soldier",1,"Shotgun Evolution",1,1,"Each shot scatters 2 additional sub-bullets in a real spread.",[{k:"shotgunSpread",set:2}]);
@@ -324,9 +324,9 @@ defCard("soldier",2,"Counterburst Scatter",38,0,"After every 40 shots, fires a w
 defCard("soldier",2,"Penetration Boost",1,1,"",[{k:"pierce",add:2,l:"Penetration of all bullets"}]);
 defCard("soldier",2,"Reflection Boost",1,1,"",[{k:"ricochet",add:2,l:"Reflections of all bullets"}]);
 defCard("soldier",3,"Explosion Boost",1,0,"",[{k:"bulletExplDmg",mul:1.6,base:1,l:"Explosion DMG"},{k:"bulletExplode",add:0.1,pct:1,l:"explosion chance"}]);
-defCard("soldier",3,"Laser Shot",1,0,"Bullet hits have a 20% chance to fire a Ripping Laser from the Guardian, doubled in Charged State.",[fxFlag("laserShot")]);
+defCard("soldier",3,"Laser Shot",1,0,"Bullet hits have a 20% chance to fire a Ripping Laser from the Guard, doubled in Charged State.",[fxFlag("laserShot")]);
 defCard("soldier",3,"Disruption Fire",1,0,"Every bullet hit has a 10% chance to inflict 1 stack of [Disruption].",[fxFlag("disruptionFire")]);
-defCard("soldier",3,"Mirror Guardian",45,0,"Creates a clone guardian that deals 50% of the Guardian's DMG.",[fxFlag("mirrorGuardian")]);
+defCard("soldier",3,"Mirror Guardian",45,0,"Creates a clone that deals 50% of the Guard's DMG.",[fxFlag("mirrorGuardian")]);
 function cardRd(def){return def.rd||1;}
 function fmtNum(x){return String(Math.round(x*100)/100);}
 function fxText(op){

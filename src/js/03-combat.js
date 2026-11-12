@@ -42,7 +42,7 @@ function pickDroneTarget(dr){
  return best||least||fallback;
 }
 function waspCanTarget(e){
- return e&&!e.dead&&e.hp>0&&e.y<=BASEY+12&&!(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0));
+ return e&&!e.dead&&e.hp>0&&e.y>=VIS_TOP&&e.y<=BASEY+12&&!(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0));
 }
 function pickTarget(t){
  var inR=B.enemies.filter(function(e){return inRange(t,e);});
@@ -198,17 +198,20 @@ function edgeLen(ox,oy,dx,dy){
  if(dy>1e-6)t=Math.min(t,(H-oy)/dy);if(dy<-1e-6)t=Math.min(t,(0-oy)/dy);
  return isFinite(t)?t:400;
 }
-/* Where a ray from (ox,oy) along (dx,dy) hits the screen edge, and that edge's outward
-   normal — for the laser refraction (owner order 2026-11-12): the beam refracts off the
-   screen edge instead of spawning a duplicate from the turret. */
-function edgeHit(ox,oy,dx,dy){
- var best=Infinity,nx=0,ny=0;
- if(dx>1e-6){var t=(W-ox)/dx;if(t<best){best=t;nx=1;ny=0;}}
- if(dx<-1e-6){var t=(0-ox)/dx;if(t<best){best=t;nx=-1;ny=0;}}
- if(dy>1e-6){var t=(H-oy)/dy;if(t<best){best=t;nx=0;ny=1;}}
- if(dy<-1e-6){var t=(0-oy)/dy;if(t<best){best=t;nx=0;ny=-1;}}
- if(!isFinite(best))return null;
- return {x:ox+dx*best,y:oy+dy*best,nx:nx,ny:ny};
+/* At a corner both components reflect. At a grazing angle a full-width fork
+   would send one branch straight out of the field. */
+function laserRefraction(ox,oy,dx,dy,length){
+ var x=ox+dx*length,y=oy+dy*length,spread=.34,epsilon=1e-7;
+ if(x<=epsilon||x>=W-epsilon){
+  x=x<W/2?0:W; dx=-dx;
+  spread=Math.min(spread,Math.asin(Math.abs(dx))*.5);
+ }
+ if(y<=epsilon||y>=H-epsilon){
+  y=y<H/2?0:H; dy=-dy;
+  spread=Math.min(spread,Math.asin(Math.abs(dy))*.5);
+ }
+ var angle=Math.atan2(dy,dx);
+ return {x:x,y:y,angles:[angle-spread,angle+spread]};
 }
 /* Laser width follows the laser's damage power relative to its build-time power:
    ×1 at base, up to ×3 (sqrt scale), times the High-Energy Pulse band. */
@@ -225,7 +228,8 @@ function laserVisual(t,key,ox,oy,x2,y2,w,color,life){
  b.x1=ox;b.y1=oy;b.x2=x2;b.y2=y2;b.color=color;b.w=w;b.t=0;b.life=life||0.09;
 }
 function laserBeam(t,key,ox,oy,ang,w,color,len){
- var dx=Math.cos(ang),dy=Math.sin(ang);len=len||edgeLen(ox,oy,dx,dy);
+ var dx=Math.cos(ang),dy=Math.sin(ang);
+ if(len===undefined)len=edgeLen(ox,oy,dx,dy);
  laserVisual(t,key,ox,oy,ox+dx*len,oy+dy*len,w,color);
 }
 function laserOpts(t,extra){
@@ -260,24 +264,15 @@ function fireLaser(t,dt){
  var prog=1-t.laserActive/Math.max(0.01,t.laserDur);
  var A=t.laserAngle;t.angle=A;
  var muzzle=turretMuzzle(t),ox=muzzle.x,oy=muzzle.y;
- /* Laser Refraction (owner order 2026-11-12): the main beam refracts off the screen edge —
-    the refracted beams start at the edge hit point, at the reflected angle, instead of
-    spawning as duplicates from the turret. Computed once per frame from the locked angle. */
- var refractHit=null,refractAng=0;
- if(t.refract){
-  var eh=edgeHit(ox,oy,Math.cos(A),Math.sin(A));
-  if(eh){
-   var dn=Math.cos(A)*eh.nx+Math.sin(A)*eh.ny;
-   refractHit=eh;refractAng=Math.atan2(Math.sin(A)-2*dn*eh.ny,Math.cos(A)-2*dn*eh.nx);
-  }
- }
+ var dx=Math.cos(A),dy=Math.sin(A),mainLength=edgeLen(ox,oy,dx,dy);
+ var refraction=t.refract?laserRefraction(ox,oy,dx,dy,mainLength):null;
  /* Only damaging ticks need an enemy-line scan. Take that snapshot before the
     Graviton movement below, exactly as before, without scanning on visual-only frames. */
  t.laserTickT-=dt;
  var tickCount=0;
  while(t.laserTickT<=0&&tickCount<4){t.laserTickT+=0.12;tickCount++;}
  var w=laserWidth(t),hits=tickCount?rayHits(t,ox,oy,A,t.laserBandMul||1):null;
- laserBeam(t,"main",ox,oy,A,w,t.cfg.color);
+ laserBeam(t,"main",ox,oy,A,w,t.cfg.color,mainLength);
  var defl=[],i;
  for(i=0;i<(t.laserDeflect||0);i++)defl.push(A+(i%2?1:-1)*0.3*(1+Math.floor(i/2)));
  /* sweeping lasers swing ±0.8 rad around the locked line; Sweep Boost adds a return pass */
@@ -287,21 +282,20 @@ function fireLaser(t,dt){
  }
  defl.forEach(function(a,i){laserBeam(t,"deflect"+i,ox,oy,a,w*0.55,"#bfea65");});
  for(i=0;i<t.laserSweep;i++)laserBeam(t,"sweep"+i,ox,oy,sweepAngle(prog,i),w*.6,"#d7fb94");
- if(refractHit)[-0.34,0.34].forEach(function(a,i){laserBeam(t,"refract"+i,refractHit.x,refractHit.y,refractAng+a,w*0.5,"#bfea65");});
+ if(refraction)refraction.angles.forEach(function(a,i){laserBeam(t,"refract"+i,refraction.x,refraction.y,a,w*0.5,"#bfea65");});
  if(t.gravitonLaser){
-  var gx=Math.cos(A),gy=Math.sin(A);
   B.enemies.forEach(function(e){
    if(!onField(e)||e.kind==="boss")return;
-   var px=e.x-ox,py=e.y-oy;if(px*gx+py*gy<=0)return;
-   var perp=px*gy-py*gx;if(Math.abs(perp)>70||Math.abs(perp)<2)return;
+   var px=e.x-ox,py=e.y-oy;if(px*dx+py*dy<=0)return;
+   var perp=px*dy-py*dx;if(Math.abs(perp)>70||Math.abs(perp)<2)return;
    var st=(perp>0?1:-1)*Math.min(Math.abs(perp),55*dt);
-   e.x-=gy*st;e.y+=gx*st;
+   e.x-=dy*st;e.y+=dx*st;
   });
  }
  if(t.emberrail){
   t.emberT-=dt;
-  if(t.emberT<=0){t.emberT=0.4;var L=edgeLen(ox,oy,Math.cos(A),Math.sin(A));
-   for(var k=1;k<=3;k++){var fx=ox+Math.cos(A)*L*k/4,fy=oy+Math.sin(A)*L*k/4;if(fy>VIS_TOP&&fy<BASEY-30)addFireField(t,fx,fy,20,2,0.23);}}
+  if(t.emberT<=0){t.emberT=0.4;
+   for(var k=1;k<=3;k++){var fx=ox+dx*mainLength*k/4,fy=oy+dy*mainLength*k/4;if(fy>VIS_TOP&&fy<BASEY-30)addFireField(t,fx,fy,20,2,0.23);}}
  }
  if(!tickCount)return;
  var base=t.cfg.damage*tickCount*(t.laserPower||1);
@@ -338,7 +332,7 @@ function fireLaser(t,dt){
  for(i=0;i<t.laserSweep;i++){
   rayHits(t,ox,oy,sweepAngle(tickProgress,i),1,hits).forEach(function(e){laserHit(t,e,base*.8,oSweep);});
  }
- if(refractHit)[-0.34,0.34].forEach(function(a){rayHits(t,refractHit.x,refractHit.y,refractAng+a,1,hits).forEach(function(e){laserHit(t,e,base*0.5,oMain);});});
+ if(refraction)refraction.angles.forEach(function(a){rayHits(t,refraction.x,refraction.y,a,1,hits).forEach(function(e){laserHit(t,e,base*0.5,oMain);});});
  if(t.beamSplit){
   var e2=B.enemies.find(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
   if(e2){laserVisual(t,"split",ox,oy,e2.x,e2.y,w*0.6,t.cfg.color);laserHit(t,e2,t.cfg.damage*0.7*tickCount,oMain);}
@@ -596,7 +590,10 @@ function guardianCharge(t,shots){
 function mirrorX(t){return t.x<W/2?t.x+40:t.x-40;}
 /* Parallel volleys cycle through the visible ports. The Guardian alternates shoulders. */
 function firePlain(t,target,extra){
- var cfg=t.cfg,n=1+t.extraProj;t.recoil=5;
+ var cfg=t.cfg,n=1+t.extraProj;
+ var room=FX_CAP.projs-B.projs.length;
+ if(room<=0)return;
+ t.recoil=5;
  function push(o){if(B.projs.length<FX_CAP.projs)B.projs.push(o);return o;}
  if(t.isSoldier){
   var charged=t.chargedLeft>0;
@@ -616,7 +613,7 @@ function firePlain(t,target,extra){
     push({x:center.x,y:center.y,vx:Math.cos(sa)*cfg.projSpeed,vy:Math.sin(sa)*cfg.projSpeed,src:t,dmg:cfg.damage*dm,pierce:t.pierce,hitSet:[],life:2.6,tgt:null,scatter:true,bullet:true,ricochet:t.ricochet||0,charged:charged});
    }
   }
-  guardianCharge(t,n);
+  guardianCharge(t,Math.min(n,room));
   t.shotCount=(t.shotCount||0)+1;
   if(t.counterburst&&t.shotCount%40===0){
    var tip=guardianMuzzle(t,false);

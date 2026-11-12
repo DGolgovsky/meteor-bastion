@@ -96,7 +96,7 @@ var BALANCE={
     4.25 (2026-11-12, owner order): enemies 5x HP. */
  enemyHpMul:4.25,
  enemyDmgMul:0.8,/* 2026-11-12, owner order: enemy damage down a bit ("nemnogo") */
- waveHpGrowth:0.13,bossHpGrowth:0.07,turretBasePower:1.6,jamSpeed:0.85,
+ waveHpGrowth:0.13,bossHpGrowth:0.07,bossSpeedMul:0.2,turretBasePower:1.6,jamSpeed:0.85,
  /* a purple card raises the unit level (max 3); each level-up multiplies its damage */
  levelUpDmg:0.25,
  eliteHp:1.4,eliteSpeed:1.10,eliteContact:1.18,
