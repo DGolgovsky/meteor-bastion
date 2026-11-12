@@ -19,13 +19,19 @@ function fitCanvas(){
   if(!cssW)cssW=Math.max(280,Math.min(window.innerWidth||420,460)-12);
   var targetW=Math.round(cssW*dpr);
   var targetH=Math.round(targetW*H/W);
-  if(cv.width!==targetW||cv.height!==targetH){cv.width=targetW;cv.height=targetH;}
+  if(cv.width!==targetW||cv.height!==targetH){
+    cv.width=targetW;cv.height=targetH;
+    requestBattleFrame(); /* resizing clears even a paused canvas */
+  }
   RENDER_SCALE=cv.width/W;
 }
 var fitT=null;
 window.addEventListener("resize",function(){clearTimeout(fitT);fitT=setTimeout(fitCanvas,80);});
 window.addEventListener("orientationchange",function(){setTimeout(fitCanvas,80);setTimeout(fitCanvas,320);});
 var B=null, raf=null, lastTs=0;
+function requestBattleFrame(){
+ if(B&&raf===null)raf=requestAnimationFrame(loop);
+}
 function mkUnit(cfg,x,slot,isSoldier){
  var lv=META.levels[cfg.id],secondary=metaSecondary(lv),steps=metaSteps(lv),area={rocket:32,charge:42,knockback:40,slow:34};
  var dm=metaDamage(lv)*(isSoldier?1:BALANCE.turretBasePower)*(isSoldier?1:1+0.03*META.chips.core);
@@ -75,8 +81,8 @@ function newBattle(stage){
   allDmgMul:1,enemySpdMul:0.1875,/* 2026-11-12, owner order: enemies 25% slower, then another 50% (0.75*0.5), then another 50% (0.375*0.5); boss keeps its own x0.25 */combos:{},modulesUsed:{},bossSpawns:0,leaks:0,stageWaveCount:stageWaves(stage)};
 }
 function startBattle(){refillEnergy();
- if(META.energy<5)return;
- META.energy-=5;if(META.energy===25)META.lastEnergyAt=Date.now();persist();
+ if(META.energy<BATTLE_ENERGY_COST){renderHome();return;}
+ META.energy-=BATTLE_ENERGY_COST;persist();
  var st=STAGES[META.selStage-1];
  var eff={n:st.n,name:(META.elite?"Elite":"Normal")+" Stage "+st.n,
    elite:!!META.elite,waves:stageWaves(st),hpMul:st.hpMul*(META.elite?BALANCE.eliteHp:1),spdMul:st.spdMul*(META.elite?BALANCE.eliteSpeed:1),
@@ -87,8 +93,7 @@ function startBattle(){refillEnergy();
  B.soldier=mkUnit(SOLDIER_CFG,SOLDIER_X,-1,true);
  show("battle");fitCanvas();startMusic();
  lastTs=performance.now();
- if(raf)cancelAnimationFrame(raf);
- raf=requestAnimationFrame(loop);
+ requestBattleFrame();
 }
 $("btn-start").addEventListener("click",startBattle);
 /* Guardian moves horizontally on the fortress deck. Touch/mouse controls are relative to canvas pixels. */

@@ -13,24 +13,32 @@ function inRange(t,e){
    into the center of a single enemy. If all live targets are already taken, a wasp picks the least
    loaded one. */
 function pickDroneTarget(dr){
- var alive=B.enemies.filter(function(e){return !e.dead&&e.hp>0&&e.y<=BASEY+12&&!(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0));});
- if(!alive.length)return null;
- function assigned(e){var n=0;B.drones.forEach(function(o){if(o.tgt===e)n++;});return n;}
- var best=null,bestScore=Infinity;
- alive.forEach(function(e){
-  if(assigned(e)>=2)return;
-  var dist=Math.hypot(e.x-dr.x,e.y-dr.y);
-  var urgency=Math.max(0,e.y/BASEY)*32;
-  var score=dist-urgency;
-  if(score<bestScore){bestScore=score;best=e;}
- });
- if(best)return best;
- var least=null,leastScore=Infinity;
- alive.forEach(function(e){
-  var score=assigned(e)*1000+Math.hypot(e.x-dr.x,e.y-dr.y);
-  if(score<leastScore){leastScore=score;least=e;}
- });
- return least;
+ var enemies=B.enemies,drones=B.drones;
+ if(!enemies.length)return null;
+ var assigned=new Map();
+ for(var i=0;i<drones.length;i++){
+  var target=drones[i].tgt;
+  if(target)assigned.set(target,(assigned.get(target)||0)+1);
+ }
+ var best=null,bestScore=Infinity,least=null,leastScore=Infinity;
+ for(var j=0;j<enemies.length;j++){
+  var e=enemies[j];
+  if(!waspCanTarget(e))continue;
+  var count=assigned.get(e)||0;
+  if(count>=2&&best)continue;
+  var distance=Math.hypot(e.x-dr.x,e.y-dr.y);
+  if(count<2){
+   var score=distance-Math.max(0,e.y/BASEY)*32;
+   if(score<bestScore){bestScore=score;best=e;}
+  }else{
+   var loadScore=count*1000+distance;
+   if(loadScore<leastScore){leastScore=loadScore;least=e;}
+  }
+ }
+ return best||least;
+}
+function waspCanTarget(e){
+ return e&&!e.dead&&e.hp>0&&e.y<=BASEY+12&&!(e.kind==="phase"&&e.cloakT>0&&!(e.revealedT>0));
 }
 function pickTarget(t){
  var inR=B.enemies.filter(function(e){return inRange(t,e);});
@@ -168,9 +176,8 @@ function ringFx(x,y,color,vr){B.rings.push({x:x,y:y,r:5,vr:vr||110,t:0,life:0.35
 function rayHits(t,ox,oy,ang,band,exclude){
  var dx=Math.cos(ang),dy=Math.sin(ang),hits=[];
  B.enemies.forEach(function(e){
-  if(!inRange(t,e)||(exclude&&exclude.indexOf(e)>=0))return;
   var px=e.x-ox,py=e.y-oy,pr=px*dx+py*dy;
-  if(pr>0&&Math.abs(px*dy-py*dx)<=(e.r+8)*band)hits.push(e);
+  if(pr>0&&Math.abs(px*dy-py*dx)<=(e.r+8)*band&&inRange(t,e)&&(!exclude||exclude.indexOf(e)<0))hits.push(e);
  });
  return hits;
 }
@@ -271,8 +278,8 @@ function fireLaser(t,dt){
    /* Nearest candidate in one stable pass: no temporary array, sort or square roots. */
    var nx=null,best=170*170;
    B.enemies.forEach(function(e){
-    if(!inRange(t,e)||seen.indexOf(e)>=0)return;
-    var dx=e.x-cur.x,dy=e.y-cur.y,d=dx*dx+dy*dy;if(d<best){best=d;nx=e;}
+    var dx=e.x-cur.x,dy=e.y-cur.y,d=dx*dx+dy*dy;
+    if(d<best&&inRange(t,e)&&seen.indexOf(e)<0){best=d;nx=e;}
    });
    if(!nx)break;
    laserVisual(t,key+z,ox,oy,nx.x,nx.y,w*0.5,"#86efac");
@@ -280,7 +287,7 @@ function fireLaser(t,dt){
   }
  }
  if(t.reflect>0&&hits.length){
-  var far=hits.reduce(function(a,b){return Math.hypot(b.x-ox,b.y-oy)>Math.hypot(a.x-ox,a.y-oy)?b:a;});
+  var far=hits.reduce(function(a,b){return dist2(b,ox,oy)>dist2(a,ox,oy)?b:a;});
   reflectFrom(far,t.reflect,1,oMain,"reflection");
  }
  defl.forEach(function(a,i){
@@ -291,8 +298,8 @@ function fireLaser(t,dt){
  sweeps.forEach(function(a){rayHits(t,ox,oy,a,1,hits).forEach(function(e){laserHit(t,e,base*0.8,oSweep);});});
  if(t.refract)[-0.34,0.34].forEach(function(a){rayHits(t,ox,oy,A+a,1,hits).forEach(function(e){laserHit(t,e,base*0.5,oMain);});});
  if(t.beamSplit){
-  var others=B.enemies.filter(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
-  if(others.length){var e2=others[0];laserVisual(t,"split",ox,oy,e2.x,e2.y,w*0.6,"#4ade80");laserHit(t,e2,t.cfg.damage*0.7*tickCount,oMain);}
+  var e2=B.enemies.find(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
+  if(e2){laserVisual(t,"split",ox,oy,e2.x,e2.y,w*0.6,"#4ade80");laserHit(t,e2,t.cfg.damage*0.7*tickCount,oMain);}
  }
  if(t.convergence&&hits.length){
   var made=0;
@@ -759,10 +766,18 @@ function launchMiniMissiles(p,e,count){
   B.projs.push({x:e.x,y:e.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,src:p.src,dmg:p.mini?p.dmg:p.dmg*0.5,pierce:0,hitSet:[e],life:1.6,tgt:near.length?near[i%near.length]:null,mini:true,gen:gen});
  }
 }
-/* Segment-circle hit test: detects targets crossed between fast projectile frames. */
+/* First segment-circle contact, expressed as a fraction of this step. Unequal
+   target radii make closest-approach order different from first-impact order. */
 function sweptContact(x0,y0,x1,y1,cx,cy,r){
- var dx=x1-x0,dy=y1-y0,den=dx*dx+dy*dy;
- var t=den>0?Math.max(0,Math.min(1,((cx-x0)*dx+(cy-y0)*dy)/den)):0;
- var px=x0+dx*t-cx,py=y0+dy*t-cy;
- return px*px+py*py<=r*r?t:null;
+ if((x0<cx-r&&x1<cx-r)||(x0>cx+r&&x1>cx+r)||
+    (y0<cy-r&&y1<cy-r)||(y0>cy+r&&y1>cy+r))return null;
+ var px=cx-x0,py=cy-y0,outside=px*px+py*py-r*r;
+ if(outside<=0)return 0;
+ var dx=x1-x0,dy=y1-y0,toward=px*dx+py*dy;
+ if(toward<=0)return null;
+ var cross=px*dy-py*dx,disc=r*r*(dx*dx+dy*dy)-cross*cross;
+ if(disc<0)return null;
+ /* Rationalized near root avoids subtracting nearly equal values at the rim. */
+ var entry=outside/(toward+Math.sqrt(disc));
+ return entry<=1?entry:null;
 }

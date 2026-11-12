@@ -1,4 +1,5 @@
 /* ==================== STATE + SAVE ==================== */
+var BATTLE_ENERGY_COST=5,ENERGY_REGEN_MS=12*60*1000;
 function allUnitsCfg(){return TURRETS.concat([SOLDIER_CFG]);}
 function freshMeta(){
   var m={coins:600,gems:12,energy:30,playerXp:0,wins:0,unlocked:1,selStage:1,music:true,sfx:true,levels:{},mats:{},components:0,chips:{core:0,speed:0,fort:0},livery:"classic",elite:false,eliteCleared:{},normalCleared:{},lastPatrol:Date.now(),lastEnergyAt:Date.now()};
@@ -10,7 +11,9 @@ var META=freshMeta();
 var SAVE_KEY="meteor-bastion-save-v1";
 function persist(){try{var d={v:1};["coins","gems","energy","components","playerXp","wins","unlocked","selStage","music","sfx","elite","lastPatrol","lastEnergyAt"].forEach(function(k){d[k]=META[k];});d.chips=META.chips;d.livery=META.livery;d.eliteCleared=META.eliteCleared;d.normalCleared=META.normalCleared;d.levels=META.levels;d.mats=META.mats;localStorage.setItem(SAVE_KEY,JSON.stringify(d));}catch(e){}}
 function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;var d=JSON.parse(raw);if(!d||d.v!==1)return;
- ["coins","gems","energy","components","playerXp","wins","unlocked","selStage"].forEach(function(k){if(typeof d[k]==="number"&&isFinite(d[k]))META[k]=d[k];});
+ ["coins","gems","energy","components","playerXp","wins","unlocked","selStage"].forEach(function(k){
+   if(Number.isFinite(d[k]))META[k]=Math.max(0,Math.floor(d[k]));
+ });
  if(d.chips&&typeof d.chips==="object")["core","speed","fort"].forEach(function(k){var n=d.chips[k];if(typeof n==="number"&&isFinite(n))META.chips[k]=Math.max(0,Math.min(5,Math.floor(n)));});
  if(["classic","arctic","ember"].includes(d.livery))META.livery=d.livery;
  if(typeof d.music==="boolean")META.music=d.music; if(typeof d.sfx==="boolean")META.sfx=d.sfx;
@@ -20,7 +23,7 @@ function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;va
  if(d.normalCleared&&typeof d.normalCleared==="object")for(var nk in d.normalCleared){if(+nk>=1&&+nk<=STAGES.length&&d.normalCleared[nk]===true)META.normalCleared[nk]=true;}
  META.energy=Math.max(0,Math.min(30,META.energy));META.unlocked=Math.max(1,Math.min(STAGES.length,META.unlocked));META.selStage=Math.max(1,Math.min(META.unlocked,META.selStage));
  if(d.levels)allUnitsCfg().forEach(function(t){var v=d.levels[t.id];if(typeof v==="number"&&v>=1)META.levels[t.id]=Math.min(45,Math.floor(v));});
- if(d.mats)allUnitsCfg().forEach(function(t){var v=d.mats[t.id];if(typeof v==="number"&&v>=0)META.mats[t.id]=Math.floor(v);});
+ if(d.mats)allUnitsCfg().forEach(function(t){var v=d.mats[t.id];if(Number.isFinite(v)&&v>=0)META.mats[t.id]=Math.floor(v);});
 }catch(e){}}
 loadSave();
 function totalCritBonus(){var s=0;allUnitsCfg().forEach(function(t){s+=(Math.min(45,META.levels[t.id])-1)*3;});return Math.min(100,s);}
@@ -55,8 +58,8 @@ function rdTierName(level){return level>=22?"T3/Combo":level>=14?"Breakthrough":
 
 function refillEnergy(){var now=Date.now();if(!META.lastEnergyAt)META.lastEnergyAt=now;
  if(META.energy>=30){META.energy=30;META.lastEnergyAt=now;return;}
- var ticks=Math.floor(Math.max(0,now-META.lastEnergyAt)/720000);
- if(ticks>0){META.energy=Math.min(30,META.energy+ticks);META.lastEnergyAt=META.energy===30?now:META.lastEnergyAt+ticks*720000;persist();}
+ var ticks=Math.floor(Math.max(0,now-META.lastEnergyAt)/ENERGY_REGEN_MS);
+ if(ticks>0){META.energy=Math.min(30,META.energy+ticks);META.lastEnergyAt=META.energy===30?now:META.lastEnergyAt+ticks*ENERGY_REGEN_MS;persist();}
 }
 function fmt(n){n=Math.floor(n);if(n>=1e6)return(n/1e6).toFixed(2)+"m";if(n>=1e4)return(n/1e3).toFixed(1)+"k";return ""+n;}
 function $(id){return document.getElementById(id);}
@@ -125,8 +128,9 @@ function renderHome(){
  var pa=patrolAccrued();
  $("btn-patrol").innerHTML='<span class="hq-action-ico">◉</span><span>Auto-patrol</span><span style="font-size:10px;color:#f6d078">'+pa+' ⬤</span>';
  $("btn-patrol").disabled=pa<=0;
- $("btn-start").innerHTML="BATTLE <small>ϟ5</small>";
- $("battle-energy-note").textContent=elite?"⚠ Elite enemies · 5 energy":"Normal stage · 5 energy";
+ $("btn-start").innerHTML="BATTLE <small>ϟ"+BATTLE_ENERGY_COST+"</small>";
+ $("battle-energy-note").textContent=META.energy<BATTLE_ENERGY_COST?"Energy "+META.energy+" / "+BATTLE_ENERGY_COST+" required":
+   (elite?"⚠ Elite enemies":"Normal stage")+" · "+BATTLE_ENERGY_COST+" energy";
 }
 function setGameMode(elite){
  if(META.elite===elite)return;

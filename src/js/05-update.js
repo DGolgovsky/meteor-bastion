@@ -104,27 +104,39 @@ function stepEnemyAttack(e,dt){
   }
  }
 }
-/* Shared API for bullets and continuous weapon rays. No XP/healing/card points
-   for shooting ammunition: only the attacking creature is a scored enemy. */
+/* Shooting ammunition grants no kill, healing or battle points. */
 function interceptEnemyShot(shot,damage){
  if(!shot||shot.dead||shot.hp<=0||!(damage>0))return false;
  shot.hp-=damage;
  if(shot.hp<=0){shot.dead=true;B.enemyShotsIntercepted=(B.enemyShotsIntercepted||0)+1;return true;}
  return false;
 }
-function stepEnemyShots(dt){
- var shots=B.enemyShots||(B.enemyShots=[]);
- for(var i=shots.length-1;i>=0;i--){
-  var s=shots[i];s.life-=dt;
-  if(s.dead||s.hp<=0||s.life<=0){shots.splice(i,1);continue;}
+/* Player rounds and hostile ammunition travel during the same time step.
+   Record hostile displacement once so every interception sees the same path. */
+function prepareEnemyShots(dt){
+ for(var i=0;i<B.enemyShots.length;i++){
+  var s=B.enemyShots[i];
+  if(s.dead||s.hp<=0||s.life<=0)continue;
   var slow=1;
   /* Disruption offers projectile cover as well as slowing the shooters. */
   for(var k=0;k<B.fields.length;k++){
    var f=B.fields[k];if(f.kind==="slow"&&f.life>0&&Math.hypot(s.x-f.x,s.y-f.y)<=f.r){slow=.5;break;}
   }
-  s.x+=s.vx*dt*slow;s.y+=s.vy*dt*slow;
-  if(s.y>=BASEY-16){shots.splice(i,1);hitFortress(s.damage,"ranged",s.x);if(B.over)return;}
-  else if(s.x<-20||s.x>W+20||s.y<-40)shots.splice(i,1);
+  s.stepX=s.vx*dt*slow;s.stepY=s.vy*dt*slow;
+  s.stepLimit=dt>0?Math.min(1,s.life/dt):1;
+  var gap=BASEY-16-s.y;
+  s.hitsBase=gap<=0||(s.stepY>0&&s.stepY*s.stepLimit>=gap);
+  if(s.hitsBase)s.stepLimit=gap<=0?0:gap/s.stepY;
+ }
+}
+function resolveEnemyShots(dt){
+ var shots=B.enemyShots;
+ for(var i=shots.length-1;i>=0;i--){
+  var s=shots[i];
+  if(s.dead||s.hp<=0||s.life<=0){shots.splice(i,1);continue;}
+  s.x+=s.stepX*s.stepLimit;s.y+=s.stepY*s.stepLimit;s.life-=dt;
+  if(s.hitsBase){shots.splice(i,1);hitFortress(s.damage,"ranged",s.x);if(B.over)return;}
+  else if(s.life<=0||s.x<-20||s.x>W+20||s.y<-40)shots.splice(i,1);
  }
 }
 
@@ -164,9 +176,14 @@ function update(dt){
  for(var i=B.enemies.length-1;i>=0;i--){
    var e=B.enemies[i];
    if(e.dead){B.enemies.splice(i,1);continue;}
-   if(e.burnT>0){e.burnT-=dt;var burnHit=Math.min(e.hp,e.burnDps*dt);e.hp-=burnHit;if(e.burnSource)e.burnSource.totalDmg+=burnHit;
-     /* the burn has ended, so reset its DPS: otherwise a stale strong burn would override any weaker ignite later */
-     if(e.burnT<=0){e.burnDps=0;e.burnSource=null;}if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});if(e.hp<=0){killEnemy(e);B.enemies.splice(i,1);continue;}}
+   if(e.burnT>0){
+     var burnHit=Math.min(e.hp,e.burnDps*Math.min(dt,e.burnT));
+     e.hp-=burnHit;if(e.burnSource)e.burnSource.totalDmg+=burnHit;
+     if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});
+     if(e.hp<=0){e.lastSrc=e.burnSource;e.lastKind="burn";killEnemy(e);B.enemies.splice(i,1);continue;}
+     e.burnT=Math.max(0,e.burnT-dt);
+     if(e.burnT===0){e.burnDps=0;e.burnSource=null;}
+   }
    if(e.slowT>0){e.slowT-=dt;if(e.slowT<=0){e.slowFactor=1;e.stasisSlow=0;}}
    /* card statuses (03b-effects.js) */
    if(e.paralyzeT>0){e.paralyzeT-=dt;
@@ -238,18 +255,18 @@ function update(dt){
  /* Persistent multi-hit wasps, retargeting instead of exploding at first contact. */
  for(var j=B.drones.length-1;j>=0;j--){
    var dr=B.drones[j];dr.life-=dt;dr.hitT=Math.max(0,dr.hitT-dt);
+   if(!waspCanTarget(dr.tgt)||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
    if(dr.launchT>0){
      /* launch phase: the wasp flies outward from the turret; the target is reassigned if it died */
-     if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
      dr.launchT-=dt;dr.x+=dr.vx*dt;dr.y+=dr.vy*dt;
      if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
      if(dr.life<=0){waspDies(dr);B.drones.splice(j,1);}
      continue;
    }
-   if(!dr.tgt||dr.tgt.hp<=0||dr.tgt.dead||B.enemies.indexOf(dr.tgt)<0)dr.tgt=pickDroneTarget(dr);
    if(dr.tgt){
-    var a=Math.atan2(dr.tgt.y-dr.y,dr.tgt.x-dr.x);
-    dr.x+=Math.cos(a)*240*dt;dr.y+=Math.sin(a)*240*dt;
+    var dx=dr.tgt.x-dr.x,dy=dr.tgt.y-dr.y,a=Math.atan2(dy,dx),travel=240*dt;
+    if(dx*dx+dy*dy<=travel*travel){dr.x=dr.tgt.x;dr.y=dr.tgt.y;}
+    else {dr.x+=Math.cos(a)*travel;dr.y+=Math.sin(a)*travel;}
     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
     /* the wasp strikes while UNDER the enemy: touching its bottom edge */
     if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
@@ -281,20 +298,25 @@ function update(dt){
  }
  updateEffects(dt);
  /* projectiles */
+ prepareEnemyShots(dt);
+ var intersections=[];
  for(var q=B.projs.length-1;q>=0;q--){
-   var pr=B.projs[q];pr.life-=dt;
+   var pr=B.projs[q];
+   if(pr.life<=0){B.projs.splice(q,1);continue;}
+   var flightTime=Math.min(dt,pr.life),frameFraction=dt>0?flightTime/dt:1;
+   pr.life-=dt;
    /* Sky Guard rockets home in on their target */
    if(pr.src.cfg.effect==="rocket"&&!pr.kind){
      if(!pr.tgt||pr.tgt.hp<=0||pr.tgt.dead)pr.tgt=pickTarget(pr.src);
      if(pr.tgt){var sp=pr.src.cfg.projSpeed,ca=Math.atan2(pr.vy,pr.vx),wa=Math.atan2(pr.tgt.y-pr.y,pr.tgt.x-pr.x),df=wa-ca;
        while(df>Math.PI)df-=Math.PI*2;while(df<-Math.PI)df+=Math.PI*2;
-       var rturn=Math.max(-3.6*dt,Math.min(3.6*dt,df));ca+=rturn;pr.vx=Math.cos(ca)*sp;pr.vy=Math.sin(ca)*sp;}
+       var rturn=Math.max(-3.6*flightTime,Math.min(3.6*flightTime,df));ca+=rturn;pr.vx=Math.cos(ca)*sp;pr.vy=Math.sin(ca)*sp;}
      /* Fire Transmission: missiles ignite the enemies they fly through */
      if(pr.src.fireTrans){var bl=pr.burned||(pr.burned=[]);
        B.enemies.forEach(function(en){if(onField(en)&&bl.indexOf(en)<0&&Math.hypot(en.x-pr.x,en.y-pr.y)<=en.r+8){bl.push(en);igniteE(pr.src,en,pr.src.cfg.damage);}});}
    }
    var p0x=pr.x,p0y=pr.y;
-   pr.x+=pr.vx*dt;pr.y+=pr.vy*dt;
+   pr.x+=pr.vx*flightTime;pr.y+=pr.vy*flightTime;
    /* Piercing Ricochet / Reflection Boost: bounce off the side walls and the top of the field */
    if(pr.ricochet>0&&(pr.x<4||pr.x>W-4||pr.y<VIS_TOP)){
      if(pr.x<4||pr.x>W-4)pr.vx*=-1;else pr.vy*=-1;
@@ -322,46 +344,44 @@ function update(dt){
     if(pr.src.cfg.id==="aeroblast"&&Math.random()<dt*36)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.3,t:0,color:"#7dd7ff",r:2});
    }
    var dead=pr.life<=0||pr.x<-20||pr.x>W+20||pr.y<-30||pr.y>H+20;
-   if(pr.life>0){
-     var intersections=[];
-     B.enemies.forEach(function(en){
-       if(en.hp<=0||en.dead||pr.hitSet.indexOf(en)>=0)return;
-       var hitAt=sweptContact(p0x,p0y,pr.x,pr.y,en.x,en.y,en.r+5);
-       if(hitAt!==null)intersections.push({enemy:en,at:hitAt});
-     });
-     (B.enemyShots||[]).forEach(function(shot){
-       if(shot.dead||shot.hp<=0||pr.hitSet.indexOf(shot)>=0)return;
-       var at=sweptContact(p0x,p0y,pr.x,pr.y,shot.x,shot.y,shot.r+3);
-       if(at!==null)intersections.push({shot:shot,at:at});
-     });
-     intersections.sort(function(a,b){return a.at-b.at;});
-     for(var h=0;h<intersections.length;h++){
-       var hostile=intersections[h].shot;
-       if(hostile){
-        if(hostile.dead||hostile.hp<=0)continue;
-        pr.hitSet.push(hostile);interceptEnemyShot(hostile,pr.dmg*(pr.src.dmgMul||1)*(B.allDmgMul||1));
-        if(pr.pierce>0){pr.pierce--;continue;}dead=true;break;
-       }
-       var en=intersections[h].enemy;
-       if(en.dead||en.hp<=0)continue;
-       pr.hitSet.push(en);
-       /* Path Strike: a missile deals impact damage to enemies on its path and flies on to its target */
-       if(pr.src.pathStrike&&pr.src.cfg.effect==="rocket"&&!pr.kind&&!pr.mini&&aliveE(pr.tgt)&&en!==pr.tgt){
-         dealDamage(pr.src,en,pr.dmg*0.55*(pr.src.impactMul||1),{kind:"rocket",burn:!!pr.src.rocketBurn});continue;
-       }
-       applyHit(pr,en);SFX.hit();
-       if(pr.pierce>0)pr.pierce--;
-       else if(pr.bounce>0){
-         /* Bouncing Barrage: the pellet bounces to the nearest other enemy */
-         var nb=nearestList(en.x,en.y,1,170,pr.hitSet)[0];
-         if(nb){pr.bounce--;var bsp=Math.hypot(pr.vx,pr.vy),ba=Math.atan2(nb.y-en.y,nb.x-en.x);pr.x=en.x;pr.y=en.y;pr.vx=Math.cos(ba)*bsp;pr.vy=Math.sin(ba)*bsp;pr.tgt=nb;pr.life=Math.max(pr.life,0.6);break;}
-         dead=true;break;
-       }else{dead=true;break;}
+   intersections.length=0;
+   B.enemies.forEach(function(en){
+     if(en.hp<=0||en.dead||pr.hitSet.indexOf(en)>=0)return;
+     var hitAt=sweptContact(p0x,p0y,pr.x,pr.y,en.x,en.y,en.r+5);
+     if(hitAt!==null)intersections.push({enemy:en,at:hitAt});
+   });
+   B.enemyShots.forEach(function(shot){
+     if(shot.dead||shot.hp<=0||shot.life<=0||pr.hitSet.indexOf(shot)>=0)return;
+     var at=sweptContact(p0x,p0y,pr.x-shot.stepX*frameFraction,pr.y-shot.stepY*frameFraction,shot.x,shot.y,shot.r+3);
+     if(at!==null&&at*frameFraction<=shot.stepLimit)intersections.push({shot:shot,at:at});
+   });
+   if(intersections.length>1)intersections.sort(function(a,b){return a.at-b.at;});
+   for(var h=0;h<intersections.length;h++){
+     var hostile=intersections[h].shot;
+     if(hostile){
+      if(hostile.dead||hostile.hp<=0)continue;
+      pr.hitSet.push(hostile);interceptEnemyShot(hostile,pr.dmg*(pr.src.dmgMul||1)*(B.allDmgMul||1));
+      if(pr.pierce>0){pr.pierce--;continue;}dead=true;break;
      }
+     var en=intersections[h].enemy;
+     if(en.dead||en.hp<=0)continue;
+     pr.hitSet.push(en);
+     /* Path Strike: a missile deals impact damage to enemies on its path and flies on to its target */
+     if(pr.src.pathStrike&&pr.src.cfg.effect==="rocket"&&!pr.kind&&!pr.mini&&aliveE(pr.tgt)&&en!==pr.tgt){
+       dealDamage(pr.src,en,pr.dmg*0.55*(pr.src.impactMul||1),{kind:"rocket",burn:!!pr.src.rocketBurn});continue;
+     }
+     applyHit(pr,en);SFX.hit();
+     if(pr.pierce>0)pr.pierce--;
+     else if(pr.bounce>0){
+       /* Bouncing Barrage: the pellet bounces to the nearest other enemy */
+       var nb=nearestList(en.x,en.y,1,170,pr.hitSet)[0];
+       if(nb){pr.bounce--;var bsp=Math.hypot(pr.vx,pr.vy),ba=Math.atan2(nb.y-en.y,nb.x-en.x);pr.x=en.x;pr.y=en.y;pr.vx=Math.cos(ba)*bsp;pr.vy=Math.sin(ba)*bsp;pr.tgt=nb;pr.life=Math.max(pr.life,0.6);dead=false;break;}
+       dead=true;break;
+     }else{dead=true;break;}
    }
    if(dead)B.projs.splice(q,1);
  }
- stepEnemyShots(dt);if(B.over)return;
+ resolveEnemyShots(dt);if(B.over)return;
  B.beams=B.beams.filter(function(b){b.t+=dt;return b.t<b.life;});
  B.parts=B.parts.filter(function(pt){pt.t+=dt;pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;return pt.t<pt.life;});
  B.rings=B.rings.filter(function(r){r.t+=dt;r.r+=r.vr*dt;return r.t<r.life;});
@@ -375,15 +395,17 @@ function update(dt){
  }
  /* a card from accumulated points: the draft opens right in the middle of a wave */
  if(B.waveState==="fighting"&&B.pendingDrafts>0&&!B.over){
-   B.waveState="draft";B.draftReturn="fighting";openDraft();
+   B.draftReturn="fighting";openDraft();
  }
  syncHud();
 }
+function battleRunning(){return B&&!B.paused&&!B.over&&B.waveState!=="draft";}
 function loop(ts){
+ raf=null;
  if(!B)return;
  var raw=Math.max(0,Math.min(0.05,(ts-lastTs)/1000));lastTs=ts;
  try{
-  if(!B.paused&&!B.over&&!$("ov-levelup").classList.contains("on"))update(raw*B.speed);
+  if(battleRunning())update(raw*B.speed);
   draw();
  }catch(err){
   /* A single bad frame used to kill the loop forever: the next RAF was
@@ -395,6 +417,6 @@ function loop(ts){
   try{console.error(err);}catch(e){}
   try{showLoopError(B.loopError);}catch(e){}
  }
- raf=requestAnimationFrame(loop);
+ if(battleRunning())requestBattleFrame();
 }
 

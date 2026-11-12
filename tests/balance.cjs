@@ -135,7 +135,7 @@ function optionsWithDefaults(options={}){
  integer(o.rd,1,45,"rd"); integer(o.fort,0,5,"fort");
  assert.ok(["smart","first","both"].includes(o.policy),"policy must be smart, first or both");
  assert.ok(Number.isFinite(o.dt) && o.dt > 0 && o.dt <= .1,"dt must be within (0, .1]");
- assert.ok(Number.isFinite(o.maxSeconds) && o.maxSeconds > 0,"maxSeconds must be positive");
+ if(o.maxSeconds!==undefined)assert.ok(Number.isFinite(o.maxSeconds) && o.maxSeconds > 0,"maxSeconds must be positive");
  if(o.seeds){assert.ok(Array.isArray(o.seeds) && o.seeds.length,"seeds must be a nonempty array");o.seeds.forEach(n=>integer(n,0,0xffffffff,"seed"));}
  return o;
 }
@@ -186,8 +186,11 @@ function run(seed,policy="smart",options={}){
  g.startBattle();g.startWave(1);
  let steps=0,lastWave=1,hpAt10=null,hpAt20=null,firstShotAt=null,firstShotWave=null,firstRangedHitAt=null;
  const visible={},taken=cardCounts(),offered=cardCounts(),hpAfterWave={};
- const maxSteps=Math.ceil(o.maxSeconds/o.dt)+1000;
- while(!g.B.over && steps++ < maxSteps && g.B.elapsed < o.maxSeconds){
+ /* The original 2400s budget covers a 20-wave stream. Late streams run up to
+    30 waves and can still be clearing their last live enemies at 2400s. */
+ const maxSeconds=options.maxSeconds??DEFAULTS.maxSeconds*g.stageWaves(g.B.stage)/g.stageWaves(g.STAGES[0]);
+ const maxSteps=Math.ceil(maxSeconds/o.dt)+1000;
+ while(!g.B.over && steps++ < maxSteps && g.B.elapsed < maxSeconds){
   if(g.B.waveState === "draft"){
    for(const c of g.curCards)countCard(offered,c);
    const c=chooseCard(g.curCards,policy),before=g.B.drafts;countCard(taken,c);g.applyCard(c);
@@ -230,7 +233,7 @@ function run(seed,policy="smart",options={}){
  const waveSamples=[...new Set([1,10,20,g.stageWaves(g.B.stage)])];
  const fighters=g.allFighters();
  return {
-  seed,policy,stage:o.stage,rd:o.rd,elite:!!o.elite,fort:o.fort,
+  seed,policy,stage:o.stage,rd:o.rd,elite:!!o.elite,fort:o.fort,maxSeconds,
   win:endSignal === true,bossKilled,bossArrived:(g.B.bossDamage||0)>0,wave:g.B.wave,finalWave:g.stageWaves(g.B.stage),steps,elapsed:Math.round(g.B.elapsed),
   hp:Math.round(g.B.baseHp),hpAt10,hpAt20,hpAfterWave,kills:g.B.kills,leaks:g.B.leaks,
   meteorDamage:Math.round(g.B.meteorDamage || 0),rangedDamage:Math.round(g.B.enemyShotDamage || 0),
@@ -272,11 +275,8 @@ function summarize(runs,policies=POLICIES){
 function checkBalanceReport(result){
  const triplet=result.report.find(r=>r.policy === "smart")?.firstThree;
  assert.ok(triplet && triplet.attempts === 3,"balance guard requires three smart-policy attempts");
- /* 2026-11-12, owner order: enemies 5x HP, 25% slower, one continuous stream.
-    A fresh R&D 1 account no longer wins at all: the measured baseline is 0/3
-    (all three seeds die on virtual wave 4 at ~19 s, ~36 leaks). The old 1..2/3
-    target is gone — this guard now pins the new reality, so any future
-    rebalancing shows up as a change here instead of silent drift. */
+ /* Each seed starts fresh. The progression probe measures repeated attempts
+    with the same account and purchases between attempts. */
  assert.ok(triplet.wins === 0,"fresh Stage 1 balance regression: expected 0 smart wins among fixed seeds 3121,777,42 after the 2026-11-12 owner order; got "+triplet.wins+"/3");
 }
 function runSuite(options={}){
@@ -289,8 +289,8 @@ function runSuite(options={}){
   assert.ok(!o.balance && !o.configure,"--check-balance uses production coefficients and does not accept calibration overrides");
  }
  const runs=[];
- for(const policy of policies)for(const seed of seeds)runs.push(run(seed,policy,o));
- const config={stage:o.stage,rd:o.rd,elite:!!o.elite,fort:o.fort,policies,dt:o.dt,maxSeconds:o.maxSeconds,balance:runs[0].balance,opening:runs[0].opening};
+ for(const policy of policies)for(const seed of seeds)runs.push(run(seed,policy,options));
+ const config={stage:o.stage,rd:o.rd,elite:!!o.elite,fort:o.fort,policies,dt:o.dt,maxSeconds:runs[0].maxSeconds,balance:runs[0].balance,opening:runs[0].opening};
  const result={config,seeds,report:summarize(runs,policies),runs};
  if(o.checkBalance){checkBalanceReport(result);result.balanceGuard="passed: 0/3 smart wins on the fixed fresh-account triplet (2026-11-12 owner order: 5x HP, continuous stream);";}
  return result;

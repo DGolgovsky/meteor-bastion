@@ -73,6 +73,7 @@ function openDraft(){
  renderCards();
  $("btn-reroll").style.display=B.reroll?"":"none";
  $("ov-levelup").classList.add("on");
+ B.waveState="draft";
 }
 function renderCards(){
  var box=$("lu-cards");box.innerHTML="";
@@ -114,7 +115,7 @@ function applyCard(c){
    if(c.modId==="healm")B.baseHp=Math.min(B.baseMax,B.baseHp+250);
    if(c.modId==="regenm")B.baseHp=Math.min(B.baseMax,B.baseHp+200);
    if(c.modId==="patch")B.baseHp=Math.min(B.baseMax,B.baseHp+120);
-   if(c.modId==="jam"){B.enemySpdMul*=0.85;B.enemies.forEach(function(e){e.speed*=0.85;if(e.baseSpeed!==undefined)e.baseSpeed*=0.85;});}
+   if(c.modId==="jam"){B.enemySpdMul*=BALANCE.jamSpeed;B.enemies.forEach(function(e){e.speed*=BALANCE.jamSpeed;if(e.baseSpeed!==undefined)e.baseSpeed*=BALANCE.jamSpeed;});}
    burst(W/2,BASEY-46,18,"#2ee6c8");
    recordPick({unit:"fortress",icon:"🧩",id:"module:"+c.modId,name:MODULES[c.modId][0],lvl:0,rare:false,desc:MODULES[c.modId][1]});
  }
@@ -122,10 +123,10 @@ function applyCard(c){
  B.drafts++;
  /* one queued card used; if the points earned more, open the next draft right away */
  B.pendingDrafts=Math.max(0,B.pendingDrafts-1);
- if(B.pendingDrafts>0){openDraft();lastTs=performance.now();return;}
- $("ov-levelup").classList.remove("on");
- B.waveState="fighting";
+ if(B.pendingDrafts>0)openDraft();
+ else {$("ov-levelup").classList.remove("on");B.waveState="fighting";}
  lastTs=performance.now();
+ requestBattleFrame();
 }
 /* 5-slot level/pip row, in field order: far left, center left, Guardian, center right, far right. */
 var SLOT_ROW_ORDER=[0,2,"soldier",3,1];
@@ -180,16 +181,13 @@ function endBattle(win){
    if(B.elite)META.eliteCleared[B.stage.n]=true;else META.normalCleared[B.stage.n]=true;
    if(B.stage.n===META.unlocked&&META.unlocked<STAGES.length)META.unlocked++;
  }
- persist();
+ applyRewards(); /* save the stage clear and its rewards together before opening the results */
  $("res-title").textContent=win?"Victory":"Defeat";
  $("res-title").className=win?"win":"lose";
  $("res-sub").textContent=B.stage.name+" · Kills: "+B.kills+" · Time: "+mmss(B.elapsed)+" · 🎴 Cards taken: "+B.drafts+" · ❤ Base HP restored: "+Math.floor(B.totalHealed)+" HP";
  renderRewards();
  var tb=$("res-stats");tb.innerHTML="";
  stats.forEach(function(s){tb.innerHTML+="<tr><td>"+s.t.cfg.icon+" "+s.t.cfg.name+" <span style='color:var(--muted)'>Lv."+s.t.runLv+"</span></td><td>"+fmt(s.dmg)+"</td><td>"+fmt(s.dps)+"</td></tr>";});
- /* rewards are credited immediately: previously they were credited only via the "back" button, while stage progress
-    was already saved, so closing the app on the results screen left the stage unlocked without rewards */
- applyRewards();
  $("ov-result").classList.add("on");
  if(win)SFX.win();else SFX.lose();
 }
@@ -221,5 +219,5 @@ function applyRewards(){
  Object.keys(r.mats).forEach(function(id){META.mats[id]+=r.mats[id]*m;});
  persist();
 }
-$("btn-res-back").addEventListener("click",function(){applyRewards();$("ov-result").classList.remove("on");if(raf)cancelAnimationFrame(raf);B=null;show("home");});
+$("btn-res-back").addEventListener("click",function(){applyRewards();$("ov-result").classList.remove("on");if(raf!==null)cancelAnimationFrame(raf);raf=null;B=null;show("home");});
 

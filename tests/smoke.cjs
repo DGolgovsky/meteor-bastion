@@ -140,9 +140,24 @@ test("legacy v1 saves load and level is clamped at 45", () => {
   assert.equal(old.META.music, false);
 });
 
+test("fractional stage indices in a v1 save still open the lobby and the correct battle", () => {
+  const {game:h,element}=harness({v:1,unlocked:3.9,selStage:5.2,energy:19.7,coins:777,mats:{hive:35}});
+  assert.equal(element("home-stage-title").textContent,"NORMAL STAGE 3");
+  h.startBattle();
+  assert.equal(h.B.stage.n,3);
+  assert.equal(h.META.energy,14);
+  assert.equal(h.META.coins,777);
+  assert.equal(h.META.mats.hive,35);
+});
+
 test("swept collisions detect enemies between frame endpoints", () => {
   assert.notEqual(g.sweptContact(0, 0, 100, 0, 50, 2, 8), null);
   assert.equal(g.sweptContact(0, 0, 100, 0, 50, 40, 8), null);
+  assert.equal(g.sweptContact(0, 0, 100, 0, 60, 0, 20), .4, "time of entry at the near edge");
+  assert.equal(g.sweptContact(0, 0, 100, 0, 50, 8, 8), .5, "tangent");
+  assert.equal(g.sweptContact(0, 0, 10, 0, 12, 0, 2), 1, "contact at the endpoint");
+  assert.equal(g.sweptContact(0, 0, 0, 0, 1, 0, 2), 0, "start inside");
+  assert.equal(g.sweptContact(0, 0, 0, 0, 2, 2, 2), null, "stationary miss");
 });
 
 test("Guardian starts and canvas renders", () => {
@@ -151,6 +166,15 @@ test("Guardian starts and canvas renders", () => {
   assert.ok(g.B.soldier);
   g.update(0.05);
   g.draw();
+});
+
+test("the lobby explains a shortfall and starts a battle when the next energy point arrives", () => {
+  const {game:h,element}=harness();let now=h.META.lastEnergyAt;
+  h.Date={now:()=>now};h.META.energy=h.BATTLE_ENERGY_COST-1;
+  h.startBattle();assert.equal(h.B,null);
+  assert.equal(element("battle-energy-note").textContent,"Energy 4 / 5 required");
+  now+=h.ENERGY_REGEN_MS;h.startBattle();
+  assert.ok(h.B);assert.equal(h.META.energy,0);assert.equal(h.META.lastEnergyAt,now);
 });
 
 test("Firewheel spawns airborne bouncing discs", () => {
@@ -1013,6 +1037,39 @@ test("wasps live longer and spread across targets, max 2 per target", () => {
   assert.ok(perTarget.size >= 2, "wasps must spread across at least 2 targets, got " + perTarget.size);
 });
 
+test("one Hive target search counts the swarm once even with a full field", () => {
+  const {game:h}=harness();freshBattle(h);
+  const targets=Array.from({length:h.MAX_ENEMIES},(_,i)=>Object.assign(sampleEnemy(h,35+i),{x:80+i%260}));
+  let reads=0;
+  h.B.enemies=targets;
+  h.B.drones=Array.from({length:h.FX_CAP.drones},(_,i)=>({get tgt(){reads++;return targets[i%2];}}));
+  const drone={x:80,y:35};
+  assert.ok(targets.indexOf(h.pickDroneTarget(drone))>=2,"free targets take priority");
+  assert.ok(reads<=2*h.B.drones.length,"target assignments were rescanned for each enemy: "+reads);
+  h.B.enemies=targets.slice(0,2);
+  assert.equal(h.pickDroneTarget(drone),targets[0],"equally loaded targets use distance");
+  h.B.drones.push({tgt:targets[0]});
+  assert.equal(h.pickDroneTarget(drone),targets[1],"all targets occupied: prefer the least loaded");
+});
+
+test("wasps drop newly cloaked targets and can sting at the largest x2 step", () => {
+  const {game:h}=harness();freshBattle(h);
+  const hive=h.mkUnit(h.TURRETS.find(t=>t.id==="hive"),52,0,false);
+  const hidden=enemyOf(h,"phase",120,430),far=enemyOf(h,"meteor",300,40);
+  hidden.cloakT=1;h.B.enemies=[hidden,far];
+  h.B.drones=[0,.25].map(launchT=>{
+    const dr=h.newWasp(hive,100,500,{launchT});
+    dr.tgt=hidden;return dr;
+  });
+  h.update(.05);
+  assert.ok(h.B.drones.every(dr=>dr.tgt===far));
+  const target=enemyOf(h,"fast",210,450),dr=h.newWasp(hive,210,455,{});
+  dr.tgt=target;h.B.drones=[dr];h.B.enemies=[target];
+  h.update(.1);
+  assert.ok(target.hp<target.maxHp,"crossing the target center must not miss the sting");
+  assert.equal(dr.attacks,1);
+});
+
 test("Guardian triple volley is a tight group on one side", () => {
   g.B = g.newBattle(g.STAGES[0]);
   const s = g.mkUnit(g.SOLDIER_CFG, 210, -1, true);
@@ -1226,6 +1283,23 @@ test("jam module slows both existing and newly spawned nonlinear enemies", () =>
   assert.ok(m.B.enemies[1].baseSpeed<old);
 });
 
+test("Signal Jammer slows the Tyrant equally before and after it spawns", () => {
+  const {game:h}=harness();
+  for(const elite of [false,true]){
+    const speeds=[];
+    for(const before of [false,true]){
+      h.META.elite=elite;h.META.energy=30;h.startBattle();h.startWave(1);
+      if(before)h.applyCard({kind:"module",modId:"jam"});
+      h.spawnBoss();
+      if(!before)h.applyCard({kind:"module",modId:"jam"});
+      const boss=h.B.enemies[0];
+      h.stepMove(boss,.1);speeds.push(boss.vy);
+      assert.equal(boss.vy,boss.cfg.speed*h.B.stage.spdMul*(elite?1.08:1)*.25*.85);
+    }
+    assert.equal(speeds[0],speeds[1]);
+  }
+});
+
 /* ---------- regressions: fixed bugs ---------- */
 function freshBattle(game){
   game.B=game.newBattle(game.STAGES[0]);game.B.soldier=game.mkUnit(game.SOLDIER_CFG,210,-1,true);
@@ -1267,8 +1341,21 @@ test("Burn still ticks its final frame of damage before it is cleared", () => {
   const {game:h}=harness();freshBattle(h);
   const e=enemyOf(h,"meteor",100,300);e.burnDps=60;e.burnT=0.02;e.hp=1000;h.B.enemies=[e];
   h.update(0.05);
-  assert.ok(e.hp<1000,"the last burn tick must still be applied");
+  assert.equal(e.hp,1000-60*.02,"only the remaining burn duration deals damage");
   assert.equal(e.burnDps,0);
+});
+
+test("a lethal final burn tick triggers ignition and credits the burning weapon", () => {
+  const {game:h}=harness();freshBattle(h);
+  const fire=h.mkUnit(h.TURRETS.find(t=>t.id==="skyguard"),52,0,false);
+  const aero=h.mkUnit(h.TURRETS.find(t=>t.id==="aeroblast"),368,1,false);
+  fire.deathIgnition=true;aero.extraLoading=true;
+  const burned=enemyOf(h,"meteor",140,300),neighbor=enemyOf(h,"meteor",150,300);
+  Object.assign(burned,{hp:1,burnDps:60,burnT:.02,burnSource:fire,lastSrc:aero,lastKind:"aero"});
+  h.B.enemies=[burned,neighbor];h.update(.05);
+  assert.ok(burned.dead&&neighbor.hp<neighbor.maxHp);
+  assert.equal(burned.lastSrc,fire);
+  assert.equal(aero.aeroLoaded,0,"the last direct hit must not receive the burn kill");
 });
 
 test("Fortress module card texts match what they actually restore", () => {
@@ -1305,6 +1392,21 @@ test("Battle rewards are credited immediately, exactly once", () => {
   const after=h.META.coins;
   h.applyRewards();h.applyRewards();
   assert.equal(h.META.coins,after,"pressing back must not credit rewards a second time");
+});
+
+test("a stage clear and its rewards are saved together before results are rendered", () => {
+  const {game:h,store}=harness();h.startBattle();
+  const before=h.META.coins,writes=[];
+  const setItem=h.localStorage.setItem;
+  h.localStorage.setItem=(key,data)=>{writes.push(JSON.parse(data));setItem(key,data);};
+  h.renderRewards=()=>{throw new Error("results render failed");};
+  assert.throws(()=>h.endBattle(true),/results render failed/);
+  h.applyRewards();
+  assert.equal(writes.length,1);
+  const saved=JSON.parse(store.get(h.SAVE_KEY));
+  assert.ok(saved.normalCleared[1]&&saved.unlocked===2&&saved.wins===1);
+  assert.equal(saved.coins,before+h.lastRewards.coins);
+  assert.ok(h.lastRewards.coins>0);
 });
 
 test("level rewards are cut tenfold, gems untouched", () => {
@@ -1352,6 +1454,38 @@ test("a throwing frame does not kill the game loop", () => {
   h.update=orig;
   h.loop(48); /* must not throw: the loop survives and keeps running */
   assert.ok(h.B.loopError&&h.B.loopError.indexOf("boom-test")>=0,"error stays recorded until dismissed");
+});
+
+test("paused, drafting and finished battles idle until a resize, selection or resume", () => {
+  const {game:h,element}=harness();
+  const pending=new Map();let id=0,now=0,draws=0;
+  h.performance.now=()=>now;
+  h.requestAnimationFrame=fn=>{const key=id++;pending.set(key,fn);return key;};
+  h.cancelAnimationFrame=key=>pending.delete(key);
+  h.draw=()=>{draws++;};
+  const click=name=>element(name).listeners.click[0].call(element(name));
+  function frame(){
+    now+=16;const callbacks=Array.from(pending.values());pending.clear();
+    callbacks.forEach(fn=>fn(now));
+  }
+  h.startBattle();frame();assert.equal(pending.size,1);
+  click("btn-pause");frame();
+  const elapsed=h.B.elapsed,pausedDraws=draws;
+  frame();assert.equal(pending.size,0);assert.equal(draws,pausedDraws);
+  h.cv.clientWidth=360;h.fitCanvas();h.fitCanvas();assert.equal(pending.size,1);
+  frame();assert.equal(draws,pausedDraws+1);assert.equal(pending.size,0);assert.equal(h.B.elapsed,elapsed);
+  now+=5000;click("btn-resume");frame();
+  assert.ok(Math.abs(h.B.elapsed-elapsed-.016)<1e-9,"resume must discard time on the pause screen");
+  h.startWave(1);h.B.pendingDrafts=2;frame();
+  assert.equal(h.B.waveState,"draft");assert.equal(pending.size,0);
+  h.applyCard(h.curCards[0]);frame();
+  assert.equal(h.B.waveState,"draft");assert.equal(pending.size,0);
+  h.applyCard(h.curCards[0]);frame();
+  assert.equal(h.B.waveState,"fighting");assert.equal(pending.size,1);
+  h.endBattle(false);frame();assert.equal(pending.size,0);
+  h.cv.clientWidth=340;h.fitCanvas();assert.equal(pending.size,1);
+  click("btn-res-back");assert.equal(pending.size,0);assert.equal(h.B,null);
+  click("btn-start");frame();assert.equal(pending.size,1,"a new battle must request its own frames");
 });
 
 test("a backward RAF timestamp cannot drive ring radii negative", () => {
@@ -1443,10 +1577,12 @@ test("Recoil decays with simulation time and stays frozen on paused redraws", ()
   for(const frames of [1,3,6])assert.ok(Math.abs(remaining(frames)-2.7)<1e-9);
 });
 
-test("A shaken fortress redraw consumes no gameplay randomness", () => {
+test("Shaking the fortress and drawing electrical turrets consume no gameplay randomness", () => {
   const {game:h}=harness();h.startBattle();h.B.shake=8;h.B.t=3;
+  h.B.turrets=["tesla","thunder"].map((id,i)=>h.mkUnit(h.TURRETS.find(t=>t.id===id),h.TURRET_X[i],i,false));
   const random=h.Math.random;let calls=0;h.Math.random=()=>{calls++;return random();};
-  h.draw();h.draw();assert.equal(calls,0,"rendering must not change seeded battle outcomes");
+  for(let i=0;i<12;i++){h.B.t=i/20;h.draw();h.draw();}
+  assert.equal(calls,0,"rendering must not change seeded battle outcomes");
 });
 
 /* ---------- model rendering ---------- */
@@ -2128,15 +2264,46 @@ test("Player ammunition intercepts hostile shots without awarding kills, points 
   assert.equal(h.B.baseHp,500);assert.equal(h.B.kills,0);assert.equal(h.B.scoreTotal,0);assert.equal(h.B.totalHealed,0);
 });
 
+test("projectiles hit overlapping enemies and ammunition in surface-contact order", () => {
+  for(const pierce of [0,1]){
+    const {game:h}=harness();enemyDefenseScene(h);
+    const large=Object.assign(sampleEnemy(h,543),{x:210,r:20});
+    h.B.enemies=[large];
+    h.B.enemyShots=[{x:210,y:552,vx:0,vy:0,r:3,hp:5,damage:20,life:5}];
+    h.B.projs=[{x:210,y:590,vx:0,vy:-600,src:h.B.soldier,dmg:12,life:2,pierce,hitSet:[]}];
+    h.update(.1);
+    assert.ok(large.hp<large.maxHp,"the large enemy's near edge is in front of the shot");
+    assert.equal(h.B.enemyShotsIntercepted,pierce);
+  }
+});
+
+test("moving shots can be intercepted between frames only before impact or expiry", () => {
+  function run({shotY=560,vy=300,life=2,bulletY=600,bulletV=-300,bulletLife=2,slow=false}={}){
+    const {game:h}=harness();enemyDefenseScene(h);
+    h.B.enemyShots=[{x:210,y:shotY,vx:0,vy,r:3,hp:5,damage:20,life}];
+    h.B.projs=[{x:210,y:bulletY,vx:0,vy:bulletV,src:h.B.soldier,dmg:12,life:bulletLife,pierce:0,hitSet:[]}];
+    if(slow)h.addDisruptionField(h.B.soldier,210,shotY,{r:50});
+    h.update(.1);return h.B;
+  }
+  assert.equal(run().enemyShotsIntercepted,1,"the two rounds cross at x2 speed");
+  assert.equal(run({bulletLife:.06}).enemyShotsIntercepted,1,"contact during the player's final partial step");
+  assert.equal(run({bulletLife:.04}).enemyShotsIntercepted,0,"no contact after the player round has expired");
+  assert.equal(run({life:.01}).enemyShotsIntercepted,0,"the round expired before contact");
+  const late=run({shotY:700,vy:200,bulletY:720,bulletV:-100});
+  assert.equal(late.enemyShotsIntercepted,0);assert.equal(late.baseHp,late.baseMax-20);
+  assert.equal(run({bulletV:-170}).enemyShotsIntercepted,1);
+  assert.equal(run({bulletV:-170,slow:true}).enemyShotsIntercepted,0,"use the slowed path for both collision and movement");
+});
+
 test("Hostile ammunition is bounded, expires, and remains dangerous after the shooter dies", () => {
   const {game:h}=harness();enemyDefenseScene(h);h.spawnEnemy("moth",{x:210});
   const e=h.B.enemies[0],p=h.enemyAttackProfile(e);e.y=e.standY;e.attackAimX=210;e.attackAimY=h.BASEY-16;
   for(let i=0;i<100;i++)h.fireEnemyVolley(e,p);
   assert.equal(h.B.enemyShots.length,h.ENEMY_SHOT_CAP);
   h.B.enemyShots=[{x:210,y:400,vx:0,vy:140,r:5,hp:5,damage:20,kind:"spit",color:"#aabbcc",life:.01,dead:false}];
-  h.stepEnemyShots(.05);assert.equal(h.B.enemyShots.length,0);
+  h.update(.05);assert.equal(h.B.enemyShots.length,0);
   h.B.enemyShots=[{x:210,y:h.BASEY-17,vx:0,vy:140,r:5,hp:5,damage:20,kind:"spit",color:"#aabbcc",life:2,dead:false,source:e}];
-  e.dead=true;const hp=h.B.baseHp;h.stepEnemyShots(.05);
+  e.dead=true;const hp=h.B.baseHp;h.update(.05);
   assert.equal(h.B.baseHp,hp-20);assert.equal(h.B.enemyShotHits,1);
 });
 
@@ -2193,6 +2360,16 @@ test("Late campaign reconnaissance ramps density without changing Stage 1 or lea
       assert.ok(pool.length>0,"a stage must always have a spawnable caste");
     }
   }
+});
+
+test("campaign simulation budgets scale with stage length and honor an explicit cutoff", () => {
+  const {runSuite}=require("./balance.cjs");
+  const options={runs:1,policy:"smart",configure(game){game.update=()=>game.endBattle(false);}};
+  for(const [stage,expected] of [[1,2400],[4,3000],[12,3600]]){
+    assert.equal(runSuite({...options,stage}).config.maxSeconds,expected);
+  }
+  assert.equal(runSuite({...options,stage:12,maxSeconds:1}).config.maxSeconds,1);
+  assert.throws(()=>runSuite({stage:12,runs:1,policy:"smart",maxSeconds:.1}),/campaign did not terminate/);
 });
 
 console.log("\n" + tests.length + " smoke tests passed.");

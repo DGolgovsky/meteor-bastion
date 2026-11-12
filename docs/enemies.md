@@ -27,7 +27,7 @@ Stages 1–3 retain their exact pacing. For stages 4–12, the stage's extra ene
 
 ## Firing stations and attacks
 
-Each insect chooses a stable individual station within its caste's distance band. It approaches from above, then strafes slightly. The station seed comes from the already-random spawn phase/position; drawing consumes no combat randomness. An external overshoot is corrected at least 60px above the base so Gravity cannot leave an insect inside the bunker.
+Each regular insect chooses an individual firing station within its caste’s distance band, approaches from above and then strafes slightly. The Hive Tyrant uses its band to start firing and keeps descending. The station seed comes from the already-random spawn phase/position; drawing consumes no combat randomness. An external overshoot is corrected at least 60px above the base so Gravity cannot leave an insect inside the bunker.
 
 | Caste | Distance above base (px) | Windup (s) | Reload (s) | Volley | Ammunition HP |
 |---|---:|---:|---:|---|---:|
@@ -55,6 +55,6 @@ The charge ring and dotted aiming line show a locked impact point. Moving after 
 
 Slow delays approach, windup and reload. Paralyze/Immobilize cancel a windup; knockback or Gravity above the station's approach threshold makes the insect approach again. Disruption fields also slow hostile rounds to half speed. Weak defenses cannot safely stall forever: after 20s at a station, siege damage grows gradually to ×1.6 over the next 60s.
 
-Ordinary player projectiles can intercept hostile ammunition through the same ordered swept-collision pass used for enemies. A shot consumes projectile penetration or the projectile itself, and awards no kills, XP, battle points or healing. Instant laser/beam damage is unchanged. Maximum hostile ammunition is 64 rounds; each lives at most 8s, and an already-fired round remains dangerous after its source dies. The stage end waits until that ammunition is cleared, intercepted or expires. Ranged hits/damage and meteor impacts/damage are recorded separately.
+Player rounds hit enemies in order of first contact with their outer edges. Interception uses the paths of both rounds during the frame, including Disruption slowdown, their remaining lifetimes and the time the hostile round reaches the fortress. A shot consumes projectile penetration or the projectile itself, and awards no kills, XP, battle points or healing. Instant laser/beam damage is unchanged. Maximum hostile ammunition is 64 rounds; each lives at most 8s, and an already-fired round remains dangerous after its source dies. The stage end waits until that ammunition is cleared, intercepted or expires. Ranged hits/damage and meteor impacts/damage are recorded separately.
 
 All values above are Meteor Bastion settings, not recovered coefficients of the reference game.

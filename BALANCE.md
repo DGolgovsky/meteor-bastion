@@ -10,7 +10,27 @@ Current parameters updated 2026-11-12; historical measurements below retain thei
 | Sector II, 4–8 | 5 | 25 | ×2.05 → ×4.60 | ×1.09 → ×1.19 |
 | Sector III, 9–12 | 4 | 30 | ×5.50 → ×9.10 | ×1.21 → ×1.25 |
 
-In every campaign the boss joins at 60% of the stage stream and descends on the fortress (if it arrives: 90% of base max HP); stage progress carries over to the next playthrough. Since 2026-11-12 (owner order) each stage is **one continuous stream, no waves**: enemies arrive non-stop, the player never sees a wave counter, a pause or a wave draft, and the stage ends only when the whole stream has spawned, the boss is dead and the field is clear. `B.wave` survives only as an internal "virtual wave" counter (HP scaling, ecology gates, elite champions, recon ramp, spawn pacing, draft costs, rewards). The saved `unlocked` maximum is no longer capped at the former three stages: old save v1 files still load.
+In every campaign the boss joins at 60% of the stage stream and descends on the fortress (if it arrives: 90% of base max HP); stage progress carries over to the next playthrough. Since 2026-11-12 (owner order) each stage is **one continuous stream, no waves**: enemies arrive non-stop, the player never sees a wave counter, a pause or a wave draft, and the stage ends only when the whole stream has spawned, the boss has been killed or has hit the dome, and the field is clear of enemies and hostile ammunition. `B.wave` survives only as an internal "virtual wave" counter (HP scaling, ecology gates, elite champions, recon ramp, spawn pacing, draft costs, rewards). The saved `unlocked` maximum is no longer capped at the former three stages: old save v1 files still load.
+
+## Combat and progression checks, 2026-11-12
+
+The combat pass starts from `69082d2`. Stage 1 Normal still contains 1,750 regular spawns. The first three smart-policy seeds (3121, 777, 42) form the fresh-account CI guard. The progression probe keeps the account and its RNG across attempts. It spends the rewards through the production R&D cost rules and advances the energy clock between battles.
+
+| Profile | Fixed runs | Victories |
+|---|---:|---:|
+| Stage 1 Normal, R&D 1, zero chips, smart picks | 12 fresh accounts | 0 |
+| Stage 1 Normal, R&D 1, zero chips, first card | 12 fresh accounts | 0 |
+| Stage 1 Normal, R&D purchases between attempts, smart picks | 6 accounts, up to 5 attempts each | 5 accounts cleared on attempts 2–5 |
+| Stage 9 Elite, R&D 30, zero chips, smart picks | 3 | 2 |
+| Stage 12 Normal, R&D 45, zero chips, smart picks | 3 | 3 |
+| Stage 12 Elite, R&D 45, zero chips, smart picks | 12 | 1 |
+| Stage 12 Elite, R&D 45, all three chips at level 5, smart picks | 6 | 1 |
+
+The first clear in the progression probe occurred on attempts 3, 2, 2, beyond 5, 3 and 5 for seeds 3121, 777, 42, 1234, 9999 and 2026 respectively. The same six accounts on `69082d2` cleared 4/6 within five attempts. A separate ten-attempt run for seed 1234 reached victory on attempt 6.
+
+The continuous-stream simulator now budgets 2,400 / 3,000 / 3,600 simulated seconds for 20 / 25 / 30 virtual waves. The explicit `--max-seconds` override and the timeout assertion still apply. Victory requires a surviving fortress, one resolved Tyrant, no live enemies and no incoming ammunition. These checks exercise fixed automated card choices.
+
+At 330 targets and 90 wasps, one Hive target search read 90 swarm assignments, down from 29,700 on `69082d2`. In `node tests/laser-perf.cjs --compare /path/to/69082d2 --raster --repeats 7`, the upgraded two-second channel took 43.0 ms of simulation time at 120 Hz before and 19.1 ms after (Node, median of seven runs). All four base/upgraded and 60/120 Hz combinations preserved their ordered hit, damage and timestamp checksums. The upgraded channel recorded 3,185 hits with at most 17 live ray visuals. On pause, card selection and results, the canvas renders on state or size changes.
 
 ## Current base numbers
 
@@ -49,7 +69,7 @@ For the exact HP/speed of the 15 enemies and the attacks of the 11 turrets, use 
 - **Laser:** a pulse with a 7.8 s cooldown between pulses (was 5.2 s; the cooldown is a constant in `fireLaser`, and the Laser turret's `attackSpeed` does not affect it), reflection/refraction, Deflect/Sweep, stacking vulnerability. The beam goes from the turret through the target to the edge of the field in the firing direction; **every laser, including extra and reflected ones, starts at the turret** (2026-11-11), and the ray width grows with its damage; damage does not depend on the beam length. **The beam does not track its target after firing:** the direction and aim point are locked when the pulse starts (the target's position at the start of the channel) and do not follow it until the channel ends; each tick, damage is computed for enemies on the locked line.
 - **Beam:** ticks of 145% ATK at a 0.2 s interval, base CD 10 s, focusing and Stacking Damage with R&D upgrades.
 - **Aeroblast is a medium-range shotgun.** Activation range **540** (was 200): it now fires at enemies from **y≥180**, not only from y≥520. A volley has 5 pellets of 10 base damage each; projectile speed **520 px/s** (was 380), fire rate 0.8/s, knockback 12 per hit. The spread's angular step is `min(0.14, 14/max(90, dist))` rad: up close the shotgun stays wide, far away neighboring pellets bunch up more tightly (about 14px between trajectories at the target distance). Extra projectiles from cards keep adding pellets to the spread. The "Impact radius" R&D scales the **splash**, not the targeting range. In the original Galaxy Defense, Aeroblast deals a direct hit + a directional cone explosion, and Shotgun Barrage is a separate card; here the current simplified shotgun mechanic is kept, but its ineffectiveness at range is fixed. Source for comparison: https://gd-community.fun/guides/aeroblast .
-- **Hive:** wasps are released within the hive's radius but look for targets on their own across the **whole field**; the Swarm Echo R&D chain limits repeated wasp replication. Wasps fly out in an upward fan from the turret (spread 10–14px from it, a 0.25 s launch phase at 120 px/s), then home in at 240 px/s; damage is dealt on touching the enemy's bottom edge (the wasp is under the enemy, not at its center). **Wasp lifetime 8.5 s** (was 5.5 s), echo wasps 6.5 s (was 4.3 s). **At most 2 wasps per target:** wasps are distributed across targets when choosing and retargeting, the rest take other enemies; if all targets are taken, the least loaded one is chosen.
+- **Hive:** wasps are released within the hive's radius but look for targets on their own across the **whole field**; the Swarm Echo R&D chain limits repeated wasp replication. Wasps fly out in an upward fan from the turret (spread 10–14px from it, a 0.25 s launch phase at 120 px/s), then home in at 240 px/s; damage is dealt on touching the enemy's bottom edge (the wasp is under the enemy, not at its center). **Base wasp lifetime 12.75 s**, echo wasps 6.5 s. **At most 2 wasps per target:** wasps are distributed across targets when choosing and retargeting, the rest take other enemies; if all targets are taken, the least loaded one is chosen.
 - **Firewheel:** a single standalone bouncing disc (radius 20, speed 200, lifetime 10 s); see the reference card set below.
 - **Tesla:** a direct hit (0.8×), an area explosion (0.65×, radius 55), a flash ring of 170, 12 particles; the charge damage is unchanged. **Bounce instead of "double charge":** after a hit, the discharge jumps from the target to the nearest enemy not yet hit within 150px, and so on along the chain (bounces = multiCount−1, 2 by default); bounce damage falls off: 0.7×, 0.5×, 0.35×, 0.25×, 0.2×. The old simultaneous hit on several targets around the first one is removed entirely; the "Secondary Arc" card is replaced by "Discharge Bounce" (one more bounce), and the "Overvoltage" super bounces across 6 targets.
 - **No scatter:** (card names in this bullet are from the pre-reference set) extra turret projectiles fly **in parallel** with the main one (7px lateral offset), not in a spread — the "Twin Barrel", "Cluster Salvo", "Shockwave" cards and the "Rocket Barrage" super no longer scatter the fire. The Laser's sweeping beam hits the second target **deterministically** — the toughest of the remaining ones, not a random one. The only spreads in the game are the pellet spread of the Aeroblast shotgun itself (its design, not a card) and, since 2026-11-10, the Guardian's **Shotgun Evolution** card (each shot scatters into 2 extra bullets at ±0.12 rad) — an explicit owner-approved exception.
@@ -550,7 +570,7 @@ Owner's own playthrough, 2026-11-09 (b56e1e6b): cleared Stage 1 on the FIRST att
 - Same R&D 1 Stage 1 Normal benchmark, 12 fixed seeds per policy, before → after: sensible picks **4/12 → 5/12** victories (first victory stays attempt 3), first-card **2/12 → 2/12**. Mean breaches **23.9 → 17.3** / **31.3 → 30.2** respectively. Changing turret coordinates changes targeting, so identical combat outcomes are not expected; no balance coefficients were retuned. These small deterministic samples are calibration, not estimates of human win rate.
 
 
-## Artillery, rarity and recon pass (current, 2026-11-11)
+## Artillery, rarity and recon pass (2026-11-11)
 
 This pass starts from `9250c86`. It keeps all 270 reference card effects and save v1, changes offer probabilities and enemy behavior, and optimizes Laser rendering. Theme/roster, attack distance, projectile rules and reconnaissance are documented in [docs/enemies.md](docs/enemies.md).
 
@@ -561,11 +581,11 @@ This pass starts from `9250c86`. It keeps all 270 reference card effects and sav
 
 ### Reproducible protocol
 
-`tests/balance.cjs` initializes through real `startBattle()`, including Elite multipliers, permanent R&D and Chips. Each run has its own seeded harness, dt=.05s, maximum 2400s simulated time. Victory requires the final wave, positive base HP, exactly one spawned and actually killed boss, and no living enemies. Timeout/nonfinite state is a failed check, not a loss silently counted as a completed campaign. Offer/taken tiers/Extras, meteor/ranged damage, firing/interception, duration, wave composition and per-unit DPS are recorded. HP-at-wave averages are conditional on reaching that wave.
+`tests/balance.cjs` initializes through real `startBattle()`, including Elite multipliers, permanent R&D and Chips. Each run has its own seeded harness and dt=.05s. The November 11 setup used a 2400s simulation limit and required a boss kill. The current stream can also end after the fortress survives the Tyrant’s impact. Timeout/nonfinite state is a failed check, not a loss silently counted as a completed campaign. Offer/taken tiers/Extras, meteor/ranged damage, firing/interception, duration, wave composition and per-unit DPS are recorded. HP-at-wave averages are conditional on reaching that wave.
 
 The original first-three seeds are 3121/777/42; broad probes keep3121,777,42,1234,9999,2026,555,8888,31415,2718,1618,4242. Policies are the established sensible ranking and first offered card; neither moves the Guardian or rerolls. They are reproducible probes, not human win-rate estimates.
 
-`--check-balance` is an explicit CI regression guard for fresh S1 Normal/R&D1/no Chips:1..2 smart wins on the unchanged first-three prefix, catching both 0/3 and free3/3. It rejects calibration overrides and other profiles. The noninteractive 1.2s intro is skipped consistently, matching the earlier fixed-clock benchmark. There is no such quota or reseeding in the game itself.
+The November 11 CI guard for fresh S1 Normal/R&D1/no Chips required 1–2 smart wins on the first three seeds. The current guard expects 0/3 after the continuous-stream recalibration. It rejects calibration overrides and other profiles. The noninteractive 1.2s intro is skipped consistently, matching the earlier fixed-clock benchmark. There is no such quota or reseeding in the game itself.
 
 ```sh
 node tests/balance.cjs --runs 3 --policy smart --check-balance

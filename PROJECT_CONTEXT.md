@@ -1,6 +1,6 @@
 # Meteor Bastion — project context for a new session
 
-> Updated 2026-11-11. When starting a new session, **always fetch the HEAD of the `master` branch again**: the information below is a recorded snapshot, not a substitute for checking the current repository. After round 5 and the rollout of the screenshot plan, new checks were added; always get the exact SHA from GitHub, not from this snapshot.
+> Updated 2026-11-12. When starting a new session, **always fetch the HEAD of the `master` branch again**: the information below is a recorded snapshot, not a substitute for checking the current repository. After round 5 and the rollout of the screenshot plan, new checks were added; always get the exact SHA from GitHub, not from this snapshot.
 
 ## 1. Goal and scope
 
@@ -15,7 +15,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **HTML5 + CSS + plain JavaScript, Canvas 2D.** The game release is **a single self-contained `index.html`**. No npm, Vite, webpack, Phaser, TS compilation, Unity/Godot/APK for this project without a separate decision by the user.
 - The code is now **modular**: `src/shell.html`, `src/js/*.js`, `src/order.txt`. The **`python3 build.py`** script assembles a single `index.html`.
 - The built `index.html` is **not stored in Git** (excluded via `.gitignore`). **Edit only `src/`**; don't try to fix the missing `index.html` through GitHub.
-- Running tests: **`node tests/smoke.cjs`** (116 tests) and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
+- Running tests: **`node tests/smoke.cjs`** and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
 - `BALANCE.md` holds the current numeric parameters, `README.md` the overview. In case of contradictions, **the source of truth is the current `src/js/00-config.js` and the other sources**, then the tests, then the documentation. Update the documents when things change.
 
 **Concatenation order from `src/order.txt`:** `00-config.js` → `01-state.js` → `02-units.js` → `04-waves.js` → `03-combat.js` → `03b-effects.js` → `05-update.js` → `06-render.js` → `07-cards.js` → `07-ui.js` → `08-main.js`. **Do not sort** the modules by name.
@@ -24,7 +24,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 
 - **12 stages**: one continuous enemy stream each; 1–3 run **20 virtual waves**, 4–8 run **25**, 9–12 run **30** (internal pacing counters, never shown to the player). The boss joins at 60% of the stream and descends on the fortress; a victory unlocks the next stage.
 - **4 turret slots** filled in the order "far left → far right → center left → center right"; a horizontally movable Guardian. A battle starts with the Guardian, and towers are granted through cards. The Guardian fires from both hands; recent changes concerned the compact triple burst.
-- **11 turrets**: Sky Guard, Laser, Disruption Drone, Aeroblast, Thunderbolt, Beam, Firewheel Drone, Hive, Railgun, Tesla Coil, Gravity Vortex Gun. There are **15 enemy types** with twelve themed stage rosters. Four meteor classes collide; all insects and the boss stop at per-caste firing stations and shoot. See `docs/enemies.md` and the current pass below.
+- **11 turrets**: Sky Guard, Laser, Disruption Drone, Aeroblast, Thunderbolt, Beam, Firewheel Drone, Hive, Railgun, Tesla Coil, Gravity Vortex Gun. There are **15 enemy types** with twelve themed stage rosters. Four meteor classes collide with the dome. Insects hold per-caste firing stations. The Tyrant fires during its descent and deals 90% of maximum base HP on contact. See `docs/enemies.md` and the current pass below.
 - **Pick-1-of-3 cards** for battle points (card system rework 2026-11-10, see the section below), R&D levels up to 45, Combo, fortress modules.
 - **Normal / Elite** have different stream compositions, champions and multipliers. Rewards/clears are tracked separately per mode.
 - **Chips** are bought with components (damage, fire rate, base survivability). **Liveries** Classic/Arctic/Ember are cosmetic. Patrol, energy, rewards, the main menu and the mobile HUD are in place.
@@ -37,7 +37,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - **Hive is a critical invariant:** the hive's range limits **only the release of wasps**. Released wasps move and look for enemies **across the whole field**, even outside the turret's range, with correct retargeting. Don't bring back single-use kamikaze wasps.
 - **Laser:** a time-limited pulse, **the direction is locked at the moment of firing**; the beam visually reaches the edge of the field, but only damages along its line; the base CD is currently **7.8 s** (check the current code).
 - **Beam** differs from Laser: sequential focused ticks on a target, with damage stacking and upgrades; **Sky Guard** has separate impact and explosion; **Firewheel** is a long-lived bouncing disc, not a regular projectile; **Gravity** is a field that pulls enemies in and deals tick damage; **Disruption** is control/fields.
-- **Current parameters in `src/js/00-config.js` at the last check (2026-11-12, owner order: enemies 5x HP, 62.5% slower, one continuous stream):** `waveStart:24`, `waveGrowth:8.4`, `spawnBase:0.20`, `spawnReduction:0.002`, `spawnMin:0.06`, `formationCd:1.33`, `enemyHpMul:4.25` (0.85 before), `waveHpGrowth:0.13` (0.06 before the 2026-11-10 card rework, 0.14 until the 2026-11-11 reference set), `enemySpdMul:0.375` (1 before; 0.75 until the extra 50% slowdown the same day), `turretBasePower:1.6`, `MAX_ENEMIES:330`; field `420×820` including underground scenery, unchanged combat/base line `y=720`. These values are **ours**, not official Galaxy Defense parameters. Stages raise HP/speed; Elite is harder than Normal.
+- **Current combat parameters (2026-11-12).** `waveStart=14`, `waveGrowth=7`, `spawnBase=.20`, `spawnReduction=.002`, `spawnMin=.06`, `formationCd=1.33`, `enemyHpMul=4.25`, `waveHpGrowth=.13`, `enemySpdMul=.1875`, `turretBasePower=1.6` and `MAX_ENEMIES=330`. Stage 1 Normal contains 1,750 regular spawns. The boss uses a separate ×0.25 speed factor. Signal Jammer slows both existing and future arrivals. The field is 420×820 and the base line is at y=720.
 - The latest `BALANCE.md` states that the base has **1000 HP and no separate shield; Chips add max HP** — this has changed compared with earlier versions. Always check the current values against `newBattle()`.
 
 ## 5. What was found about the original and how to use it
@@ -48,7 +48,7 @@ Gameplay reference points of the original discussed in the chat: the Guardian is
 
 ## 6. Verification status and priorities for the next session
 
-- After the plan rollout, `tests/smoke.cjs` has **116 regression tests**; **don't claim they all pass** until a test run has been done on the **newest** state.
+- Run the smoke suite against the current checkout. The November 12 combat and progression measurements are recorded in [BALANCE.md](BALANCE.md).
 - Check **`python3 build.py`**, **`node tests/smoke.cjs`**, the absence of JS errors and behavior in a mobile browser. If no runtime is available, honestly separate syntax checks, headless simulations and live mobile testing.
 - Main unfinished directions: **mass balance simulations** across the 12 stages and Elite (including several R&D profiles), measuring win rate, number of breaches, cards received, stream times and DPS; **manual visual checks** on Android, of the interface and FPS; further comparison with the exact version of the original.
 - The player should **sometimes take base damage already in the early stream**, but not lose by default before defensive turrets unlock. At high stages real meta progression matters. Avoid both extremes ("all enemies die at the spawn" and "defeat at the start with any build").

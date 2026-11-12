@@ -66,12 +66,17 @@ function isMeteorEnemy(e){return !!(e&&e.cfg&&METEOR_IDS[e.cfg.id]);}
 function enemyAttackProfile(e){return ENEMY_ATTACKS[e.cfg&&e.cfg.id]||ENEMY_ATTACKS[e.kind]||ENEMY_ATTACKS.flyer;}
 function initEnemyStation(e){
  if(isMeteorEnemy(e))return;
- var p=enemyAttackProfile(e),seed=Math.sin((e.phase||0)*71.37+(e.x||0)*.17)*43758.5453;seed-=Math.floor(seed);
- if(!Number.isFinite(e.standY))e.standY=BASEY-p.dist[0]-(p.dist[1]-p.dist[0])*seed;
+ if(!Number.isFinite(e.standY)||!Number.isFinite(e.attackCd)){
+  var seed=Math.sin((e.phase||0)*71.37+(e.x||0)*.17)*43758.5453;seed-=Math.floor(seed);
+  if(!Number.isFinite(e.standY)){
+   var dist=enemyAttackProfile(e).dist;
+   e.standY=BASEY-dist[0]-(dist[1]-dist[0])*seed;
+  }
+  if(!Number.isFinite(e.attackCd))e.attackCd=.8+seed*1.4;
+ }
  if(!Number.isFinite(e.standX))e.standX=e.x;
- if(!Number.isFinite(e.attackCd))e.attackCd=.8+seed*1.4;
  if(!Number.isFinite(e.attackCharge))e.attackCharge=0;
- if(!Number.isFinite(e.attackWindup))e.attackWindup=p.windup;
+ if(!Number.isFinite(e.attackWindup))e.attackWindup=enemyAttackProfile(e).windup;
  if(!e.attackState)e.attackState="approach";
  if(!Number.isFinite(e.siegeAge))e.siegeAge=0;
  /* The dome is the boundary (2026-11-12, owner order): a station deeper than the
@@ -131,9 +136,9 @@ function spawnBoss(){
  if(B.enemies.length>=MAX_ENEMIES)return false;
  var cfg=ENEMIES.filter(function(e){return e.id==="boss";})[0];
  var hpMul=B.stage.hpMul*1.1*(1+(B.wave-1)*BALANCE.bossHpGrowth)*(B.elite?BALANCE.eliteBossHp:1)*13.2; /* 2026-11-12, owner order: boss 15x HP (0.88*15), its own number, not the general 5x */
+ var speed=cfg.speed*B.stage.spdMul*(B.elite?1.08:1)*0.25*(B.modulesUsed.jam?BALANCE.jamSpeed:1);
  B.enemies.push({cfg:cfg,kind:"boss",x:W/2,y:-50,hp:cfg.hp*hpMul,maxHp:cfg.hp*hpMul,
-  speed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1)*0.25,baseSpeed:cfg.speed*B.stage.spdMul*(B.elite?1.08:1)*0.25, /* 2026-11-12, owner order: boss 75% slower, its own factor, not stacked with the general 25% */
-  vx:0,vy:cfg.speed,moveKind:"boss",hoverCd:8,hoverT:0,hoverCount:0,driftDir:1,driftT:5,speedPhase:0,visualScale:1,dmg:cfg.dmg*(B.stage.contactMul||1)*(B.elite?BALANCE.eliteBossContact:1)*BALANCE.enemyDmgMul,
+  speed:speed,baseSpeed:speed,vx:0,vy:speed,moveKind:"boss",hoverCd:8,hoverT:0,hoverCount:0,driftDir:1,driftT:5,speedPhase:0,visualScale:1,dmg:cfg.dmg*(B.stage.contactMul||1)*(B.elite?BALANCE.eliteBossContact:1)*BALANCE.enemyDmgMul,
   armor:cfg.armor+(B.elite?0.10:0),xp:cfg.xp,r:cfg.r+(B.elite?6:0),color:B.elite?"#df4d9c":cfg.color,
   champion:!!B.elite,eliteMode:B.elite,phase:0,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,hasteT:0,auraT:2});
  initEnemyStation(B.enemies[B.enemies.length-1]);

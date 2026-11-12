@@ -217,8 +217,11 @@ var TURRET_DRAW={
      for(var cw=0;cw<5;cw++){var cy=-1-cw*3.8;ctx.beginPath();ctx.moveTo(ex-2.6,cy);ctx.lineTo(ex+2.6,cy-1.6);ctx.stroke();}
    });
    glowDot(-6.4,-22,3.4,"#e9d5ff",t.recoil>0?16:8);glowDot(6.4,-22,3.4,"#e9d5ff",t.recoil>0?16:8);
-   ctx.strokeStyle="rgba(216,180,254,"+(0.35+Math.random()*0.5)+")";ctx.lineWidth=1.3;ctx.beginPath();
-   var zx=-6.4;ctx.moveTo(zx,-22);while(zx<5){zx+=2.6+Math.random()*2.6;ctx.lineTo(zx,-22+(Math.random()*7-3.5));}ctx.lineTo(6.4,-22);ctx.stroke();
+   var spark=Math.floor(B.t*20)+t.x;
+   ctx.strokeStyle="rgba(216,180,254,"+(0.35+hrand(spark,0)*0.5)+")";ctx.lineWidth=1.3;ctx.beginPath();
+   ctx.moveTo(-6.4,-22);
+   for(var j=1;j<=3;j++)ctx.lineTo(-6.4+j*3.2+(hrand(spark,j)-0.5)*1.6,-22+hrand(spark,j+3)*7-3.5);
+   ctx.lineTo(6.4,-22);ctx.stroke();
  },
  beam:function(t,col){
    pedestal(col,14,10,9);
@@ -306,8 +309,9 @@ var TURRET_DRAW={
    ctx.strokeStyle=col;ctx.lineWidth=1.1;for(var cw=0;cw<5;cw++){var cy=4-cw*4;ctx.beginPath();ctx.moveTo(-3.6,cy);ctx.lineTo(3.6,cy-1.6);ctx.stroke();}
    ctx.save();ctx.shadowColor="#a06bff";ctx.shadowBlur=13;ctx.fillStyle=shade("#f1e3ff","#a97ff0",-4,-26,4,-14);ctx.beginPath();ctx.arc(0,-21,6.2,0,6.2832);ctx.fill();ctx.restore();
    ctx.fillStyle="rgba(255,255,255,.65)";ctx.beginPath();ctx.arc(-2,-23,1.8,0,6.2832);ctx.fill();
-   if(Math.random()<0.4){ctx.strokeStyle="rgba(216,180,254,.9)";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(0,-27);
-     var ax=0,ay=-27;for(var z=0;z<3;z++){ax+=Math.random()*10-5;ay-=2.4+Math.random()*2.4;ctx.lineTo(ax,ay);}ctx.stroke();}
+   var spark=Math.floor(B.t*20)+t.x;
+   if(hrand(spark,0)<0.4){ctx.strokeStyle="rgba(216,180,254,.9)";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(0,-27);
+     var ax=0,ay=-27;for(var z=1;z<=3;z++){ax+=hrand(spark,z)*10-5;ay-=2.4+hrand(spark,z+3)*2.4;ctx.lineTo(ax,ay);}ctx.stroke();}
  }
 };
 function drawGenericTurret(t,col){
@@ -928,7 +932,7 @@ function openPause(title){
  $("pause-body").innerHTML=h+"</tbody></table>";
  $("ov-pause").classList.add("on");
 }
-$("btn-resume").addEventListener("click",function(){$("ov-pause").classList.remove("on");if(B)B.paused=false;lastTs=performance.now();});
+$("btn-resume").addEventListener("click",function(){$("ov-pause").classList.remove("on");if(B)B.paused=false;lastTs=performance.now();requestBattleFrame();});
 $("btn-quit").addEventListener("click",function(){$("ov-pause").classList.remove("on");if(B&&!B.over)endBattle(false);});
 
 
