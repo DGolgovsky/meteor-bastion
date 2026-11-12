@@ -32,6 +32,57 @@ var B=null, raf=null, lastTs=0;
 function requestBattleFrame(){
  if(B&&raf===null)raf=requestAnimationFrame(loop);
 }
+/* Ports are in model coordinates: +x across the head, −y out of the barrel.
+   The canvas and combat use the same pivot, scale, recoil and port coordinates. */
+var UNIT_SCALE=0.88;
+var SKY_TUBE_PITCH=7/UNIT_SCALE;
+var TURRET_MOUNTS={
+ skyguard:{y:-2,kick:.85,ports:[[-1.5*SKY_TUBE_PITCH,-23],[-.5*SKY_TUBE_PITCH,-23],[.5*SKY_TUBE_PITCH,-23],[1.5*SKY_TUBE_PITCH,-23]]},
+ laser:{y:-14/UNIT_SCALE,ports:[[0,-17]]},
+ disruption:{y:-18,fixed:true,ports:[[-11,-1],[11,-1]]},
+ aeroblast:{y:-5,kick:.8,ports:[[0,-23]]},
+ thunder:{y:-4,fixed:true,ports:[[0,-23]]},
+ beam:{y:-5,kick:.45,ports:[[0,-25]]},
+ firewheel:{y:-7,fixed:true,ports:[[0,-15]]},
+ hive:{y:-12,fixed:true,ports:[[0,-12],[-11,1],[11,1]]},
+ railgun:{y:-4,kick:1,ports:[[0,-32]],dual:[[-3.5/UNIT_SCALE,-32],[3.5/UNIT_SCALE,-32]],triple:[[-7/UNIT_SCALE,-32],[0,-32],[7/UNIT_SCALE,-32]]},
+ tesla:{y:-5,ports:[[0,-26]]},
+ gravity:{y:-9,ports:[[0,-21]],dual:[[-15/UNIT_SCALE,-20],[15/UNIT_SCALE,-20]],triple:[[-15/UNIT_SCALE,-20],[0,-21],[15/UNIT_SCALE,-20]]}
+};
+function turretPorts(t){
+ var m=TURRET_MOUNTS[t.cfg.id],extra=t.extraFields||t.extraProj||0;
+ if(m.dual&&extra>0)return extra===1?m.dual:m.triple;
+ return m.ports;
+}
+function turretHeadPose(t,time){
+ var m=TURRET_MOUNTS[t.cfg.id];
+ return {y:m.y+(t.cfg.id==="disruption"?Math.sin(time*3+t.x)*1.6:0),
+  rotation:m.fixed?0:t.angle+Math.PI/2,kick:(t.recoil||0)*(m.kick||0)};
+}
+function turretMuzzle(t,port){
+ var pose=turretHeadPose(t,B.t),p=port||turretPorts(t)[0];
+ var cos=Math.cos(pose.rotation),sin=Math.sin(pose.rotation),y=p[1]+pose.kick;
+ return {x:t.x+UNIT_SCALE*(p[0]*cos-y*sin),y:t.y+UNIT_SCALE*(pose.y+p[0]*sin+y*cos)};
+}
+var MIRROR_SCALE=.8,GUARDIAN_BARREL=19.4;
+function guardianGunPose(t){
+ var cos=Math.cos(t.angle),face=Math.abs(cos)>.14||!t.facing?(cos<0?-1:1):t.facing;
+ return {face:face,angle:Math.atan2(Math.sin(t.angle),face*cos),x:t.handAlt?-6.6:6.6,
+  y:-6.4+Math.sin(B.t*2.6)*.45,kick:t.recoil*.55};
+}
+function guardianMuzzle(t,mirror){
+ var pose=guardianGunPose(t),scale=mirror?MIRROR_SCALE:UNIT_SCALE;
+ var cos=Math.cos(t.angle),sin=Math.sin(t.angle),length=GUARDIAN_BARREL-pose.kick;
+ return {x:(mirror?mirrorX(t):t.x)+scale*(pose.face*pose.x+cos*length),
+  y:t.y+scale*(pose.y+sin*length)};
+}
+function aimOrigin(t){
+ if(t.isSoldier)return {x:t.x,y:t.y-10};
+ if(TURRET_MOUNTS[t.cfg.id].fixed){
+  var ports=turretPorts(t);return turretMuzzle(t,ports[t.nextPort||0]);
+ }
+ return {x:t.x,y:t.y+UNIT_SCALE*TURRET_MOUNTS[t.cfg.id].y};
+}
 function mkUnit(cfg,x,slot,isSoldier){
  var lv=META.levels[cfg.id],secondary=metaSecondary(lv),steps=metaSteps(lv),area={rocket:32,charge:42,knockback:40,slow:34};
  var dm=metaDamage(lv)*(isSoldier?1:BALANCE.turretBasePower)*(isSoldier?1:1+0.03*META.chips.core);

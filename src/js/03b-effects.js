@@ -50,7 +50,7 @@ function debuffCount(e){
 function teleportBack(e,toStart,src){
  if(!aliveE(e)||e.kind==="boss")return false;
  var oy=e.y;e.y=toStart?-20:Math.max(-20,e.y-120*(e.champion?0.5:1));
- ringFx(e.x,oy,"#7dd3fc",90);ringFx(e.x,Math.max(VIS_TOP,e.y),"#7dd3fc",90);
+ ringFx(e.x,oy,WEAPON_COLOR.disruption,90);ringFx(e.x,Math.max(VIS_TOP,e.y),WEAPON_COLOR.disruption,90);
  if(src&&src.teleportDamage)trueDamage(src,e,Math.min(0.03*e.maxHp,60000*src.cfg.damage*src.dmgMul));
  return true;
 }
@@ -60,10 +60,10 @@ function addDisruption(e,src,n){
  e.disr=(e.disr||0)+n;e.disrT=5;
  if(e.disr>=max){
   e.disr=0;var pw=own.disrPower||1;
-  ringFx(e.x,e.y,"#38c8ff",120);
+  ringFx(e.x,e.y,WEAPON_COLOR.disruption,120);
   dealDamage(own,e,own.cfg.damage*2*pw,{kind:"disr",dtype:"force"});
   if(own.disrBurst&&aliveE(e))dealDamage(own,e,own.cfg.damage*6*pw,{kind:"disr",dtype:"force"});
-  if(own.areaDisr)explodeAt(own,e.x,e.y,50,own.cfg.damage*2*pw,{kind:"disr",dtype:"force"},"#38c8ff");
+  if(own.areaDisr)explodeAt(own,e.x,e.y,50,own.cfg.damage*2*pw,{kind:"disr",dtype:"force"},WEAPON_COLOR.disruption);
  }
 }
 /* ---------- spawners ---------- */
@@ -90,13 +90,13 @@ function ripLaser(src,x,y,ang,dmg){
   var px=e.x-x,py=e.y-y,pr=px*dx+py*dy;
   if(pr>0&&pr<len&&Math.abs(px*dy-py*dx)<=e.r+9)hits.push(e);
  });
- B.beams.push({x1:x,y1:y,x2:x+dx*len,y2:y+dy*len,color:"#ff6b9a",w:3.5,t:0,life:0.16});
+ B.beams.push({x1:x,y1:y,x2:x+dx*len,y2:y+dy*len,color:WEAPON_COLOR.laser,ripping:true,w:3.5,t:0,life:0.16});
  hits.forEach(function(e){dealDamage(src,e,dmg,{kind:"rip",dtype:"energy"});});
  return hits;
 }
 function shockFrom(src,x,y,n,dmg,exclude){
  var ts=nearestList(x,y,n,110,exclude);
- ts.forEach(function(o){arcFx(x,y,o.x,o.y,"#a5f3fc");dealDamage(src,o,dmg,{dtype:"electric",kind:"shock"});});
+ ts.forEach(function(o){arcFx(x,y,o.x,o.y,WEAPON_COLOR.tesla);dealDamage(src,o,dmg,{dtype:"electric",kind:"shock"});});
  return ts;
 }
 function chainLightning(src,e0,jumps,dmg,opts){
@@ -183,7 +183,7 @@ function addEchoWasp(src,x,y,power,tier){
 /* ---------- kill hooks (attribution: e.lastSrc / e.lastKind set by dealDamage) ---------- */
 function onKill(e){
  var s=e.lastSrc,k=e.lastKind||"";
- if(e.burnT>0&&e.burnSource&&e.burnSource.deathIgnition){var bs=e.burnSource;explodeAt(bs,e.x,e.y,45,bs.cfg.damage*0.8,{kind:"ignite"},"#ff6a2c");}
+ if(e.burnT>0&&e.burnSource&&e.burnSource.deathIgnition){var bs=e.burnSource;explodeAt(bs,e.x,e.y,45,bs.cfg.damage*0.8,{kind:"ignite",dtype:"fire"},bs.cfg.color);}
  if(e.y>=VIS_TOP)for(var i=0;i<B.fields.length;i++){var f=B.fields[i];
   if(f.kind==="slow"&&f.src.interferenceCore&&dist2(e,f.x,f.y)<=f.r*f.r){if(Math.random()<0.3)addBolt(f.src,e.x,e.y,5);break;}}
  if(!s||!s.cfg)return;
@@ -213,7 +213,7 @@ function updateEffects(dt){
   var trig=m.arm<=0&&B.enemies.some(function(e){return onField(e)&&Math.hypot(e.x-m.x,e.y-m.y)<=e.r+14;});
   if(trig){
    var ms=m.src;
-   explodeAt(ms,m.x,m.y,40,ms.cfg.damage*(ms.mineDmgMul||1),{kind:"mine",knock:10*(ms.mineKnockMul||1)},"#7dd7ff");
+   explodeAt(ms,m.x,m.y,40,ms.cfg.damage*(ms.mineDmgMul||1),{kind:"mine",knock:10*(ms.mineKnockMul||1)},WEAPON_COLOR.aeroblast);
   }
   if(trig||m.life<=0)B.mines.splice(i,1);
  }
@@ -234,7 +234,7 @@ function updateEffects(dt){
   var po=B.portals[i];po.life-=dt;
   B.enemies.forEach(function(e){
    if(!onField(e)||e.kind==="boss"||po.used.indexOf(e)>=0||Math.hypot(e.x-po.x,e.y-po.y)>po.r+e.r*0.5)return;
-   po.used.push(e);e.x=po.ex;e.y=Math.min(e.y,po.ey);ringFx(po.ex,po.ey,"#c4b5fd",80);
+   po.used.push(e);e.x=po.ex;e.y=Math.min(e.y,po.ey);ringFx(po.ex,po.ey,WEAPON_COLOR.gravity,80);
   });
   if(po.life<=0)B.portals.splice(i,1);
  }
@@ -251,20 +251,20 @@ function updateEffects(dt){
  }
  for(i=B.delayed.length-1;i>=0;i--){
   var d=B.delayed[i];d.t-=dt;if(aliveE(d.e)){d.x=d.e.x;d.y=d.e.y;}
-  if(d.t<=0){explodeAt(d.src,d.x,d.y,d.r,d.dmg,{kind:"delayed"},"#7dd7ff");B.delayed.splice(i,1);}
+  if(d.t<=0){explodeAt(d.src,d.x,d.y,d.r,d.dmg,{kind:"delayed"},WEAPON_COLOR.aeroblast);B.delayed.splice(i,1);}
  }
 }
 /* ---------- rendering of the shared systems (no RNG) ---------- */
 function drawEffects(){
  B.mines.forEach(function(m){
   ctx.save();ctx.translate(m.x,m.y+Math.sin(m.ph)*2);
-  ctx.fillStyle="#1e293b";ctx.strokeStyle=m.arm>0?"#64748b":"#7dd7ff";ctx.lineWidth=1.6;
+  ctx.fillStyle="#1e293b";ctx.strokeStyle=m.arm>0?"#64748b":WEAPON_COLOR.aeroblast;ctx.lineWidth=1.6;
   ctx.beginPath();ctx.arc(0,0,5.5,0,6.29);ctx.fill();ctx.stroke();
-  ctx.fillStyle=Math.sin(m.ph*2)>0?"#f87171":"#7dd7ff";ctx.beginPath();ctx.arc(0,0,1.8,0,6.29);ctx.fill();
+  ctx.fillStyle=Math.sin(m.ph*2)>0?"#f87171":WEAPON_COLOR.aeroblast;ctx.beginPath();ctx.arc(0,0,1.8,0,6.29);ctx.fill();
   ctx.restore();
  });
  B.pulses.forEach(function(p){
-  ctx.save();ctx.globalAlpha=Math.max(0,1-p.t/0.45);ctx.strokeStyle="#fde68a";ctx.lineWidth=3;
+  ctx.save();ctx.globalAlpha=Math.max(0,1-p.t/0.45);ctx.strokeStyle=p.src.cfg.color;ctx.lineWidth=3;
   ctx.beginPath();ctx.arc(p.x,p.y,Math.max(0.01,p.r),0,6.29);ctx.stroke();ctx.restore();
  });
  B.bolts.forEach(function(b){
@@ -272,13 +272,13 @@ function drawEffects(){
   ctx.beginPath();ctx.moveTo(b.x,b.y-8);ctx.lineTo(b.x+5,b.y);ctx.lineTo(b.x,b.y+8);ctx.lineTo(b.x-5,b.y);ctx.closePath();ctx.fill();ctx.restore();
  });
  B.portals.forEach(function(p){
-  ctx.save();ctx.globalAlpha=Math.min(0.8,p.life);ctx.strokeStyle="#c4b5fd";ctx.lineWidth=2.5;ctx.setLineDash([5,4]);
+  ctx.save();ctx.globalAlpha=Math.min(0.8,p.life);ctx.strokeStyle=WEAPON_COLOR.gravity;ctx.lineWidth=2.5;ctx.setLineDash([5,4]);
   ctx.beginPath();ctx.arc(p.x,p.y,Math.max(0.01,p.r),B.t*2,B.t*2+6.29);ctx.stroke();
   ctx.beginPath();ctx.arc(p.ex,p.ey,Math.max(0.01,p.r*0.7),-B.t*2,-B.t*2+6.29);ctx.stroke();ctx.setLineDash([]);ctx.restore();
  });
  B.spinners.forEach(function(s){
   var dx=Math.cos(s.ang)*s.len,dy=Math.sin(s.ang)*s.len;
-  ctx.save();ctx.globalAlpha=Math.min(1,s.life*2);ctx.strokeStyle="#f0abfc";ctx.lineWidth=3;ctx.shadowColor="#e879f9";ctx.shadowBlur=8;
+  ctx.save();ctx.globalAlpha=Math.min(1,s.life*2);ctx.strokeStyle=WEAPON_COLOR.laser;ctx.lineWidth=3;ctx.shadowColor=WEAPON_COLOR.laser;ctx.shadowBlur=8;
   ctx.beginPath();ctx.moveTo(s.x-dx,s.y-dy);ctx.lineTo(s.x+dx,s.y+dy);ctx.stroke();ctx.restore();
  });
 }
@@ -287,24 +287,24 @@ function drawEffects(){
 function waspSting(dr){
  var src=dr.src,tgt=dr.tgt;
  var sting=src.cfg.damage*0.65*dr.boost*(1+(dr.fury||0));
- dealDamage(src,tgt,sting,{kind:"wasp",burn:!!src.hiveBurn});
+ dealDamage(src,tgt,sting,{kind:"wasp",dtype:"force",burn:!!src.hiveBurn});
  if(src.waspImmobilize&&Math.random()<0.2)applyImmobilize(tgt,1.2);
  if(src.contactPulse&&!dr.pulsed){dr.pulsed=true;addPulse(src,tgt.x,tgt.y,55,src.cfg.damage*0.5);}
  /* Electro-Wasps: 50% chance per attack of a high-voltage shock at up to 2 nearby enemies */
  if(src.electroWasps&&Math.random()<0.5){
-  nearestList(tgt.x,tgt.y,2,80,[tgt]).forEach(function(o){arcFx(tgt.x,tgt.y,o.x,o.y,"#a5f3fc");dealDamage(src,o,sting*0.6,{dtype:"electric",kind:"shock"});});
+  nearestList(tgt.x,tgt.y,2,80,[tgt]).forEach(function(o){arcFx(tgt.x,tgt.y,o.x,o.y,WEAPON_COLOR.tesla);dealDamage(src,o,sting*0.6,{dtype:"electric",kind:"shock"});});
  }
  /* Volley Wasp: every extra wasp bullet stings another enemy nearby */
- if(src.waspBullets>0)nearestList(tgt.x,tgt.y,src.waspBullets,90,[tgt]).forEach(function(o){beamFx(dr.x,dr.y,o.x,o.y,"#fde047",1.2);dealDamage(src,o,sting,{kind:"wasp"});});
+ if(src.waspBullets>0)nearestList(tgt.x,tgt.y,src.waspBullets,90,[tgt]).forEach(function(o){beamFx(dr.x,dr.y,o.x,o.y,WEAPON_COLOR.hive,1.2);dealDamage(src,o,sting,{kind:"wasp",dtype:"force"});});
  if(src.aeroSplit&&Math.random()<0.6){
-  nearestList(tgt.x,tgt.y,3,200,[tgt]).forEach(function(o){addShell(src,dr.x,dr.y,Math.atan2(o.y-dr.y,o.x-dr.x),src.cfg.damage*0.4,0.5,{pierce:2,color:"#f472b6",speed:760});});
+  nearestList(tgt.x,tgt.y,3,200,[tgt]).forEach(function(o){addShell(src,dr.x,dr.y,Math.atan2(o.y-dr.y,o.x-dr.x),src.cfg.damage*0.4,0.5,{pierce:2,dtype:"phys",color:WEAPON_COLOR.aeroblast,speed:760});});
  }
  if(src.swarmFury)dr.fury=(dr.fury||0)+0.3;
  /* Wasp Evolution II / III: Wasp I → II → III after 3 attacks at each tier */
  dr.attacks=(dr.attacks||0)+1;dr.evoAttacks=(dr.evoAttacks||0)+1;
  if(!dr.isEcho&&dr.evoAttacks>=(src.waspEvolve||3)){
-  if(dr.tier===1&&src.waspEvolve){dr.tier=2;dr.evoAttacks=0;dr.evolved=true;dr.boost*=1.5;burst(dr.x,dr.y,6,"#fb923c");}
-  else if(dr.tier===2&&src.waspEvolve3){dr.tier=3;dr.evoAttacks=0;dr.evolved=true;dr.boost*=2/1.5;burst(dr.x,dr.y,8,"#f97316");}
+  if(dr.tier===1&&src.waspEvolve){dr.tier=2;dr.evoAttacks=0;dr.evolved=true;dr.boost*=1.5;burst(dr.x,dr.y,6,WEAPON_COLOR.hive);}
+  else if(dr.tier===2&&src.waspEvolve3){dr.tier=3;dr.evoAttacks=0;dr.evolved=true;dr.boost*=2/1.5;burst(dr.x,dr.y,8,"#e0ffdf");}
  }
  /* Swarm Echo I–III: an ordinary wasp that kills releases one echo (echoes never multiply) */
  if(tgt.dead&&src.hiveEcho&&!dr.isEcho&&!dr.echoed){
@@ -312,13 +312,13 @@ function waspSting(dr){
   addEchoWasp(src,dr.x,dr.y,src.hiveEcho===1?0.5:src.hiveEcho===2?0.75:1,src.hiveEcho);
  }
  dr.hits--;dr.hitT=0.26;
- burst(dr.x,dr.y,3,"#facc15");
+ burst(dr.x,dr.y,3,WEAPON_COLOR.hive);
  return dr.hits<=0;
 }
 function waspDies(dr){
  var src=dr.src;
  if(src.finalResonance)addPulse(src,dr.x,dr.y,55,src.cfg.damage*0.5);
- if(src.beeBomb){explodeAt(src,dr.x,dr.y,35,src.cfg.damage*0.6,{kind:"wasp"},"#fb923c");addFireField(src,dr.x,dr.y,24,3,0.2);}
+ if(src.beeBomb){explodeAt(src,dr.x,dr.y,35,src.cfg.damage*0.6,{kind:"wasp"},WEAPON_COLOR.hive);addFireField(src,dr.x,dr.y,24,3,0.2);}
  if(src.retrieval&&!dr.isEcho&&Math.random()<0.5)src.stored=Math.min(5,(src.stored||0)+1);
 }
 /* moves one Firewheel disc; returns true when it should be removed */
@@ -333,7 +333,7 @@ function stepWheel(w,dt){
   w.vx=Math.cos(curr)*spd;w.vy=Math.sin(curr)*spd;
   w.x+=w.vx*dt;w.y+=w.vy*dt;
   if(w.x<r||w.x>W-r){w.x=Math.max(r,Math.min(W-r,w.x));w.vx*=-1;w.bounces++;}
-  if(w.y<88||w.y>BASEY-38){w.y=Math.max(88,Math.min(BASEY-38,w.y));w.vy*=-1;w.bounces++;}
+  if((w.y<88&&w.vy<0)||(w.y>BASEY-38&&w.vy>0)){w.y=Math.max(88,Math.min(BASEY-38,w.y));w.vy*=-1;w.bounces++;}
  }
  if(!w.mini){
   if(s.vortexWheel)B.enemies.forEach(function(e){
@@ -360,10 +360,10 @@ function stepWheel(w,dt){
    if(s.flamePowerSurge)dm*=1+4*Math.min(1,w.age/15);
   }
   w.lastDmgT=B.t;
-  dealDamage(s,e,dm,{kind:w.mini?"miniwheel":"wheel",burn:Math.random()<(s.wheelIgnite||0)});
+  dealDamage(s,e,dm,{kind:w.mini?"miniwheel":"wheel",dtype:"fire",burn:Math.random()<(s.wheelIgnite||0)});
   if(!w.mini){
-   if(w.hits%20===0){ringFx(w.x,w.y,"#ff8a3c",100);enemiesIn(w.x,w.y,45).forEach(function(o){dealDamage(s,o,s.cfg.damage*2,{kind:"wheel"});});}
-   if(s.extraBarrage&&w.hits%15===0)for(var k=0;k<8;k++)addShell(s,w.x,w.y,k*Math.PI/4,s.cfg.damage*0.5,0.6,{pierce:3,color:"#ffb03c",speed:520});
+   if(w.hits%20===0){ringFx(w.x,w.y,WEAPON_COLOR.firewheel,100);enemiesIn(w.x,w.y,45).forEach(function(o){dealDamage(s,o,s.cfg.damage*2,{kind:"wheel"});});}
+   if(s.extraBarrage&&w.hits%15===0)for(var k=0;k<8;k++)addShell(s,w.x,w.y,k*Math.PI/4,s.cfg.damage*0.5,0.6,{pierce:3,color:WEAPON_COLOR.firewheel,speed:520});
   }
  });
  if(w.life<=0){
@@ -376,7 +376,8 @@ function stepField(f,dt){
  var s=f.src;
  if(f.kind==="gravity"&&!f.ended&&f.vx!==undefined){
   var sp=f.speed;f.x+=f.vx*dt;f.y+=f.vy*dt;f.traveled+=sp*dt;
-  var hitWall=f.x<16||f.x>W-16||f.y<VIS_TOP+10||f.y>BASEY-35;
+  /* A field leaves its emitter below the arena. The lower wall only catches a returning field. */
+  var hitWall=f.x<16||f.x>W-16||f.y<VIS_TOP+10||(f.y>BASEY-35&&f.vy>0);
   if(hitWall){
    if(s.fieldReflect&&f.bounces<3){
     if(f.x<16||f.x>W-16)f.vx*=-1;else f.vy*=-1;f.bounces++;
@@ -413,8 +414,12 @@ function stepField(f,dt){
    if(f.laserT<=0){f.laserT=0.3;var lx=Math.cos(f.laserAng),ly=Math.sin(f.laserAng),L=f.r*1.6;
     B.enemies.forEach(function(e){if(!onField(e))return;var px=e.x-f.x,py=e.y-f.y,pr=px*lx+py*ly;
      if(Math.abs(pr)<=L&&Math.abs(px*ly-py*lx)<=e.r+6)dealDamage(s,e,s.cfg.damage*0.3,{kind:"field",dtype:"energy"});});}}
-  if(s.disrShotgun){f.shotT-=dt;if(f.shotT<=0){f.shotT=1;var sa=Math.atan2(f.y-(s.y-12),f.x-s.x);
-   for(var k=-1;k<=1;k++)addShell(s,s.x,s.y-12,sa+k*0.06,s.cfg.damage*0.5,0.9,{pierce:99,color:"#38c8ff",speed:640});}}
+  if(s.disrShotgun){f.shotT-=dt;if(f.shotT<=0){f.shotT=1;var ports=turretPorts(s);
+   for(var k=-1;k<=1;k++){
+    var muzzle=turretMuzzle(s,ports[(k+1)%ports.length]);
+    var sa=Math.atan2(f.y-muzzle.y,f.x-muzzle.x);
+    addShell(s,muzzle.x,muzzle.y,sa+k*.06,s.cfg.damage*.5,.9,{pierce:99,dtype:"phys",color:WEAPON_COLOR.aeroblast,speed:640});
+   }}}
  }
  if(f.tick>0)return;
  var interval=f.kind==="gravity"?0.5:f.kind==="blackhole"?0.5:f.kind==="matrix"?0.45:f.kind==="slow"?0.5*(s.fieldIntervalMul||1):0.4;
@@ -431,7 +436,7 @@ function stepField(f,dt){
    if(e.kind!=="boss"){e.slowFactor=Math.min(e.slowFactor,1-pow*(e.champion?0.55:1));e.slowT=Math.max(e.slowT,0.65);}
    if(s.fieldExpose){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=3;}
    var sup=s.fieldSuppression?1+Math.min(2,(1-e.slowFactor)*3):1;
-   dealDamage(s,e,s.cfg.damage*0.6*(f.dmgScale||1)*sup,{kind:"field"});
+   dealDamage(s,e,s.cfg.damage*0.6*(f.dmgScale||1)*sup,{kind:"field",dtype:"force"});
    if(!aliveE(e))return;
    if(s.disrForce)addDisruption(e,s,1);
    if(s.electricField&&Math.random()<0.3)applyParalyze(e,0.8);
@@ -447,7 +452,7 @@ function stepField(f,dt){
   else if(f.kind==="blackhole")dealDamage(s,e,f.dmg,{kind:"blackhole",dtype:"force"});
   else if(f.kind==="firetrail")dealDamage(s,e,s.cfg.damage*(f.dmgF||0.23),{burn:true,kind:"trail",dtype:"fire"});
   else if(f.kind==="matrix"){
-   dealDamage(s,e,f.dmg||s.cfg.damage*0.65,{kind:"matrix",slow:!!f.slow,slowPow:0.3});
+   dealDamage(s,e,f.dmg||s.cfg.damage*0.65,{kind:"matrix",dtype:"electric",slow:!!f.slow,slowPow:0.3});
    if(f.paralyze&&Math.random()<0.25)applyParalyze(e,0.6);
   }
  });

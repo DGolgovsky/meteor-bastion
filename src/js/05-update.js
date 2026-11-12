@@ -232,7 +232,7 @@ function update(dt){
    }
    e.phase+=dt*3;
    stepMove(e,dt);
-   if(isMeteorEnemy(e)){if(B.parts.length<250&&Math.random()<dt*9)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2+Math.random()*2});}
+   if(isMeteorEnemy(e)){if(B.parts.length<250&&Math.random()<dt*9)B.parts.push({x:e.x+(Math.random()*8-4),y:e.y-e.r,life:0.32,t:0,vx:Math.random()*14-7,vy:-46-Math.random()*30,color:Math.random()<0.5?WEAPON_COLOR.skyguard:"#76e7ff",r:2+Math.random()*2});}
    if(e.kind==="boss"&&e.y+e.r>=domeY(e.x)){
      /* The Tyrant reached the fortress: 90% of base max HP (2026-11-12, owner order).
         No score or kill credit — this is a base hit, not a kill. */
@@ -259,7 +259,7 @@ function update(dt){
    if(dr.launchT>0){
      /* launch phase: the wasp flies outward from the turret; the target is reassigned if it died */
      dr.launchT-=dt;dr.x+=dr.vx*dt;dr.y+=dr.vy*dt;
-     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
+     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:WEAPON_COLOR.hive,r:1.5});
      if(dr.life<=0){waspDies(dr);B.drones.splice(j,1);}
      continue;
    }
@@ -267,7 +267,7 @@ function update(dt){
     var dx=dr.tgt.x-dr.x,dy=dr.tgt.y-dr.y,a=Math.atan2(dy,dx),travel=240*dt;
     if(dx*dx+dy*dy<=travel*travel){dr.x=dr.tgt.x;dr.y=dr.tgt.y;}
     else {dr.x+=Math.cos(a)*travel;dr.y+=Math.sin(a)*travel;}
-    if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:"#facc15",r:1.5});
+    if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:WEAPON_COLOR.hive,r:1.5});
     /* the wasp strikes while UNDER the enemy: touching its bottom edge */
     if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
       if(waspSting(dr)){waspDies(dr);B.drones.splice(j,1);continue;}
@@ -291,7 +291,7 @@ function update(dt){
    var field=B.fields[fi];field.age=(field.age||0)+dt;field.life-=dt;field.tick-=dt;
    stepField(field,dt);
    if(field.life<=0){
-     if(field.kind==="slow"&&field.src.finalBlast)explodeAt(field.src,field.x,field.y,field.r*1.2,field.src.cfg.damage*2*(field.dmgScale||1),{kind:"field"},"#38c8ff");
+     if(field.kind==="slow"&&field.src.finalBlast)explodeAt(field.src,field.x,field.y,field.r*1.2,field.src.cfg.damage*2*(field.dmgScale||1),{kind:"field",dtype:"force"},WEAPON_COLOR.disruption);
      if(field.kind==="gravity")endGravityField(field);
      B.fields.splice(fi,1);
    }
@@ -332,16 +332,16 @@ function update(dt){
          break;}}
    }
    /* trail history for rendering only (x,y,t triplets), pruned by AGE; consumes no RNG */
-   var trh=pr.tr||(pr.tr=[]),trn=trh.length;
+   var trh=pr.tr||(pr.tr=[p0x,p0y,B.t-flightTime]),trn=trh.length;
    if(trn>=6&&Math.abs(trh[trn-6]-pr.x)+Math.abs(trh[trn-5]-pr.y)<3){trh[trn-3]=pr.x;trh[trn-2]=pr.y;trh[trn-1]=B.t;}
    else trh.push(pr.x,pr.y,B.t);
    while(trh.length>6&&B.t-trh[5]>PROJ_TRAIL_T)trh.splice(0,3);
    if(!pr.kind&&B.parts.length<300){
-    if(pr.src.cfg.effect==="rocket"&&Math.random()<dt*55)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.26,t:0,color:Math.random()<0.5?"#ff8a3c":"#ffb03c",r:2.2});
-    if(pr.src.cfg.effect==="charge"&&Math.random()<dt*50)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*14-7,vy:Math.random()*14-7,life:0.24,t:0,color:"#a06bff",r:1.9});
-    if(pr.src.cfg.id==="railgun"&&Math.random()<dt*60)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.22,t:0,color:"#f472b6",r:2});
-    if(pr.src.cfg.id==="disruption"&&Math.random()<dt*30)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.25,t:0,color:"#38c8ff",r:1.8});
-    if(pr.src.cfg.id==="aeroblast"&&Math.random()<dt*36)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.3,t:0,color:"#7dd7ff",r:2});
+    if(pr.src.cfg.effect==="rocket"&&Math.random()<dt*55)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.26,t:0,color:Math.random()<0.5?WEAPON_COLOR.skyguard:"#76e7ff",r:2.2});
+    if(pr.src.cfg.effect==="charge"&&Math.random()<dt*50)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*14-7,vy:Math.random()*14-7,life:.065,t:0,color:WEAPON_COLOR.tesla,r:1.2});
+    if(pr.src.cfg.id==="railgun"&&Math.random()<dt*60)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.22,t:0,color:WEAPON_COLOR.railgun,r:2});
+    if(pr.src.cfg.id==="disruption"&&Math.random()<dt*30)B.parts.push({x:pr.x,y:pr.y,vx:0,vy:0,life:0.25,t:0,color:WEAPON_COLOR.disruption,r:1.8});
+    if(pr.src.cfg.id==="aeroblast"&&Math.random()<dt*36)B.parts.push({x:pr.x,y:pr.y,vx:Math.random()*16-8,vy:Math.random()*16-8,life:0.3,t:0,color:WEAPON_COLOR.aeroblast,r:2});
    }
    var dead=pr.life<=0||pr.x<-20||pr.x>W+20||pr.y<-30||pr.y>H+20;
    intersections.length=0;

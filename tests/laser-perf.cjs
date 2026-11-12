@@ -114,4 +114,9 @@ after.forEach((row,i) => {
   if (raster) assert.equal(row.blurredStrokesPerFrame,0,"laser ray renderer must not blur long strokes");
   if (before) assert.equal(row.checksum,before[i].checksum,"optimized Laser changed targets, damage or tick cadence");
 });
+for (const upgraded of [false,true]) {
+  const [low,high] = after.filter(row => row.upgraded === upgraded);
+  assert.equal(low.hits,high.hits,"60/120 Hz must hit the same number of targets");
+  assert.equal(low.damage,high.damage,"sweep damage must follow the simulation tick");
+}
 console.log(JSON.stringify({protocol:{seconds:2,targets:330,repeats,raster,device:"Node/native CPU raster; not Android FPS"},before,after},null,2));

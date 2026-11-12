@@ -18,7 +18,7 @@ The user asks not to stop at advice: **study the current code, fix bugs, measure
 - Running tests: **`node tests/smoke.cjs`** and **`node tests/balance.cjs`** (12 × 2 seeded runs) — no npm; the tests assemble the code from `src/` in memory. GitHub Actions checks these commands and the build.
 - `BALANCE.md` holds the current numeric parameters, `README.md` the overview. In case of contradictions, **the source of truth is the current `src/js/00-config.js` and the other sources**, then the tests, then the documentation. Update the documents when things change.
 
-**Concatenation order from `src/order.txt`:** `00-config.js` → `01-state.js` → `02-units.js` → `04-waves.js` → `03-combat.js` → `03b-effects.js` → `05-update.js` → `06-render.js` → `07-cards.js` → `07-ui.js` → `08-main.js`. **Do not sort** the modules by name.
+**Concatenation order from `src/order.txt`:** `00-config.js` → `01-state.js` → `02-units.js` → `04-waves.js` → `03-combat.js` → `03b-effects.js` → `05-update.js` → `06a-turrets.js` → `06-render.js` → `07-cards.js` → `07-ui.js` → `08-main.js`. **Do not sort** the modules by name.
 
 ## 3. The current game (verify against HEAD)
 
@@ -84,9 +84,9 @@ Gameplay reference points of the original discussed in the chat: the Guardian is
 - **Owner rules from this round:** every laser fires from the turret (forks/reflections do not start at the target); laser ray width scales with its damage; Firewheel is bigger (r 20) and slower (200 px/s); Beam is drawn as a thick visible stream. Guardian uses the official card set; Shotgun Evolution keeps its real spread; Laser Shot starts at the Guardian.
 - Cards were not changed for balance; enemies were (`enemyHpMul` 0.76, `waveHpGrowth` 0.13), plus base compensations for reworked behaviors (Gravity tick 2.2×, Firewheel contact 3×, the Tesla cooldown runs during its charge). See BALANCE.md for numbers and approximations.
 
-## Models in `06-render.js`
+## Turret, Guardian and enemy models
 
-- **Guardian** — `drawGuardian()`: the hands hold the rifle, facing the target (`t.facing`, hysteresis near vertical), the head is drawn after the rifle. **Turrets** — the `TURRET_DRAW[id]` table; each head rotates around a real axis on the pedestal (`aimed()` includes the head recoil from `t.recoil`). Shared helpers: `drawPad`, `pedestal`, `metal`, `glowDot`, `rrPath`.
+- **Guardian** uses `guardianGunPose` for the alternating shoulders, rifle recoil and muzzle. **Turrets** use the pivots and ports in `02-units.js` for both firing and drawing. `06a-turrets.js` draws the eleven Canvas models, their equipment portraits and Tesla ball lightning. `06-render.js` draws the Guardian, field and traveling shots.
 - **Enemies** — `drawEnemy()` → `drawEnemyBody()` by `cfg.id`/`kind`: each of the 15 types has its own silhouette (`eMeteor`, `eFast`, `eArmored`, `eFlyer`, `eSplitter`, `eHealer`, `eElite`, `ePhase`, `eCharger`, `eBoss`). The shape comes from `e.seed` (set lazily from the initial phase, **without** extra `Math.random()` calls — otherwise simulation reproducibility would shift) and is cached in `e.shp`.
 - **Performance:** enemies have no gradients, `shadowBlur` or `clip()` — volume comes from a dark body + an offset light layer (`blobE`, `lightOff`). Don't bring back `clip()`/`evenodd` on enemies: in a measurement it cost ~+20 ms per frame with 72 enemies in the software rasterizer.
 - The owner's decisions are kept: `visualScale`, the pink elite ✕, the assault meteor ring, the cloaking "vapor", the boss HP bar and HP number, champion rims, and the slow ring now on all types.

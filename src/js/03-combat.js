@@ -52,13 +52,14 @@ function pickTarget(t){
   default:return inR.reduce(function(a,b){return b.y>a.y?b:a;});
  }
 }
-/* enemy velocity for leading shots: vy is the descent including slow, vx is the flyer's weaving (as in update) */
+/* Enemy velocity for leading shots includes descent, slow and lateral movement. */
 function enemyVel(e){
  return {x:e.vx===undefined?0:e.vx,y:e.vy===undefined?e.speed*e.slowFactor*(e.chargeMul||1):e.vy};
 }
 /* intercept point: solve |P + V·t − S| = projSpeed·t and aim there rather than at the current position */
-function aimPoint(t,e){
- var sx=t.x,sy=t.y-10,sp=t.cfg.projSpeed;
+function aimPoint(t,e,origin){
+ origin=origin||aimOrigin(t);
+ var sx=origin.x,sy=origin.y,sp=t.cfg.projSpeed;
  if(sp<=0)return{x:e.x,y:e.y};
  var v=enemyVel(e);
  var dx=e.x-sx,dy=e.y-sy;
@@ -73,6 +74,12 @@ function aimPoint(t,e){
  }else if(b<0){tt=-c/b;}
  tt=Math.max(0,Math.min(tt,1.5));
  return {x:e.x+v.x*tt,y:e.y+v.y*tt};
+}
+function aimUnit(t,target,lead){
+ var pivot=aimOrigin(t),point=lead?aimPoint(t,target,pivot):target;
+ t.angle=Math.atan2(point.y-pivot.y,point.x-pivot.x);
+ if(t.isSoldier)t.facing=guardianGunPose(t).face;
+ return point;
 }
 function dealDamage(src,e,baseDmg,opts){
  opts=opts||{}; if(e.hp<=0||e.dead)return 0;
@@ -215,7 +222,7 @@ function laserOpts(t,extra){
 function laserHit(t,e,base,o){
  var m=t.energyBoost?1+Math.min(3,0.6*debuffCount(e)):1,burning=e.burnT>0;
  dealDamage(t,e,base*m,o);
- if(t.energyDetonation&&burning&&B.t-(e.ignT===undefined?-9:e.ignT)>1){e.ignT=B.t;explodeAt(t,e.x,e.y,45,t.cfg.damage,{kind:"ignite"},"#ff6a2c");}
+ if(t.energyDetonation&&burning&&B.t-(e.ignT===undefined?-9:e.ignT)>1){e.ignT=B.t;explodeAt(t,e.x,e.y,45,t.cfg.damage,{kind:"ignite",dtype:"fire"},WEAPON_COLOR.firewheel);}
  if(t.disruptionLaser&&Math.random()<0.1)addDisruption(e,t,1);
 }
 /* Laser: finite channel with the direction LOCKED at pulse start. Every laser of this turret
@@ -228,28 +235,31 @@ function fireLaser(t,dt){
    t.laserDur=1.65*t.durationMul*(t.laserDurationMul||1);
    t.laserActive=t.laserDur;t.recoil=3;t.laserTickT=0;t.emberT=0;
    t.cd=7.8*t.metaCd/t.haste;
-   t.laserAngle=Math.atan2(initial.y-(t.y-14),initial.x-t.x);
+   aimUnit(t,initial);t.laserAngle=t.angle;
    t.laserAimX=initial.x;t.laserAimY=initial.y;
    SFX.laser();
  }
  t.laserActive=Math.max(0,t.laserActive-dt);
  var prog=1-t.laserActive/Math.max(0.01,t.laserDur);
- var ox=t.x,oy=t.y-14,A=t.laserAngle;t.angle=A;
+ var A=t.laserAngle;t.angle=A;
+ var muzzle=turretMuzzle(t),ox=muzzle.x,oy=muzzle.y;
  /* Only damaging ticks need an enemy-line scan. Take that snapshot before the
     Graviton movement below, exactly as before, without scanning on visual-only frames. */
  t.laserTickT-=dt;
  var tickCount=0;
  while(t.laserTickT<=0&&tickCount<4){t.laserTickT+=0.12;tickCount++;}
  var w=laserWidth(t),hits=tickCount?rayHits(t,ox,oy,A,t.laserBandMul||1):null;
- laserBeam(t,"main",ox,oy,A,w,"#4ade80");
- var defl=[],sweeps=[],i;
+ laserBeam(t,"main",ox,oy,A,w,t.cfg.color);
+ var defl=[],i;
  for(i=0;i<(t.laserDeflect||0);i++)defl.push(A+(i%2?1:-1)*0.3*(1+Math.floor(i/2)));
  /* sweeping lasers swing ±0.8 rad around the locked line; Sweep Boost adds a return pass */
- var passes=t.sweepPasses||1,x=prog*passes,fr=x%2,pos=fr<1?fr:2-fr;
- for(i=0;i<(t.laserSweep||0);i++)sweeps.push(i%2?A+0.8-1.6*pos:A-0.8+1.6*pos);
- defl.forEach(function(a,i){laserBeam(t,"deflect"+i,ox,oy,a,w*0.55,"#86efac");});
- sweeps.forEach(function(a,i){laserBeam(t,"sweep"+i,ox,oy,a,w*0.6,"#a7f3d0");});
- if(t.refract)[-0.34,0.34].forEach(function(a,i){laserBeam(t,"refract"+i,ox,oy,A+a,w*0.5,"#86efac");});
+ function sweepAngle(progress,index){
+  var phase=(progress*(t.sweepPasses||1))%2,pos=phase<1?phase:2-phase;
+  return A+(index%2?1:-1)*(.8-1.6*pos);
+ }
+ defl.forEach(function(a,i){laserBeam(t,"deflect"+i,ox,oy,a,w*0.55,"#bfea65");});
+ for(i=0;i<t.laserSweep;i++)laserBeam(t,"sweep"+i,ox,oy,sweepAngle(prog,i),w*.6,"#d7fb94");
+ if(t.refract)[-0.34,0.34].forEach(function(a,i){laserBeam(t,"refract"+i,ox,oy,A+a,w*0.5,"#bfea65");});
  if(t.gravitonLaser){
   var gx=Math.cos(A),gy=Math.sin(A);
   B.enemies.forEach(function(e){
@@ -282,7 +292,7 @@ function fireLaser(t,dt){
     if(d<best&&inRange(t,e)&&seen.indexOf(e)<0){best=d;nx=e;}
    });
    if(!nx)break;
-   laserVisual(t,key+z,ox,oy,nx.x,nx.y,w*0.5,"#86efac");
+   laserVisual(t,key+z,ox,oy,nx.x,nx.y,w*0.5,"#bfea65");
    laserHit(t,nx,base*mul0*Math.pow(0.8,z+1),o);seen.push(nx);cur=nx;
   }
  }
@@ -295,18 +305,22 @@ function fireLaser(t,dt){
   dh.forEach(function(e){laserHit(t,e,base*0.5,oDefl);});
   if(t.deflectReflect&&dh.length)reflectFrom(dh[dh.length-1],t.deflectReflect,0.5,oDefl,"deflectReflection"+i+":");
  });
- sweeps.forEach(function(a){rayHits(t,ox,oy,a,1,hits).forEach(function(e){laserHit(t,e,base*0.8,oSweep);});});
+ /* Sample the sweep at its damage tick even if a display frame arrives just afterwards. */
+ var tickProgress=Math.max(0,prog-(.12-t.laserTickT)/t.laserDur);
+ for(i=0;i<t.laserSweep;i++){
+  rayHits(t,ox,oy,sweepAngle(tickProgress,i),1,hits).forEach(function(e){laserHit(t,e,base*.8,oSweep);});
+ }
  if(t.refract)[-0.34,0.34].forEach(function(a){rayHits(t,ox,oy,A+a,1,hits).forEach(function(e){laserHit(t,e,base*0.5,oMain);});});
  if(t.beamSplit){
   var e2=B.enemies.find(function(e){return inRange(t,e)&&hits.indexOf(e)<0;});
-  if(e2){laserVisual(t,"split",ox,oy,e2.x,e2.y,w*0.6,"#4ade80");laserHit(t,e2,t.cfg.damage*0.7*tickCount,oMain);}
+  if(e2){laserVisual(t,"split",ox,oy,e2.x,e2.y,w*0.6,t.cfg.color);laserHit(t,e2,t.cfg.damage*0.7*tickCount,oMain);}
  }
  if(t.convergence&&hits.length){
   var made=0;
   hits.forEach(function(e){
    if(made>=2||Math.random()>=0.3)return;
    var o=nearestList(e.x,e.y,1,200,seen)[0];
-   if(o){laserVisual(t,"convergence"+made,ox,oy,o.x,o.y,w*0.5,"#bbf7d0",0.12);made++;seen.push(o);laserHit(t,o,base*0.5,oMain);}
+   if(o){laserVisual(t,"convergence"+made,ox,oy,o.x,o.y,w*0.5,"#ebffb4",0.12);made++;seen.push(o);laserHit(t,o,base*0.5,oMain);}
   });
  }
  if(t.tearExplosion&&hits.length&&Math.random()<1-Math.pow(0.8,Math.min(3,hits.length)))
@@ -330,6 +344,10 @@ function fireFocusedBeam(t,dt){
   t.cd=10.0*t.metaCd/t.haste;
   SFX.laser();
  }
+ if(t.beamVisT>0&&aliveE(t.beamTarget)){
+  t.beamVisX=t.beamTarget.x;t.beamVisY=t.beamTarget.y;
+  aimUnit(t,t.beamTarget);
+ }
  t.beamTickT-=dt;
  var steps=0;
  while(t.beamTickT<=0&&t.beamTicks>0&&steps++<4){
@@ -342,14 +360,14 @@ function fireFocusedBeam(t,dt){
    t.beamTarget=target;
   }
   if(!target)continue;
-  t.angle=Math.atan2(target.y-t.y,target.x-t.x);
+  aimUnit(t,target);
   var cap=t.beamFocusCap||0;
   var ramp=cap?1+Math.min(cap,t.beamRamp):1;
   var opts=beamOpts(t);
   dealDamage(t,target,t.cfg.damage*1.45*(t.beamPower||1)*ramp,opts);
   t.beamVisT=0.3;t.beamVisX=target.x;t.beamVisY=target.y;t.beamVisRamp=ramp;
   if(cap)t.beamRamp+=0.09;
-  if(t.targetExplosion)explodeAt(t,target.x,target.y,35,t.cfg.damage*0.4,{kind:"beamx"},"#38bdf8");
+  if(t.targetExplosion)explodeAt(t,target.x,target.y,35,t.cfg.damage*0.4,{kind:"beamx"},WEAPON_COLOR.beam);
   if(t.disruptiveBeam&&B.t-(t.disrBeamT===undefined?-9:t.disrBeamT)>1){t.disrBeamT=B.t;var dsrc=unitOf("disruption");addDisruptionField(dsrc||t,target.x,target.y,{r:26,life:1.5,dmgScale:dsrc?1:0.12,small:true});}
   if(t.bhSpotlight&&B.t-(t.bhT===undefined?-9:t.bhT)>1.5){t.bhT=B.t;addBlackHole(t,target.x,target.y,40,70,2,t.cfg.damage*0.15);}
   if(t.beamLightning&&Math.random()<0.3)chainLightning(t,target,3,t.cfg.damage*0.4);
@@ -358,7 +376,8 @@ function fireFocusedBeam(t,dt){
   if(t.beamSplit){
    var extra=B.enemies.filter(function(e){return e!==target&&inRange(t,e);});
    var alt=extra.length?extra[0]:target;
-   beamFx(t.x,t.y-10,alt.x,alt.y,"#7dd7ff",2.5);
+   var muzzle=turretMuzzle(t);
+   beamFx(muzzle.x,muzzle.y,alt.x,alt.y,t.cfg.color,2.5);
    dealDamage(t,alt,t.cfg.damage*0.75,{kind:"beam"});
   }
   /* Beam Refraction: refracted beams jump from the target to the nearest other enemies */
@@ -367,10 +386,10 @@ function fireFocusedBeam(t,dt){
    var other=B.enemies.filter(function(e){return e!==target&&inRange(t,e);})
     .sort(function(a,b){return Math.hypot(a.x-target.x,a.y-target.y)-Math.hypot(b.x-target.x,b.y-target.y);}).slice(0,nref);
    other.forEach(function(e){
-    beamFx(target.x,target.y,e.x,e.y,"#38bdf8",2);
+    beamFx(target.x,target.y,e.x,e.y,WEAPON_COLOR.beam,2);
     dealDamage(t,e,t.cfg.damage*0.55,{kind:"beam",vulnerable:!!t.beamVulnerable});
     if(t.refractPull&&e.kind!=="boss"&&aliveE(e)){e.x+=(target.x-e.x)*0.25;e.y+=(target.y-e.y)*0.25;}
-    if(t.refractExplosion)explodeAt(t,e.x,e.y,30,t.cfg.damage*0.3,{kind:"beamx"},"#38bdf8");
+    if(t.refractExplosion)explodeAt(t,e.x,e.y,30,t.cfg.damage*0.3,{kind:"beamx"},WEAPON_COLOR.beam);
    });
   }
  }
@@ -380,8 +399,8 @@ function thunderStrike(t,x,mul){
  var hw=14*(t.strikeWidthBase||1)*(t.strikeWidthMul||1);
  var hits=B.enemies.filter(function(e){return inRange(t,e)&&Math.abs(e.x-x)<=hw+e.r*0.5;});
  var low=hits.reduce(function(m,e){return Math.max(m,e.y);},VIS_TOP+160);
- B.beams.push({x1:x,y1:VIS_TOP,x2:x,y2:low,color:"#c084fc",w:Math.max(3,hw*0.35),t:0,life:0.18,bolt:true});
- ringFx(x,low,"#c084fc",90);
+ B.beams.push({x1:x,y1:VIS_TOP,x2:x,y2:low,color:t.cfg.color,w:Math.max(3,hw*0.35),t:0,life:0.18,bolt:true,emitter:turretMuzzle(t)});
+ ringFx(x,low,t.cfg.color,90);
  var dmg=t.cfg.damage*mul,pd=1.0*(t.paraDurMul||1);
  hits.forEach(function(e){
   var mh=e.maxHp;
@@ -393,14 +412,14 @@ function thunderStrike(t,x,mul){
   }
   if(t.thunderChain){e.thunderChainT=2;e.tcSrc=t;}
   if(t.lightningTeleport&&Math.random()<0.5)teleportBack(e,false,null);
-  if(t.strikeBurst&&Math.random()<0.1)explodeAt(t,e.x,e.y,50,t.cfg.damage*1.2,{kind:"burst"},"#c084fc");
+  if(t.strikeBurst&&Math.random()<0.1)explodeAt(t,e.x,e.y,50,t.cfg.damage*1.2,{kind:"burst"},t.cfg.color);
  });
  if(hits.length){
   if(t.chainLightning)chainLightning(t,hits[0],t.chainTargets||5,t.cfg.damage*0.6*(t.chainInterference?2:1));
   if(t.aftershockMine&&Math.random()<0.5)addMine(t,hits[0].x,hits[0].y);
  }
  if(t.lightningTrail)[0.4,0.65,0.9].forEach(function(f){var y=VIS_TOP+(low-VIS_TOP)*f;addFireField(t,x,y,18,2,0.2);});
- if(t.stormcall){var o=nearestList(x,VIS_TOP+30,1,700)[0];if(o){beamFx(x,VIS_TOP+30,o.x,o.y,"#e9d5ff",2.5);dealDamage(t,o,t.cfg.damage,{kind:"beam2",dtype:"energy"});}}
+ if(t.stormcall){var o=nearestList(x,VIS_TOP+30,1,700)[0];if(o){beamFx(x,VIS_TOP+30,o.x,o.y,WEAPON_COLOR.beam,2.5);dealDamage(t,o,t.cfg.damage,{kind:"beam2",dtype:"energy"});}}
  SFX.zap();
  return hits;
 }
@@ -450,10 +469,14 @@ function endGravityField(f){
 function fireGravity(t,target){
  var mine=B.fields.filter(function(f){return f.kind==="gravity"&&f.src===t;}).length;
  var n=1+(t.extraFields||0);if(mine>=4+n)return;
- var a=Math.atan2(target.y-(t.y-40),target.x-t.x),px=-Math.sin(a),py=Math.cos(a);
- /* extra fields fly parallel to the main one (30px lateral offset), not in a spread */
- for(var k=0;k<n;k++){var off=(k-(n-1)/2)*30;spawnGravityField(t,Math.max(20,Math.min(W-20,t.x+px*off)),t.y-40+py*off,a);}
- ringFx(t.x,t.y-20,"#8cb5ff",120);t.recoil=3;SFX.zap();
+ aimUnit(t,target);t.recoil=3;
+ var ports=turretPorts(t);
+ for(var k=0;k<n;k++){
+  var muzzle=turretMuzzle(t,ports[k%ports.length]);
+  var field=spawnGravityField(t,muzzle.x,muzzle.y,t.angle);
+  if(field){field.port=ports[k%ports.length];ringFx(muzzle.x,muzzle.y,t.cfg.color,120);}
+ }
+ SFX.zap();
 }
 /* ---------- Hive ---------- */
 function waspBoost(tier){return tier>=3?2:tier===2?1.5:1;}
@@ -464,11 +487,13 @@ function fireHive(t,target){
  if(t.volleys%2===0){
   if(t.mutation3&&Math.random()<0.5)tiers.push(3);else if(t.mutation2)tiers.push(2);
  }
- tiers.forEach(function(tier){
+ var ports=turretPorts(t);
+ tiers.forEach(function(tier,i){
   if(B.drones.length>=FX_CAP.drones)return;
   /* wasps fly out in an upward fan, then home in (see update); max 2 wasps per target */
-  var la=-Math.PI/2+(Math.random()*1.1-0.55),lr=10+Math.random()*4;
-  var dr=newWasp(t,t.x+Math.cos(la)*lr,t.y-10+Math.sin(la)*lr,{launchT:0.25,vx:Math.cos(la)*120,vy:Math.sin(la)*120,tier:tier,boost:waspBoost(tier)});
+  var port=ports[i%ports.length],muzzle=turretMuzzle(t,port);
+  var la=-Math.PI/2+port[0]*.03+(Math.random()-.5)*.48;
+  var dr=newWasp(t,muzzle.x,muzzle.y,{launchT:0.25,vx:Math.cos(la)*120,vy:Math.sin(la)*120,tier:tier,boost:waspBoost(tier)});
   dr.evolved=tier>1;
   B.drones.push(dr);
   dr.tgt=pickDroneTarget(dr)||target;
@@ -480,53 +505,57 @@ function fireWheel(t){
  var active=B.wheels.some(function(w){return w.src===t&&!w.mini;});
  if(active)return false;
  t.cd-=0;if(t.cd>0)return false;
- var sp=200,r=20*(t.wheelSizeMul||1),ang=t.angle;
- B.wheels.push({x:t.x,y:t.y-13,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,src:t,life:(10*t.durationMul+(t.wheelDurationBonus||0))*(t.wheelDurMul||1),
+ var sp=200,r=20*(t.wheelSizeMul||1),ang=t.angle,muzzle=turretMuzzle(t);
+ B.wheels.push({x:muzzle.x,y:muzzle.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,src:t,life:(10*t.durationMul+(t.wheelDurationBonus||0))*(t.wheelDurMul||1),
   speed:sp,r:r,bounces:0,last:new Map(),hits:0,age:0,miniT:3,pulseT:1.5,trailT:0,lastDmgT:-9});
  t.recoil=3;SFX.shoot();return true;
 }
 /* ---------- Aeroblast ---------- */
 function aeroVolley(t,target){
- var cfg=t.cfg,ap=aimPoint(t,target);
- t.angle=Math.atan2(ap.y-(t.y-10),ap.x-t.x);
+ var cfg=t.cfg,ap=aimUnit(t,target,true);t.recoil=6;
+ var muzzle=turretMuzzle(t);
  var charged=!!t.chargeBlast&&(Math.random()<0.3||!!(B.soldier&&B.soldier.chargedLeft>0));
  /* SHOTGUN: the spread is wide up close but narrows toward distant targets */
  var pellets=(t.aeroPellets||5)+t.extraProj,mid=Math.floor(pellets/2);
- var targetDist=Math.hypot(ap.x-t.x,ap.y-(t.y-10));
+ var targetDist=Math.hypot(ap.x-muzzle.x,ap.y-muzzle.y);
  var spreadStep=Math.min(0.14,14/Math.max(90,targetDist));
  for(var k=0;k<pellets&&B.projs.length<FX_CAP.projs;k++){
    var a=t.angle+(k-(pellets-1)/2)*spreadStep;
-   B.projs.push({x:t.x,y:t.y-10,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage*(charged?2:1),pierce:t.pelletPierce||0,
+   B.projs.push({x:muzzle.x,y:muzzle.y,vx:Math.cos(a)*cfg.projSpeed,vy:Math.sin(a)*cfg.projSpeed,src:t,dmg:cfg.damage*(charged?2:1),pierce:t.pelletPierce||0,
     hitSet:[],life:2.6,tgt:target,main:k===mid,bounce:t.bounceCount||0,charged:charged});
  }
  var shells=(t.aeroShells||0)+(t.aeroLoaded||0);t.aeroLoaded=0;
  for(var s=0;s<shells;s++){
   var sa=t.angle+(s-(shells-1)/2)*0.05;
-  addShell(t,t.x,t.y-10,sa,cfg.damage*0.4*(t.shellDmgMul||1),0.7*(t.shellRangeMul||1),{pierce:99,color:"#bae6fd",speed:640});
+  addShell(t,muzzle.x,muzzle.y,sa,cfg.damage*0.4*(t.shellDmgMul||1),0.7*(t.shellRangeMul||1),{pierce:99,color:cfg.color,speed:640});
  }
- t.recoil=6;
- B.parts.push({kind:"muzzle",angle:t.angle,x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,life:.08,t:0,color:charged?"#fde047":cfg.color,r:charged?20:14,vx:0,vy:0});
+ B.parts.push({kind:"muzzle",angle:t.angle,x:muzzle.x,y:muzzle.y,life:.08,t:0,color:charged?"#c2fffb":cfg.color,r:charged?20:14,vx:0,vy:0});
  SFX.shoot();
 }
 /* ---------- Teslacoil: charge phase, then the discharge projectile ---------- */
 function fireTesla(t,dt){
  if(t.charging>0){
   t.charging-=dt;t.cd-=dt; /* the cooldown runs during the charge, so the charge does not lower the fire rate */
+  if(t.chargeTarget&&inRange(t,t.chargeTarget))aimUnit(t,t.chargeTarget,true);
+  var muzzle=turretMuzzle(t);
   if(t.coopBeam){t.coopT=(t.coopT||0)-dt;if(t.coopT<=0){t.coopT=0.2;
    B.enemies.filter(function(e){return inRange(t,e);}).sort(function(a,b){return Math.hypot(a.x-t.x,a.y-t.y)-Math.hypot(b.x-t.x,b.y-t.y);}).slice(0,2)
-    .forEach(function(e){beamFx(t.x,t.y-14,e.x,e.y,"#c4b5fd",2);dealDamage(t,e,t.cfg.damage*0.3,{kind:"tesla",dtype:"energy"});});}}
+    .forEach(function(e){beamFx(muzzle.x,muzzle.y,e.x,e.y,WEAPON_COLOR.beam,2);dealDamage(t,e,t.cfg.damage*0.3,{kind:"tesla",dtype:"energy"});});}}
   if(t.chargedShock){t.shockT=(t.shockT||0)-dt;if(t.shockT<=0){t.shockT=0.25;
    B.enemies.filter(function(e){return inRange(t,e);}).sort(function(a,b){return Math.hypot(a.x-t.x,a.y-t.y)-Math.hypot(b.x-t.x,b.y-t.y);}).slice(0,2)
-    .forEach(function(e){arcFx(t.x,t.y-14,e.x,e.y,"#a5f3fc");dealDamage(t,e,t.cfg.damage*0.35,{kind:"shock",dtype:"electric"});});}}
+    .forEach(function(e){arcFx(muzzle.x,muzzle.y,e.x,e.y,t.cfg.color);dealDamage(t,e,t.cfg.damage*0.35,{kind:"shock",dtype:"electric"});});}}
   if(t.charging>0)return;
-  var tg=pickTarget(t);if(!tg)return;
-  var ap=aimPoint(t,tg);t.angle=Math.atan2(ap.y-(t.y-10),ap.x-t.x);
+  var tg=t.chargeTarget&&inRange(t,t.chargeTarget)?t.chargeTarget:pickTarget(t);
+  t.chargeTarget=null;if(!tg)return;
+  aimUnit(t,tg,true);
   firePlain(t,tg,{chargeT:t.chargeUsed});
   return;
  }
  t.cd-=dt;if(t.cd>0)return;
  var target=pickTarget(t);if(!target)return;
  t.cd=1/t.cfg.attackSpeed*t.metaCd/t.haste;
+ aimUnit(t,target,true);
+ t.chargeTarget=target;
  t.charging=Math.max(0.01,t.chargeTime||0.3);t.chargeUsed=t.charging;t.coopT=0;t.shockT=0;
 }
 /* ---------- Guardian charge (Charge Activation) ---------- */
@@ -537,47 +566,51 @@ function guardianCharge(t,shots){
  if(t.chargePts>=60){t.chargePts=0;t.chargedLeft=Math.round(20*(t.chargeShots||1));ringFx(t.x,t.y-10,"#fde047",140);}
 }
 function mirrorX(t){return t.x<W/2?t.x+40:t.x-40;}
-/* plain projectile volley: parallel extra projectiles (7px lateral offset); Guardian fires from its hands */
+/* Parallel volleys cycle through the visible ports. The Guardian alternates shoulders. */
 function firePlain(t,target,extra){
  var cfg=t.cfg,n=1+t.extraProj;t.recoil=5;
- var px=-Math.sin(t.angle),py=Math.cos(t.angle);
  function push(o){if(B.projs.length<FX_CAP.projs)B.projs.push(o);return o;}
  if(t.isSoldier){
   var charged=t.chargedLeft>0;
-  var hand=(t.handAlt?1:-1)*6;t.handAlt=!t.handAlt;
-  var origins=[t.x];if(t.mirrorGuardian)origins.push(mirrorX(t));
-  origins.forEach(function(x0,oi){
-   var dm=oi?0.5:1;
+  t.handAlt=!t.handAlt;
+  var shooters=t.mirrorGuardian?2:1,perpX=-Math.sin(t.angle),perpY=Math.cos(t.angle);
+  for(var i=0;i<shooters;i++){
+   var mirror=i===1,center=guardianMuzzle(t,mirror),dm=mirror ? .5 : 1;
+   var scale=mirror?MIRROR_SCALE:UNIT_SCALE;
    for(var k=0;k<n;k++){
-    var off=k-(n-1)/2;
-    push({x:x0+px*(off*3+hand),y:t.y-10+py*(off*3+hand),vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage*dm,pierce:t.pierce,hitSet:[],life:2.6,tgt:target,bullet:true,ricochet:t.ricochet||0,charged:charged});
+    var offset=(k-(n-1)/2)*scale;
+    push({x:center.x+perpX*offset,y:center.y+perpY*offset,vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage*dm,pierce:t.pierce,hitSet:[],life:2.6,tgt:target,bullet:true,ricochet:t.ricochet||0,charged:charged});
    }
    /* Shotgun Evolution: the documented EXCEPTION to "extra projectiles fly parallel" —
       every shot scatters into shotgunSpread sub-bullets in a real angular spread (±0.12 rad steps) */
    for(var sg=1;sg<=(t.shotgunSpread||0);sg++){
     var sa=t.angle+(sg%2?1:-1)*0.12*Math.ceil(sg/2);
-    push({x:x0+px*hand,y:t.y-10+py*hand,vx:Math.cos(sa)*cfg.projSpeed,vy:Math.sin(sa)*cfg.projSpeed,src:t,dmg:cfg.damage*dm,pierce:t.pierce,hitSet:[],life:2.6,tgt:null,scatter:true,bullet:true,ricochet:t.ricochet||0,charged:charged});
+    push({x:center.x,y:center.y,vx:Math.cos(sa)*cfg.projSpeed,vy:Math.sin(sa)*cfg.projSpeed,src:t,dmg:cfg.damage*dm,pierce:t.pierce,hitSet:[],life:2.6,tgt:null,scatter:true,bullet:true,ricochet:t.ricochet||0,charged:charged});
    }
-  });
+  }
   guardianCharge(t,n);
   t.shotCount=(t.shotCount||0)+1;
   if(t.counterburst&&t.shotCount%40===0){
+   var tip=guardianMuzzle(t,false);
    B.enemies.filter(onField).sort(function(a,b){return b.y-a.y;}).slice(0,6).forEach(function(e){
-    addShell(t,t.x,t.y-12,Math.atan2(e.y-(t.y-12),e.x-t.x),cfg.damage*1.5,1.2,{pierce:99,color:"#ffd34d",speed:700});
+    addShell(t,tip.x,tip.y,Math.atan2(e.y-tip.y,e.x-tip.x),cfg.damage*1.5,1.2,{pierce:99,color:"#ffd34d",speed:700});
    });
   }
  }else{
-  for(var k2=0;k2<n;k2++){
-   var off2=k2-(n-1)/2;
-   var p=push({x:t.x+px*off2*7,y:t.y-10+py*off2*7,vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,
+  var ports=turretPorts(t),start=t.nextPort||0;
+  for(var k2=0;k2<n&&B.projs.length<FX_CAP.projs;k2++){
+   var muzzle=turretMuzzle(t,ports[(start+k2)%ports.length]);
+   var p=push({x:muzzle.x,y:muzzle.y,vx:Math.cos(t.angle)*cfg.projSpeed,vy:Math.sin(t.angle)*cfg.projSpeed,src:t,dmg:cfg.damage,
     pierce:t.pierce+(t.execPierce||0),hitSet:[],life:2.6,tgt:target});
    if(cfg.id==="railgun"){p.rail=true;p.ricochet=t.ricochet||0;}
    if(extra)for(var key in extra)p[key]=extra[key];
+   if(k2<ports.length){
+    B.parts.push({x:muzzle.x,y:muzzle.y,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:.1,t:0,color:cfg.color,r:2.2});
+   }
+   if(cfg.id==="railgun"&&k2===0&&t.armorPulse)addPulse(t,muzzle.x,muzzle.y,70,cfg.damage*.5);
   }
-  if(cfg.id==="railgun"&&t.armorPulse)addPulse(t,t.x,t.y-60,70,cfg.damage*0.5);
+  if(cfg.id==="skyguard"||cfg.id==="disruption")t.nextPort=(start+n)%ports.length;
  }
- B.parts.push({x:t.x+Math.cos(t.angle)*14,y:t.y-10+Math.sin(t.angle)*14,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:0.12,t:0,color:cfg.color,r:2.2});
- if(cfg.id==="skyguard")for(var sm=0;sm<4;sm++)B.parts.push({x:t.x+(sm-1.5)*5.5,y:t.y-25,vx:(sm-1.5)*8,vy:-22,life:0.35,t:0,color:"#8fa1b4",r:2});
  SFX.shoot();
 }
 function unitFire(t,dt){
@@ -591,21 +624,19 @@ function unitFire(t,dt){
   if(B.wheels.some(function(w){return w.src===t&&!w.mini;}))return;
   t.cd-=dt;if(t.cd>0)return;
   var wt=pickTarget(t);if(!wt)return;
-  t.angle=Math.atan2(wt.y-(t.y-10),wt.x-t.x);
+  aimUnit(t,wt);
   fireWheel(t);return;
  }
  t.cd-=dt;
  if(t.cd>0)return;
  var target=pickTarget(t); if(!target)return;
- var ap=aimPoint(t,target); /* leading: the projectile flies to the intercept point of the moving target */
- t.angle=Math.atan2(ap.y-(t.y-10),ap.x-t.x);
  t.cd=1/cfg.attackSpeed*t.metaCd/t.haste;
  if(t.isSoldier&&t.chargedLeft>0)t.cd/=1.5;
  if(cfg.effect==="gravity"){fireGravity(t,target);return;}
  if(cfg.effect==="chain"){fireThunder(t,target);return;}
  if(cfg.effect==="hive"){fireHive(t,target);return;}
  if(cfg.id==="aeroblast"){aeroVolley(t,target);if(t.aeroRepeat)t.aeroAgainT=0.18;return;}
- firePlain(t,target);
+ aimUnit(t,target,true);firePlain(t,target);
  if(cfg.id==="disruption"&&t.fortressSupport&&!B.fields.some(function(f){return f.fortress&&f.src===t;}))
   addDisruptionField(t,W/2,BASEY-110,{r:Math.max(30,t.splash)*1.4,fortress:true});
 }
@@ -630,13 +661,13 @@ function applyHit(p,e){
  if(p.src.splash>0){
   B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<=p.src.splash)dealDamage(p.src,o,p.dmg*0.5,cfg.effect==="slow"?{slow:true,slowPow:p.src.slowPow}:{});});
  }
- if(cfg.effect==="slow")ringFx(e.x,e.y,"#38c8ff",130);
+ if(cfg.effect==="slow")ringFx(e.x,e.y,WEAPON_COLOR.disruption,130);
  burst(e.x,e.y,3,cfg.color);
 }
 function zapNeighbour(p,e){
  var nx2=null,bd2=85;
  B.enemies.forEach(function(o){if(o!==e&&o.hp>0&&!o.dead){var dd=Math.hypot(o.x-e.x,o.y-e.y);if(dd<bd2){bd2=dd;nx2=o;}}});
- if(nx2){arcFx(e.x,e.y,nx2.x,nx2.y,"#c084fc");dealDamage(p.src,nx2,p.dmg*0.5,{});}
+ if(nx2){arcFx(e.x,e.y,nx2.x,nx2.y,WEAPON_COLOR.thunder);dealDamage(p.src,nx2,p.dmg*.5,{kind:"shock",dtype:"electric"});}
 }
 function bulletHit(p,e){
  var t=p.src,o={kind:"bullet"};
@@ -651,7 +682,10 @@ function bulletHit(p,e){
   });
  }
  /* Laser Shot: the Ripping Laser starts at the Guardian (laser rule: lasers fire from the turret) */
- if(t.laserShot&&Math.random()<0.2*(p.charged?2:1))ripLaser(t,t.x,t.y-14,Math.atan2(e.y-(t.y-14),e.x-t.x),t.cfg.damage*1.5);
+ if(t.laserShot&&Math.random()<0.2*(p.charged?2:1)){
+  var muzzle=guardianMuzzle(t,false);
+  ripLaser(t,muzzle.x,muzzle.y,Math.atan2(e.y-muzzle.y,e.x-muzzle.x),t.cfg.damage*1.5);
+ }
  if(t.disruptionFire&&Math.random()<0.1)addDisruption(e,t,1);
  if(t.zapOnHit)zapNeighbour(p,e);
  burst(e.x,e.y,2,t.cfg.color);
@@ -660,7 +694,7 @@ function splitShell(p,e,n,kind){
  var a0=Math.atan2(p.vy,p.vx);
  for(var i=0;i<n;i++){
   var a=a0+(i-(n-1)/2)*0.35;
-  var q=addShell(p.src,e.x,e.y,a,p.dmg*(kind==="small"?0.4:0.5),0.45,{pierce:kind==="small"?1:0,hitSet:[e],color:"#f9a8d4",speed:820});
+  var q=addShell(p.src,e.x,e.y,a,p.dmg*(kind==="small"?0.4:0.5),0.45,{pierce:kind==="small"?1:0,hitSet:[e],color:WEAPON_COLOR.railgun,speed:820});
   if(q){q.rail=true;q.small=kind==="small";q.mini2=kind==="mini";}
  }
 }
@@ -674,7 +708,7 @@ function railHit(p,e){
  p.pierced=(p.pierced||0)+1;
  if(t.railExplosive&&!p.mini2){
   var k=p.pierced-1;
-  explodeAt(t,e.x,e.y,45*(t.impactSpread?1+0.2*k:1),p.dmg*0.25*(t.impactBoost?1+0.3*k:1),{kind:"railx"},"#f472b6");
+  explodeAt(t,e.x,e.y,45*(t.impactSpread?1+0.2*k:1),p.dmg*0.25*(t.impactBoost?1+0.3*k:1),{kind:"railx"},WEAPON_COLOR.railgun);
  }
  if(first){
   var more=Math.random()<0.2+(t.splitBonus||0)?2:0;
@@ -702,18 +736,18 @@ function teslaHit(p,e){
  for(var bi=0;bi<bounces;bi++){
   var nx=nearestList(cur.x,cur.y,1,150,bounced)[0];
   if(!nx)break;
-  arcFx(cur.x,cur.y,nx.x,nx.y,"#a06bff");
+  arcFx(cur.x,cur.y,nx.x,nx.y,WEAPON_COLOR.tesla);
   dealDamage(t,nx,p.dmg*bounceMul[Math.min(bi,bounceMul.length-1)],{kind:"tesla"});
   bounced.push(nx);cur=nx;
  }
  if(t.teslaMatrix)addMatrix(t,e.x,e.y,radius*1.2,2+(t.matrixDurBonus||0),{dmg:t.cfg.damage*0.65*(t.matrixDmgMul||1),slow:true,paralyze:!!t.teslaInterference,bolts:!!t.matrixBolt});
  if(t.chainSurge)shockFrom(t,e.x,e.y,5,p.dmg*0.35,[e]);
  if(t.highvolt)chainLightning(t,e,5,p.dmg*0.4);
- if(t.fission)nearestList(e.x,e.y,2,160,[e]).forEach(function(o){explodeAt(t,o.x,o.y,radius*0.6,p.dmg*0.4,{kind:"tesla"},"#a06bff");});
+ if(t.fission)nearestList(e.x,e.y,2,160,[e]).forEach(function(o){explodeAt(t,o.x,o.y,radius*0.6,p.dmg*0.4,{kind:"tesla"},WEAPON_COLOR.tesla);});
  if(t.spinLaser)addSpinner(t,e.x,e.y,t.cfg.damage*0.4);
  if(t.stormFlare){var ws=unitOf("firewheel")||t;for(var m=0;m<3;m++)addMiniWheel(ws,e.x,e.y);}
  if(t.waspMirage)addEchoWasp(unitOf("hive")||t,e.x,e.y,0.5,1);
- ringFx(e.x,e.y,"#a06bff",Math.max(170,radius/0.35));burst(e.x,e.y,12,"#a06bff");
+ ringFx(e.x,e.y,WEAPON_COLOR.tesla,Math.max(170,radius/0.35));burst(e.x,e.y,12,WEAPON_COLOR.tesla);
 }
 function rocketHit(p,e){
  /* Sky Guard missile: separate impact and explosion damage, including the impact target.
@@ -724,19 +758,19 @@ function rocketHit(p,e){
  if(t.shockMine&&Math.random()<0.2)addMine(t,e.x,e.y);
  if(t.impactCleave)ripLaser(t,e.x,e.y,Math.atan2(p.vy,p.vx),t.cfg.damage*0.6);
  if(p.mini){
-  if(t.thermalMini&&Math.random()<0.6)explodeAt(t,e.x,e.y,Math.max(20,t.splash*0.5),p.dmg*0.7,o,"#ff8a3c");
+  if(t.thermalMini&&Math.random()<0.6)explodeAt(t,e.x,e.y,Math.max(20,t.splash*0.5),p.dmg*0.7,o,WEAPON_COLOR.skyguard);
   if(t.chainReaction&&(p.gen||0)<3&&Math.random()<0.6)launchMiniMissiles(p,e,1);
-  burst(e.x,e.y,6,"#ff8a3c");return;
+  burst(e.x,e.y,6,WEAPON_COLOR.skyguard);return;
  }
  if(t.impactReinforce>0)launchMiniMissiles(p,e,t.impactReinforce);
  var r=Math.max(24,t.splash);
- explodeAt(t,e.x,e.y,r,p.dmg*0.7,{kind:"rocket",burn:!!t.rocketBurn},"#ff8a3c");
+ explodeAt(t,e.x,e.y,r,p.dmg*0.7,{kind:"rocket",burn:!!t.rocketBurn},WEAPON_COLOR.skyguard);
  if(t.burnArea)addFireField(t,e.x,e.y,r*0.8,5,0.23);
  if(t.collapseHole)addBlackHole(t,e.x,e.y,45,70,3,t.cfg.damage*0.2);
- if(t.closeBlast)explodeAt(t,e.x,e.y-r*0.5,r*0.7,p.dmg*0.8,{kind:"rocket"},"#ffd34d");
+ if(t.closeBlast)explodeAt(t,e.x,e.y-r*0.5,r*0.7,p.dmg*0.8,{kind:"rocket"},t.cfg.color);
  if(t.zapOnHit){
   var next=nearestList(e.x,e.y,1,100,[e])[0];
-  if(next){arcFx(e.x,e.y,next.x,next.y,"#c084fc");dealDamage(t,next,p.dmg*0.5,{});}
+  if(next){arcFx(e.x,e.y,next.x,next.y,WEAPON_COLOR.thunder);dealDamage(t,next,p.dmg*.5,{kind:"shock",dtype:"electric"});}
  }
 }
 function aeroHit(p,e){
@@ -750,11 +784,11 @@ function aeroHit(p,e){
  victims.forEach(function(o){dealDamage(t,o,p.dmg*0.5*mul,{knock:kn*0.6,kind:"aero"});});
  if(p.main){
   for(var m=0;m<(t.mineCount||0);m++){var a=m*2.4;addMine(t,e.x+Math.cos(a)*r*0.6,e.y+Math.sin(a)*r*0.6);}
-  if(t.centralBlast)explodeAt(t,e.x,e.y,r*0.6,t.cfg.damage,{kind:"aero",dtype:"energy"},"#e0f2fe");
+  if(t.centralBlast)explodeAt(t,e.x,e.y,r*0.6,t.cfg.damage,{kind:"aero",dtype:"energy"},WEAPON_COLOR.laser);
   if(t.firewheelSummon){var ws=unitOf("firewheel")||t;[e].concat(victims).slice(0,3).forEach(function(v){addMiniWheel(ws,v.x,v.y);});}
   if(t.shatterImpact){ripLaser(t,e.x,e.y,-Math.PI/2-0.5,t.cfg.damage*1.2);ripLaser(t,e.x,e.y,-Math.PI/2+0.5,t.cfg.damage*1.2);}
  }
- ringFx(e.x,e.y,"#7dd7ff",p.main?170:110);burst(e.x,e.y,5,"#7dd7ff");
+ ringFx(e.x,e.y,WEAPON_COLOR.aeroblast,p.main?170:110);burst(e.x,e.y,5,WEAPON_COLOR.aeroblast);
 }
 /* Impact Reinforcement: small missiles (50% of the missile's damage, impact only)
    fly out and home in on the enemies nearest to the impact point. */

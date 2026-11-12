@@ -1,20 +1,28 @@
 "use strict";
 /* ==================== CONFIG ==================== */
 var RARITY={common:{n:"Common"},rare:{n:"Rare"},epic:{n:"Epic"},legend:{n:"Legendary"}};
+/* Light emitted by each weapon. Fire is blue on Sky Guard and Firewheel. */
+var WEAPON_COLOR={
+ skyguard:"#248aff",laser:"#a4f53d",disruption:"#b6f7cc",aeroblast:"#45f1ed",
+ thunder:"#ac86ef",beam:"#57e829",firewheel:"#28d9fa",hive:"#c2f5cb",
+ railgun:"#24e3e3",tesla:"#ae83ff",gravity:"#cef5bc"
+};
+var DAMAGE_TYPE_NAME={fire:"Fire",energy:"Energy",force:"Force-field",phys:"Physical",electric:"Electric"};
 var TURRETS=[
- {id:"skyguard",name:"Sky Guard",icon:"🚀",dmgType:"Rockets",damage:17,attackSpeed:1.5,range:640,projSpeed:400,crit:0.08,critMul:1.8,target:"closestBase",effect:"rocket",rarity:"common",color:"#ffd34d",desc:"Rocket launcher: fires homing rockets that deal area damage. Range covers almost the whole map."},
- {id:"laser",name:"Laser",icon:"🔆",dmgType:"Energy",damage:26,attackSpeed:1,range:1200,projSpeed:0,crit:0.05,critMul:1.8,target:"strongest",effect:"beam",rarity:"common",color:"#4ade80",desc:"A map-wide beam: damages ALL enemies caught in it. Upgrades add beam reflection and refraction."},
- {id:"disruption",name:"Disruption Drone",icon:"🛸",dmgType:"Force field",damage:7,attackSpeed:1.1,range:180,projSpeed:340,crit:0.05,critMul:1.7,target:"closestBase",effect:"slow",rarity:"rare",color:"#38c8ff",desc:"Force-field pulses slow enemies by 35%."},
- {id:"aeroblast",name:"Aeroblast",icon:"🌀",dmgType:"Air",damage:10,attackSpeed:0.8,range:540,projSpeed:520,crit:0.06,critMul:1.8,target:"nearest",effect:"knockback",rarity:"common",color:"#7dd7ff",desc:"A medium-range air shotgun: 5 pellets, a tight spread at range and strong knockback up close."},
- {id:"thunder",name:"Thunderbolt",icon:"⚡",dmgType:"Electric",damage:16,attackSpeed:0.8,range:560,projSpeed:0,crit:0.12,critMul:2.0,target:"closestBase",effect:"chain",rarity:"rare",color:"#c084fc",desc:"Calls vertical lightning strikes that hit every enemy in the bolt's column."},
- {id:"beam",name:"Beam",icon:"🔷",dmgType:"Energy",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"closestBase",effect:"none",rarity:"epic",color:"#38bdf8",desc:"Fires a focused series of energy hits at the enemies closest to the base."},
- {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dmgType:"Fire",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:"#ff8a3c",desc:"Releases a long-lived bouncing fire disc that repeatedly hits enemies."},
- {id:"hive",name:"Hive",icon:"🐝",dmgType:"Drones",damage:14,attackSpeed:0.5,range:390,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:"#facc15",desc:"Releases persistent wasps within range. Released wasps hunt across the whole field and strike repeatedly."},
- {id:"railgun",name:"Railgun",icon:"🎯",dmgType:"Rail",damage:70,attackSpeed:0.45,range:230,projSpeed:900,crit:0.15,critMul:2.4,target:"closestBase",effect:"pierce",rarity:"legend",color:"#f472b6",desc:"The projectile pierces straight through enemies along its line."},
- {id:"tesla",name:"Tesla Coil",icon:"🌩️",dmgType:"Electric",damage:15,attackSpeed:0.88,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:"#a06bff",desc:"The charge deals explosive damage and releases chain lightning."},
- {id:"gravity",name:"Gravity Vortex Gun",icon:"🕳️",dmgType:"Gravity",damage:9,attackSpeed:0.48,range:390,projSpeed:0,crit:0.04,critMul:1.65,target:"closestBase",effect:"gravity",rarity:"epic",color:"#8cb5ff",desc:"Creates a gravity field that pulls enemies in and deals damage over time."}
+ {id:"skyguard",name:"Sky Guard",icon:"🚀",dtype:"fire",damage:17,attackSpeed:1.5,range:640,projSpeed:400,crit:0.08,critMul:1.8,target:"closestBase",effect:"rocket",rarity:"common",color:WEAPON_COLOR.skyguard,desc:"Homing missiles deal fire damage on impact and in the blast around the target."},
+ {id:"laser",name:"Laser",icon:"🔆",dtype:"energy",damage:26,attackSpeed:1,range:1200,projSpeed:0,crit:0.05,critMul:1.8,target:"strongest",effect:"beam",rarity:"common",color:WEAPON_COLOR.laser,desc:"A piercing laser damages enemies along its locked firing line. Upgrades add beam reflection and refraction."},
+ {id:"disruption",name:"Disruption Drone",icon:"🛸",dtype:"force",damage:7,attackSpeed:1.1,range:180,projSpeed:340,crit:0.05,critMul:1.7,target:"closestBase",effect:"slow",rarity:"rare",color:WEAPON_COLOR.disruption,desc:"Projects a horizontal slowing field that deals damage over time and reveals cloaked enemies."},
+ {id:"aeroblast",name:"Aeroblast",icon:"🌀",dtype:"phys",damage:10,attackSpeed:0.8,range:540,projSpeed:520,crit:0.06,critMul:1.8,target:"nearest",effect:"knockback",rarity:"common",color:WEAPON_COLOR.aeroblast,desc:"A medium-range air shotgun: 5 pellets, a tight spread at range and strong knockback up close."},
+ {id:"thunder",name:"Thunderbolt",icon:"⚡",dtype:"electric",damage:16,attackSpeed:0.8,range:560,projSpeed:0,crit:0.12,critMul:2.0,target:"closestBase",effect:"chain",rarity:"rare",color:WEAPON_COLOR.thunder,desc:"Calls vertical lightning strikes that hit every enemy in the bolt's column."},
+ {id:"beam",name:"Beam",icon:"🔷",dtype:"energy",damage:55,attackSpeed:0.55,range:420,projSpeed:520,crit:0.1,critMul:2.2,target:"closestBase",effect:"none",rarity:"epic",color:WEAPON_COLOR.beam,desc:"A curved energy stream repeatedly hits the target closest to the base."},
+ {id:"firewheel",name:"Firewheel Drone",icon:"🔥",dtype:"fire",damage:10,attackSpeed:1.4,range:580,projSpeed:360,crit:0.06,critMul:1.8,target:"closestBase",effect:"burn",rarity:"rare",color:WEAPON_COLOR.firewheel,desc:"Releases a long-lived bouncing fire disc that repeatedly hits enemies."},
+ {id:"hive",name:"Hive",icon:"🐝",dtype:"force",damage:14,attackSpeed:0.5,range:390,projSpeed:300,crit:0.05,critMul:1.7,target:"nearest",effect:"hive",rarity:"epic",color:WEAPON_COLOR.hive,desc:"Releases persistent wasps within range. Released wasps hunt across the whole field and strike repeatedly."},
+ {id:"railgun",name:"Railgun",icon:"🎯",dtype:"phys",damage:70,attackSpeed:0.45,range:230,projSpeed:900,crit:0.15,critMul:2.4,target:"closestBase",effect:"pierce",rarity:"legend",color:WEAPON_COLOR.railgun,desc:"The projectile pierces straight through enemies along its line."},
+ {id:"tesla",name:"Tesla Coil",icon:"🌩️",dtype:"electric",damage:15,attackSpeed:0.88,range:470,projSpeed:430,crit:0.1,critMul:2.0,target:"random",effect:"charge",rarity:"epic",color:WEAPON_COLOR.tesla,desc:"Launches a ball of lightning that explodes on contact and arcs to nearby enemies."},
+ {id:"gravity",name:"Gravity Vortex Gun",icon:"🕳️",dtype:"force",damage:9,attackSpeed:0.48,range:390,projSpeed:0,crit:0.04,critMul:1.65,target:"closestBase",effect:"gravity",rarity:"epic",color:WEAPON_COLOR.gravity,desc:"Creates a gravity field that pulls enemies in and deals damage over time."}
 ];
-var SOLDIER_CFG={id:"soldier",name:"Soldier \"Bastion\"",icon:"🪖",dmgType:"Rifle",damage:12,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Your movable fighter on the fortress deck. Range: the whole field."};
+var SOLDIER_CFG={id:"soldier",name:"Soldier \"Bastion\"",icon:"🪖",dtype:"phys",damage:12,attackSpeed:4.0,range:9999,projSpeed:640,crit:0.15,critMul:2.0,target:"closestBase",effect:"none",rarity:"legend",color:"#ffd34d",desc:"Your movable fighter on the fortress deck. Range: the whole field."};
+TURRETS.concat([SOLDIER_CFG]).forEach(function(cfg){cfg.dmgType=DAMAGE_TYPE_NAME[cfg.dtype];});
 /* res: incoming damage multipliers by type (like the ±50% resistances in Galaxy Defense):
    <1 is resistance, >1 is vulnerability */
 var ENEMIES=[
@@ -119,8 +127,3 @@ var FORTRESS={deckY:BASEY+14,domeRx:260,domeRy:112,hpRadius:48};
 var VIS_TOP=30;
 /* How long (seconds) update() keeps a projectile's position history for its rendered trail; each weapon draws a shorter slice of it. */
 var PROJ_TRAIL_T=0.34;
-/* damage types per the Galaxy Defense wiki: Fire / Energy / Force-field / Physical / Electric */
-var DTYPES={skyguard:"fire",laser:"energy",disruption:"force",aeroblast:"phys",thunder:"electric",beam:"energy",firewheel:"fire",hive:"force",railgun:"phys",tesla:"electric",gravity:"force",soldier:"phys"};
-TURRETS.concat([SOLDIER_CFG]).forEach(function(t){t.dtype=DTYPES[t.id];});
-var DTYPE_RU={fire:"Fire",energy:"Energy",force:"Force field",phys:"Phys.",electric:"Electric"};
-

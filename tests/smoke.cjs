@@ -430,7 +430,7 @@ test("Wasp Evolution II evolves a wasp after 3 attacks; Electro-Wasps shock near
   assert.equal(dr.boost, 1.5);
   for (let i = 0; i < 12; i++) { dr.hitT = 0; dr.x = tgt.x; dr.y = tgt.y + 6; dr.tgt = tgt; g.update(0.01); }
   assert.ok(near.hp < near.maxHp, "electro shock must reach the neighbour");
-  assert.ok(g.B.beams.some(b => b.arc && b.color === "#a5f3fc"));
+  assert.ok(g.B.beams.some(b => b.arc && b.color === g.WEAPON_COLOR.tesla));
 });
 
 test("Laser fires only from the turret: High-Energy Pulse band, Energy Surge deflected lasers with Slow, width grows with power", () => {
@@ -460,7 +460,8 @@ test("Laser fires only from the turret: High-Energy Pulse band, Energy Surge def
   assert.ok(o1.slowFactor < 1 && o2.slowFactor < 1, "deflected lasers slow");
   const lasers = g.B.beams.filter(b => b.laser);
   assert.ok(lasers.length >= 3);
-  assert.ok(lasers.every(b => b.x1 === ox && b.y1 === oy), "every laser starts at the turret");
+  const lens = g.turretMuzzle(laser);
+  assert.ok(lasers.every(b => b.x1 === lens.x && b.y1 === lens.y), "every laser starts at the emitter tip");
   /* thickness follows damage power */
   const w1 = g.laserWidth(laser);
   g.applyCardDef(g.cardById("laser", "laserAmplification"), laser);
@@ -474,7 +475,6 @@ test("Laser Reflection, Sweeping Lasers and Convergence beams all originate at t
   const laser = g.mkUnit(g.TURRETS.find(t => t.id === "laser"), 210, 0, false);
   g.B.turrets = [laser];
   laser.reflect = 2; laser.laserSweep = 2; laser.sweepPasses = 2; laser.convergence = true; laser.tearExplosion = true;
-  const ox = 210, oy = laser.y - 14;
   const es = [];
   for (let i = 0; i < 8; i++) { const e = sampleEnemy(g, 300 + (i % 3) * 40); e.x = 120 + i * 25; e.speed = 0; e.baseSpeed = 0; e.hp = e.maxHp = 1e6; es.push(e); }
   g.B.enemies = es;
@@ -484,10 +484,11 @@ test("Laser Reflection, Sweeping Lasers and Convergence beams all originate at t
     g.B.beams = [];
     g.unitFire(laser, 0.05);
     const ls = g.B.beams.filter(b => b.laser);
-    assert.ok(ls.every(b => Math.abs(b.x1 - ox) < 1e-9 && Math.abs(b.y1 - oy) < 1e-9), "all laser beams start at the turret");
-    g.B.beams.filter(b => b.color === "#a7f3d0").forEach(b => sweepAngles.add(Math.round(Math.atan2(b.y2 - b.y1, b.x2 - b.x1) * 20)));
-    const rips = g.B.beams.filter(b => b.color === "#ff6b9a");
-    assert.ok(rips.every(b => Math.abs(b.x1 - ox) < 1e-9), "Tear Explosion ripping lasers start at the turret");
+    const lens = g.turretMuzzle(laser);
+    assert.ok(ls.every(b => b.x1 === lens.x && b.y1 === lens.y), "all laser beams start at the emitter tip");
+    g.B.beams.filter(b => b === laser.laserVisuals.sweep0 || b === laser.laserVisuals.sweep1).forEach(b => sweepAngles.add(Math.round(Math.atan2(b.y2 - b.y1, b.x2 - b.x1) * 20)));
+    const rips = g.B.beams.filter(b => b.ripping);
+    assert.ok(rips.every(b => b.x1 === lens.x && b.y1 === lens.y), "Tear Explosion ripping lasers start at the turret");
   }
   assert.ok(sweepAngles.size >= 6, "sweeping lasers really sweep: " + sweepAngles.size);
   assert.ok(es.filter(e => e.hp < e.maxHp).length >= 5, "reflections/sweeps reach several enemies");
@@ -1125,7 +1126,7 @@ test("sweeping lasers swing from the turret across the locked direction (no rand
   for (let i = 0; i < 30 && (i === 0 || laser.laserActive > 0); i++) {
     g.B.beams = [];
     g.unitFire(laser, 0.05);
-    const sw = g.B.beams.find(b => b.color === "#a7f3d0");
+    const sw = laser.laserVisuals.sweep0;
     assert.ok(sw && sw.x1 === 210, "a sweeping laser starts at the turret");
     angs.push(Math.atan2(sw.y2 - sw.y1, sw.x2 - sw.x1) - laser.laserAngle);
   }
@@ -1793,6 +1794,159 @@ function mechBattle(c, ids) {
 }
 function still(c, x, y, hp) { const e = sampleEnemy(c, y); e.x = x; e.speed = 0; e.baseSpeed = 0; e.hp = e.maxHp = hp || 1e6; return e; }
 
+test("R&D, draft cards and enemy resistance use the same damage type for all 11 weapons", () => {
+  const {game:h,element}=harness();mechBattle(h,[]);
+  const types={Fire:["skyguard","firewheel"],Energy:["laser","beam"],Physical:["aeroblast","railgun"],
+    Electric:["thunder","tesla"],"Force-field":["disruption","hive","gravity"]};
+  const cards=[];
+  element("tgrid").appendChild=card=>cards.push(card.innerHTML);
+  h.renderTurrets();
+  for(const [name,ids] of Object.entries(types))for(const id of ids){
+    const cfg=h.TURRETS.find(c=>c.id===id);
+    assert.equal(h.DAMAGE_TYPE_NAME[cfg.dtype],name);
+    assert.ok(cards.some(card=>card.includes(">"+cfg.name+"<")&&card.includes("color:"+cfg.color+'">'+name+"<")));
+    assert.ok(h.cardHTML({kind:"new",cfg}).desc.includes("["+name+" DMG]"));
+    const unit=h.mkUnit(cfg,52,0,false),e=still(h,200,530);
+    e.cfg={res:{[cfg.dtype]:.25}};unit.critBonus=-1;
+    assert.equal(h.dealDamage(unit,e,40),10*unit.dmgMul);
+  }
+});
+
+test("Every primary shot leaves a painted barrel, lens or launch port, at both oblique aims", () => {
+  const {game:h}=harness();
+  for(const cfg of h.TURRETS)for(const x of [24,390]){
+    const [t]=mechBattle(h,[cfg.id]);t.x=175;t.cd=0;h.B.t=.47;
+    h.B.enemies=[still(h,x,575)];h.unitFire(t,.01);
+    if(cfg.id==="tesla")h.unitFire(t,.31);
+    const ports=Array.from(h.turretPorts(t),port=>h.turretMuzzle(t,port));
+    let shots=h.B.projs;
+    if(cfg.id==="laser")shots=h.B.beams.map(b=>({x:b.x1,y:b.y1}));
+    if(cfg.id==="thunder")shots=h.B.beams.filter(b=>b.bolt).map(b=>b.emitter);
+    if(cfg.id==="hive")shots=h.B.drones;
+    if(cfg.id==="firewheel")shots=h.B.wheels;
+    if(cfg.id==="gravity")shots=h.B.fields;
+    if(cfg.id==="beam"){
+      shots=[];h.ctx.moveTo=(x,y)=>shots.push({x,y});h.drawBeamStreams();
+    }
+    assert.ok(shots.length>0,cfg.id);
+    for(const shot of shots){
+      assert.ok(ports.some(p=>Math.hypot(p.x-shot.x,p.y-shot.y)<1e-8),cfg.id+" missed its port");
+      assert.ok(Math.hypot(t.x-shot.x,t.y-shot.y)>8,cfg.id+" fired inside the pedestal");
+    }
+    if(cfg.id==="aeroblast"){
+      const flash=h.B.parts.find(p=>p.kind==="muzzle");
+      assert.equal(flash.x,ports[0].x);assert.equal(flash.y,ports[0].y);
+    }
+  }
+});
+
+test("Four Sky Guard tubes, upgraded Railgun barrels and Gravity emitters carry parallel volleys", () => {
+  const {game:h}=harness();
+  for(const [id,extra] of [["skyguard",0],["skyguard",7],["railgun",1],["railgun",2],["gravity",1]]){
+    const [t]=mechBattle(h,[id]);t.x=170;t.cd=0;h.B.enemies=[still(h,310,580)];
+    if(id==="gravity")t.extraFields=extra;else t.extraProj=extra;
+    const seen=new Set(),volleys=extra===0?4:1;
+    for(let v=0;v<volleys;v++){
+      t.cd=0;h.B.projs=[];h.B.fields=[];h.unitFire(t,.01);
+      const all=id==="gravity"?h.B.fields:h.B.projs;
+      const ports=Array.from(h.turretPorts(t),p=>h.turretMuzzle(t,p));
+      assert.equal(all.length,1+extra,id);
+      for(const shot of all){
+        const index=ports.findIndex(p=>Math.hypot(p.x-shot.x,p.y-shot.y)<1e-8);
+        assert.ok(index>=0,id);seen.add(index);
+        assert.equal(shot.vx,all[0].vx);assert.equal(shot.vy,all[0].vy);
+      }
+    }
+    assert.equal(seen.size,h.turretPorts(t).length,id+" unused or invented barrel");
+  }
+});
+
+test("Tesla builds one round charge at its electrode, reacquires a lost target and releases the sphere", () => {
+  const {game:h}=harness(),[t]=mechBattle(h,["tesla"]);t.cd=0;t.chargeTime=.5;
+  const first=still(h,90,460),next=still(h,300,520);
+  h.B.enemies=[first];h.unitFire(t,.01);
+  const draws=[];
+  h.ballLightning=(ctx,x,y,r)=>draws.push({x,y,r});
+  h.draw();const small=draws.pop();h.unitFire(t,.35);h.draw();const large=draws.pop();
+  assert.ok(small.r<large.r);assert.equal(h.B.projs.length,0);
+  first.dead=true;h.B.enemies=[next];h.unitFire(t,.16);
+  const p=h.B.projs[0],tip=h.turretMuzzle(t);assert.equal(p.tgt,next);
+  assert.equal(p.x,tip.x);assert.equal(p.y,tip.y);
+  h.projTrail=()=>assert.fail("the flying sphere must not be stretched into a tracer");
+  h.draw();assert.equal(draws.length,1);
+  assert.deepEqual(draws[0],{x:tip.x,y:tip.y,r:h.TESLA_ORB_RADIUS});
+});
+
+test("A projectile trail starts at the real muzzle and never extends behind the first step", () => {
+  const {game:h}=harness(),[t]=mechBattle(h,["railgun"]);t.cd=0;h.B.enemies=[still(h,160,560)];
+  h.unitFire(t,.01);const p=h.B.projs[0],x=p.x,y=p.y;
+  let gradients=0;const gradient=h.ctx.createLinearGradient;
+  h.ctx.createLinearGradient=(...args)=>{gradients++;return gradient(...args);};
+  h.projTrail(p,.13,6,t.cfg.color,"#ffffff");assert.equal(gradients,0);
+  h.update(1/120);
+  assert.equal(p.tr[0],x);assert.equal(p.tr[1],y);
+  assert.equal(p.tr[3],p.x);assert.equal(p.tr[4],p.y);
+  h.projTrail(p,.13,6,t.cfg.color,"#ffffff");assert.ok(gradients>0);
+});
+
+test("Firewheel and Gravity leave the deck smoothly and react to the bottom wall on their return", () => {
+  const {game:h}=harness();
+  for(const id of ["firewheel","gravity"]){
+    const [t]=mechBattle(h,[id]);t.cd=0;t.fieldReflect=true;h.B.enemies=[still(h,210,600)];
+    h.unitFire(t,.01);
+    const shot=(id==="firewheel"?h.B.wheels:h.B.fields)[0];
+    const step=id==="firewheel"?h.stepWheel:h.stepField,bottom=h.BASEY-(id==="firewheel"?38:35);
+    const y=shot.y;assert.ok(y>bottom);step(shot,.01);
+    assert.ok(shot.y<y&&shot.y>bottom&&!shot.ended);assert.equal(shot.bounces,0);
+    shot.y=bottom-.1;shot.vx=0;shot.vy=shot.speed;
+    step(shot,.01);assert.equal(shot.bounces,1);assert.ok(shot.vy<0);
+  }
+});
+
+test("Guardian volleys alternate between the visible rifle positions, including the smaller mirror", () => {
+  const {game:h}=harness();mechBattle(h,[]);
+  const t=h.B.soldier;t.mirrorGuardian=true;h.B.enemies=[still(h,210,460)];
+  const points=[];
+  for(let i=0;i<2;i++){
+    t.cd=0;h.B.projs=[];h.unitFire(t,.01);
+    const [main,clone]=h.B.projs;
+    for(const [p,mirror] of [[main,false],[clone,true]]){
+      const tip=h.guardianMuzzle(t,mirror);assert.equal(p.x,tip.x);assert.equal(p.y,tip.y);
+    }
+    points.push(main.x);
+  }
+  assert.ok(points[0]<t.x&&points[1]>t.x);
+});
+
+test("Beam stays attached to the moving target between damage ticks", () => {
+  const {game:h}=harness(),[beam]=mechBattle(h,["beam"]);
+  const e=still(h,110,525);h.B.enemies=[e];beam.cd=0;h.unitFire(beam,.01);
+  const hp=e.hp; e.x+=65;h.unitFire(beam,.03);
+  assert.equal(e.hp,hp);assert.equal(beam.beamVisX,e.x);assert.equal(beam.beamVisY,e.y);
+  const starts=[],points=[];
+  h.ctx.moveTo=(x,y)=>starts.push([x,y]);h.ctx.lineTo=(x,y)=>points.push([x,y]);
+  const tip=h.turretMuzzle(beam);h.drawBeamStreams();
+  assert.ok(starts.length>0&&starts.every(([x,y])=>x===tip.x&&y===tip.y));
+  assert.ok(Math.hypot(points[15][0]-e.x,points[15][1]-e.y)<1e-8);
+});
+
+test("Secondary shells leave the painted ports and summoned damage uses its own element", () => {
+  const {game:h}=harness(),[disruption,beam]=mechBattle(h,["disruption","beam"]);
+  const e=still(h,200,540);h.B.enemies=[e];
+  disruption.disrShotgun=true;
+  const field=h.addDisruptionField(disruption,e.x,e.y);h.stepField(field,.51);
+  const ports=Array.from(h.turretPorts(disruption),p=>h.turretMuzzle(disruption,p));
+  assert.equal(h.B.projs.length,3);assert.ok(h.B.projs.every(p=>p.dtype==="phys"));
+  assert.ok(ports.every(m=>h.B.projs.some(p=>m.x===p.x&&m.y===p.y)));
+  const hits={};
+  h.dealDamage=(s,t,d,o)=>{hits[o.kind]=o.dtype||s.cfg.dtype;return d;};
+  const small=h.addDisruptionField(beam,e.x,e.y,{small:true});small.tick=0;h.stepField(small,.01);
+  const matrix=h.addMatrix(beam,e.x,e.y,35,2,{});matrix.tick=0;h.stepField(matrix,.01);
+  const mini=h.addMiniWheel(beam,e.x,e.y);h.stepWheel(mini,.01);
+  const wasp=h.addEchoWasp(beam,e.x,e.y,1,1);wasp.tgt=e;h.waspSting(wasp);
+  assert.deepEqual(hits,{field:"force",matrix:"electric",miniwheel:"fire",wasp:"force"});
+});
+
 test("Paralyze and Immobilize stop an enemy; a 1 s immunity prevents perma-stun; bosses are only briefly stunned", () => {
   const { game: c } = harness(); mechBattle(c, []);
   const e = sampleEnemy(c, 300); e.speed = e.baseSpeed = 40; c.B.enemies = [e];
@@ -2115,7 +2269,8 @@ test("Upgraded laser visuals are frame-rate independent and keep every origin on
     h.dealDamage=()=>0;let max=0;
     for(let i=0;i<fps*2;i++){
       h.B.t+=1/fps;h.fireLaser(t,1/fps);
-      assert.ok(h.B.beams.every(b=>b.x1===t.x&&b.y1===t.y-14),"forks, reflections and sweeps must start at the turret");
+      const tip=h.turretMuzzle(t);
+      assert.ok(h.B.beams.every(b=>b.x1===tip.x&&b.y1===tip.y),"forks, reflections and sweeps must start at the emitter tip");
       h.B.beams=h.B.beams.filter(b=>{b.t+=1/fps;return b.t<b.life;});max=Math.max(max,h.B.beams.length);
     }
     assert.ok(max<=24,"upgrades need ray slots, not per-frame copies: "+max);counts.push(max);

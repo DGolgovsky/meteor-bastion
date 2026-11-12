@@ -173,8 +173,8 @@ function renderTurrets(){refillEnergy();
  allUnitsCfg().forEach(function(t){
    var lv=META.levels[t.id],c=upCost(t),can=lv<45&&META.mats[t.id]>=c.mats&&META.coins>=c.coins;
    var d=document.createElement("div");d.className="tcard"+(t.id==="soldier"?" soldier":"");
-   d.innerHTML=(can?'<span class="avail"></span>':"")+'<div class="tic">'+t.icon+'</div><div class="tn">'+t.name+'</div>'+
-    '<div class="tl">R&D Lv. '+lv+' · '+rdTierName(lv)+'</div><div class="dmg">DMG '+Math.round(t.damage*metaDamage(lv))+' · '+t.dmgType+'</div>'+
+   d.innerHTML=(can?'<span class="avail"></span>':"")+'<div class="tic">'+unitIcon(t)+'</div><div class="tn">'+t.name+'</div>'+
+    '<div class="tl">R&D Lv. '+lv+' · '+rdTierName(lv)+'</div><div class="dmg">DMG '+Math.round(t.damage*metaDamage(lv))+' · <span style="color:'+t.color+'">'+t.dmgType+'</span></div>'+
     '<div class="dmg">CD −'+Math.round((1-metaCooldown(lv))*100)+'% · '+secondaryName(t.id)+' ×'+metaSecondary(lv).toFixed(1)+'</div>'+
      '<div class="prog"><i style="width:'+Math.min(100,META.mats[t.id]/c.mats*100)+'%"></i></div>'+
     '<div class="mats">🔩 '+META.mats[t.id]+' / '+c.mats+' · 🪙 '+c.coins+'</div>'+

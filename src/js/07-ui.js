@@ -53,10 +53,10 @@ function sameCard(a,b){
 }
 function cardHTML(c){
  if(c.kind==="card"){var d=c.def;
-  return{cls:d.rare?"purple":"teal",icon:c.u.cfg.icon,name:d.name,unit:c.u.cfg.name,lvl:d.lvl,rare:!!d.rare,
+  return{cls:d.rare?"purple":"teal",icon:unitIcon(c.u.cfg),name:d.name,unit:c.u.cfg.name,lvl:d.lvl,rare:!!d.rare,
    tag:(d.rare?(c.u.runLv<MAX_RUN_LV?"EVOLUTION":"MASTERY"):"Tier "+d.lvl),
    desc:cardDesc(d)+(d.rare?(c.u.runLv<MAX_RUN_LV?" <b>Unit Lv."+c.u.runLv+" → "+(c.u.runLv+1)+(c.u.runLv+1===MAX_RUN_LV&&superModeReady(c.u)?" + SUPER MODE":"")+"</b>":" <b>Mastery: pips reset</b>"):"")};}
- if(c.kind==="new")return{cls:"teal",icon:c.cfg.icon,name:c.cfg.name,unit:c.cfg.name,lvl:1,rare:false,tag:"NEW",desc:"Build <b>"+c.cfg.name+"</b> ["+DTYPE_RU[c.cfg.dtype]+" DMG]: "+c.cfg.desc+"<br>Damage: <b>"+c.cfg.damage+"</b> · "+RARITY[c.cfg.rarity].n};
+ if(c.kind==="new")return{cls:"teal",icon:unitIcon(c.cfg),name:c.cfg.name,unit:c.cfg.name,lvl:1,rare:false,tag:"NEW",desc:"Build <b>"+c.cfg.name+"</b> ["+c.cfg.dmgType+" DMG]: "+c.cfg.desc+"<br>Damage: <b>"+c.cfg.damage+"</b> · "+RARITY[c.cfg.rarity].n};
  if(c.kind==="combo"){var CM=COMBOS[c.modId];
   return{cls:"purple",icon:"🔗",name:"Combo: "+CM[0],unit:c.u.cfg.name,lvl:1,rare:false,tag:"COMBO",desc:CM[1]};}
  if(c.kind==="module"){var MD=MODULES[c.modId];
@@ -93,7 +93,7 @@ function applyCard(c){
  if(c.kind==="new"){
    var s=freeSlot();if(s<0)return;
    var nt=mkUnit(c.cfg,TURRET_X[s],s,false);B.turrets.push(nt);B.usedTypes[c.cfg.id]=1;burst(nt.x,nt.y,16,c.cfg.color);
-   recordPick({unit:c.cfg.id,icon:c.cfg.icon,id:"build",name:c.cfg.name,lvl:1,rare:false,desc:"["+DTYPE_RU[c.cfg.dtype]+"] DMG build"});
+   recordPick({unit:c.cfg.id,icon:c.cfg.icon,id:"build",name:c.cfg.name,lvl:1,rare:false,desc:"["+c.cfg.dmgType+"] DMG build"});
  }else if(c.kind==="card"){
    if(!cardEligible(c.u,c.def))return;
    takeCard(c.u,c.def);
@@ -139,7 +139,7 @@ function slotRowHTML(){
  return SLOT_ROW_ORDER.map(function(k){
   var t=k==="soldier"?B.soldier:B.turrets.filter(function(u){return u.slot===k;})[0];
   if(!t)return '<div class="slot empty"><div class="slv">&nbsp;</div><div class="sic">＋</div><div class="snm">Empty slot</div>'+pipsHTML({pips:0})+'</div>';
-  return '<div class="slot"><div class="slv">'+t.runLv+'</div><div class="sic">'+t.cfg.icon+'</div><div class="snm">'+t.cfg.name+'</div>'+pipsHTML(t)+'</div>';
+  return '<div class="slot"><div class="slv">'+t.runLv+'</div><div class="sic">'+unitIcon(t.cfg)+'</div><div class="snm">'+t.cfg.name+'</div>'+pipsHTML(t)+'</div>';
  }).join("");
 }
 function renderSlotRow(el){el.className="slots";el.innerHTML=slotRowHTML();}
@@ -151,8 +151,9 @@ function openCardsOverview(){
  $("cards-sub").textContent="Cards taken: "+B.drafts+" · unique: "+list.length;
  $("cards-grid").innerHTML=list.length?list.map(function(p){
   var cls=p.unit==="fortress"?"module":p.rare?"purple":"teal";
+  var unit=unitOf(p.unit),icon=unit&&p.icon===unit.cfg.icon?unitIcon(unit.cfg):p.icon;
   return '<div class="mcard '+cls+'">'+(p.n>1?'<span class="mn">×'+p.n+'</span>':'')+'<div class="mt">'+p.name+'</div>'+
-   '<div class="mic">'+p.icon+(p.lvl?'<span class="lvb">'+p.lvl+'</span>':'')+'</div><div class="md">'+p.desc+'</div></div>';
+   '<div class="mic">'+icon+(p.lvl?'<span class="lvb">'+p.lvl+'</span>':'')+'</div><div class="md">'+p.desc+'</div></div>';
  }).join(""):'<div class="cempty">No cards picked yet.</div>';
  $("ov-cards").classList.add("on");
 }
@@ -187,7 +188,7 @@ function endBattle(win){
  $("res-sub").textContent=B.stage.name+" · Kills: "+B.kills+" · Time: "+mmss(B.elapsed)+" · 🎴 Cards taken: "+B.drafts+" · ❤ Base HP restored: "+Math.floor(B.totalHealed)+" HP";
  renderRewards();
  var tb=$("res-stats");tb.innerHTML="";
- stats.forEach(function(s){tb.innerHTML+="<tr><td>"+s.t.cfg.icon+" "+s.t.cfg.name+" <span style='color:var(--muted)'>Lv."+s.t.runLv+"</span></td><td>"+fmt(s.dmg)+"</td><td>"+fmt(s.dps)+"</td></tr>";});
+ stats.forEach(function(s){tb.innerHTML+="<tr><td>"+unitIcon(s.t.cfg)+" "+s.t.cfg.name+" <span style='color:var(--muted)'>Lv."+s.t.runLv+"</span></td><td>"+fmt(s.dmg)+"</td><td>"+fmt(s.dps)+"</td></tr>";});
  $("ov-result").classList.add("on");
  if(win)SFX.win();else SFX.lose();
 }
@@ -209,7 +210,7 @@ function renderRewards(){
  '<div class="rwd"><div class="ric">🪙</div><div class="rv">'+(r.coins*m)+'</div><div class="rn">Coins</div></div>'+
  '<div class="rwd"><div class="ric">💎</div><div class="rv">'+(r.gems*m)+'</div><div class="rn">Gems</div></div>'+
  '<div class="rwd"><div class="ric">🧩</div><div class="rv">'+(r.comp*m)+'</div><div class="rn">Components</div></div>';
- mats.forEach(function(id){var cfg=allUnitsCfg().filter(function(t){return t.id===id;})[0];h+='<div class="rwd"><div class="ric">'+cfg.icon+'</div><div class="rv">'+(r.mats[id]*m)+'</div><div class="rn">Materials: '+cfg.name+'</div></div>';});
+ mats.forEach(function(id){var cfg=allUnitsCfg().filter(function(t){return t.id===id;})[0];h+='<div class="rwd"><div class="ric">'+unitIcon(cfg)+'</div><div class="rv">'+(r.mats[id]*m)+'</div><div class="rn">Materials: '+cfg.name+'</div></div>';});
  $("res-rewards").innerHTML=h;
 }
 function applyRewards(){

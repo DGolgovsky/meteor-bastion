@@ -25,6 +25,7 @@ The suite assembles the script from `src/` in memory and runs on plain Node.js w
 - **Normal / Elite** with separate stream compositions and champions that can speed up their allies.
 - **A movable Guardian and 4 turret slots**. The Guardian fires alternately from both hands. There is no turret micromanagement in battle; turrets pick their targets automatically.
 - **11 turrets**: Sky Guard, Laser, Disruption Drone, Aeroblast, Thunderbolt, Beam, Firewheel Drone, Hive, Railgun, Tesla Coil, Gravity Vortex Gun. Aeroblast uses an adaptive shotgun spread and a range of 540 instead of 200, so it can join the fight before enemies reach the fortress.
+- The same ports position each barrel opening and its projectiles, beams or deployed drones. Sky Guard cycles through four launch tubes. Tesla grows a violet lightning sphere at its electrode. Equipment portraits use the battlefield models, and the displayed damage type is the one used by enemy resistances.
 - **15 enemy types across 12 stage rosters.** Four meteor classes strike the dome. Insects hold firing stations and launch interceptable ammunition. Brood Carriers split into Broodlings, Nurse Scarabs heal allies, and Veilwings cloak. The Hive Tyrant fires during its descent. See [enemy ecology](docs/enemies.md).
 - **Pick-1-of-3 battle cards** earned with battle points: since 2026-11-11 the **full reference card set** from [`docs/turrets-reference.md`](docs/turrets-reference.md) — 270 cards (248 for the 11 turrets, 22 for the Guardian), one declarative `CARDS` table, the shared mechanics (mines, pulse waves, Paralyze/Immobilize, Disruption stacks, teleports, black holes, portals, chain lightning, mini drones, charged states…) in `03b-effects.js`. Star Tier N = in-run unit level N; Tier 1/2/3 relative offer weights are **1 / 0.5 / 0.25**, Extra cards get another **×0.2**, and modules/combos are rarer. Extras enter the random pool after 3 pips and level the unit up (levels 1–3, then mastery); Super Mode turns on automatically at Lv.3 with enough R&D; 🔒 locks are R&D gates. Combos and fortress modules are kept. A **Selected Cards Overview** screen (from the draft, pause and results) shows the 5-slot level/pip row and every card taken.
 - **Permanent upgrades** for every unit up to R&D Lv.45; the cost rises with level. Early R&D levels unlock specialized cards, and separate thresholds unlock Super Mode and combos.
@@ -45,7 +46,8 @@ src/js/
   03-combat.js     damage, targeting, weapon firing and hits
   03b-effects.js   shared card systems (statuses, mines, pulses, bolts, portals, wasps, wheels, fields) and entity caps
   05-update.js     battle simulation, physics, fields, breaches
-  06-render.js     Canvas rendering
+  06a-turrets.js   turret models, equipment portraits and Tesla ball lightning
+  06-render.js     battlefield and projectile rendering
   07-cards.js      declarative battle cards, unit levels 1–3 and pips
   07-ui.js         draft, Selected Cards Overview, rewards
   08-main.js       initialization
