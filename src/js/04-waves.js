@@ -9,7 +9,10 @@ function campaignOpening(stage,wave,elite){
 }
 function waveEnemyTotal(stage,wave,elite){var opening=campaignOpening(stage,wave,elite);return BALANCE.waveStart+Math.round(wave*BALANCE.waveGrowth)+Math.round(((stage&&stage.n||1)-1)*6*opening.bonus)+(elite?Math.ceil(BALANCE.eliteWaveBase+wave*BALANCE.eliteWaveGrowth):0);}
 function startWave(n){
- B.wave=n;B.waveState="fighting";B.bossSpawned=false;
+ B.wave=n;B.waveState="fighting";
+ /* bossSpawned is NOT reset here: it is once per stage (newBattle), and in the
+    stream model startWave runs for every virtual wave — resetting it re-armed
+    the boss on every wave past 60% and spawned 3–4 Tyrants per stage. */
  B.waveTotal=B.waveQueue=waveEnemyTotal(B.stage,n,B.elite);
  B.waveKilled=0;B.spawnT=0.25;B.formationCd=0;B.waveKinds={};B.waveKindCount={};
  B.waveSpecials=0;
@@ -71,6 +74,11 @@ function initEnemyStation(e){
  if(!Number.isFinite(e.attackWindup))e.attackWindup=p.windup;
  if(!e.attackState)e.attackState="approach";
  if(!Number.isFinite(e.siegeAge))e.siegeAge=0;
+ /* The dome is the boundary (2026-11-12, owner order): a station deeper than the
+    dome surface at the insect's x is unreachable — the insect parks at the dome
+    in "approach" forever and never fires (bulwark, deep dist draw). Clamp the
+    station to the dome surface; re-applied as the insect drifts sideways. */
+ e.standY=Math.min(e.standY,domeY(e.x)-(e.r||0));
 }
 function spawnEnemy(kind,opts){
  opts=opts||{};

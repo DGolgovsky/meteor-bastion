@@ -81,7 +81,7 @@ var BALANCE={
  /* x3 enemies (2026-11-09, owner order): totals, spawn rate and formation
     pacing all tripled, so wave duration stays ~the same and the on-screen
     count actually triples (tripling totals alone only stretches waves). */
- waveStart:24,waveGrowth:8.4,
+ waveStart:14,waveGrowth:7,/* 2026-11-12, owner order: fewer enemies in the first waves, smaller total (Stage 1 stream 2244 -> 1750); was 24/8.4 */
  spawnBase:0.20,spawnReduction:0.002,spawnMin:0.06,formationCd:1.33,
  /* Stationary insect artillery + rarer Extras, calibrated against fixed Stage 1
     attempts. .85/.13: a win on attempt 3 for the sensible fresh-account draft.

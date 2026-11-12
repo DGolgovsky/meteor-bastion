@@ -553,7 +553,11 @@ test("the stage is one continuous stream: virtual waves advance silently, the qu
   h.startBattle();
   h.startWave(1);
   const total=h.B.stageTotal;
-  assert.ok(total>2000,"stage 1 stream must hold the whole stage: "+total);
+  /* the stream must hold the whole stage: the sum of every virtual wave's
+     roster (computed from the live formula, not a pinned number — the counts
+     are the owner's "na glazok" knobs and move between experiments). */
+  const expected=Array.from({length:h.B.stage.waves},function(_,i){return h.waveEnemyTotal(h.B.stage,i+1,h.B.elite);}).reduce(function(a,b){return a+b;},0);
+  assert.equal(total,expected,"stage 1 stream must hold the whole stage: "+total+" vs "+expected);
   assert.equal(h.B.stageQueue,total);
   /* spawn the whole first virtual wave through the real spawn path */
   h.B.spawnT=0;
@@ -570,14 +574,14 @@ test("the stage is one continuous stream: virtual waves advance silently, the qu
   assert.ok(!/W\d+\//.test(h.combatHudLayout().items.join(" ")),"the HUD must not show a wave counter");
 });
 
-test("enemies are 5x HP and 62.5% slower (0.375); the boss is 15x HP and 75% slower (owner order 2026-11-12)", () => {
+test("enemies are 5x HP and 81.25% slower (0.1875); the boss is 15x HP and 75% slower (owner order 2026-11-12)", () => {
   assert.equal(g.BALANCE.enemyHpMul,4.25);
   const {game:h}=harness();h.startBattle();h.startWave(1);
-  assert.equal(h.B.enemySpdMul,0.375);
+  assert.equal(h.B.enemySpdMul,0.1875);
   assert.ok(h.spawnEnemy("meteor"));
   const e=h.B.enemies[0];
   assert.equal(e.hp,65*4.25,"meteor HP must be 5x");
-  assert.ok(e.baseSpeed>=82*0.375*0.85*0.93&&e.baseSpeed<=82*0.375*0.85*1.11,"meteor speed must carry the 0.375 multiplier, got "+e.baseSpeed);
+  assert.ok(e.baseSpeed>=82*0.1875*0.85*0.93&&e.baseSpeed<=82*0.1875*0.85*1.11,"meteor speed must carry the 0.1875 multiplier, got "+e.baseSpeed);
   h.B.wave=1;
   assert.ok(h.spawnBoss());
   const boss=h.B.enemies.find(x=>x.kind==="boss");
@@ -632,15 +636,15 @@ test("Elite changes composition, champion strength and first-wave pressure", () 
 
 test("enemy counts are tripled: virtual-wave totals, spawn pacing and cap", () => {
   assert.equal(g.MAX_ENEMIES, 330);
-  assert.equal(g.BALANCE.waveStart, 24);
-  assert.equal(g.BALANCE.waveGrowth, 8.4);
+  assert.equal(g.BALANCE.waveStart, 14);
+  assert.equal(g.BALANCE.waveGrowth, 7);
   assert.equal(g.BALANCE.spawnBase, 0.20);
   assert.equal(g.BALANCE.spawnMin, 0.06);
   assert.equal(g.BALANCE.formationCd, 1.33);
   assert.equal(g.BALANCE.eliteWaveBase, 6);
   const { game: s } = harness();
   s.startBattle();
-  [[1, 32], [10, 108], [20, 192]].forEach(function(pair) {
+  [[1, 21], [10, 84], [20, 154]].forEach(function(pair) {
     s.startWave(pair[0]);
     assert.equal(s.B.waveTotal, pair[1], "Stage 1 wave " + pair[0] + " total");
   });
@@ -2058,15 +2062,40 @@ test("Only geological bodies can breach: every insect holds its firing station; 
   }
 });
 
+test("the Tyrant spawns exactly once per stage, even as virtual waves advance past 60% of the stream", () => {
+  const {game:h}=harness();
+  h.META.energy=30;h.startBattle();h.startWave(1);
+  h.B.baseHp=h.B.baseMax=1e6; /* the base must not die mid-test */
+  /* drive the stage queue to the boss trigger (60% of the stream spawned) */
+  h.B.stageQueue=Math.floor(h.B.stageTotal*0.4);h.B.waveQueue=100;h.B.spawnT=0;
+  for(let i=0;i<200&&h.B.bossSpawns<1;i++)h.update(.05);
+  assert.equal(h.B.bossSpawns,1,"the boss must spawn once the stream passes 60%");
+  assert.equal(h.B.enemies.filter(e=>e.kind==="boss").length,1,"exactly one Tyrant on the field");
+  /* every later virtual wave must NOT re-arm the boss (startWave used to reset the flag) */
+  for(let w=2;w<=20;w++){
+    h.startWave(w);h.B.stageQueue=Math.floor(h.B.stageTotal*0.3);h.B.waveQueue=100;h.B.spawnT=0;
+    for(let i=0;i<100;i++)h.update(.05);
+    assert.equal(h.B.bossSpawns,1,"virtual wave "+w+" must not spawn another boss");
+  }
+});
+
 test("Every insect caste approaches a varied stand-off distance and fires telegraphed ammunition", () => {
   const {game:h}=harness();
   /* the boss no longer holds a station — it descends on the fortress (see the breach test above) */
   for(const cfg of h.ENEMIES.filter(x=>!["meteor","fast","armored","charger","boss"].includes(x.id))){
     enemyDefenseScene(h);h.spawnEnemy(cfg.id,{x:210});
     const e=h.B.enemies[0],p=h.enemyAttackProfile(e);e.hp=e.maxHp=1e9;
-    assert.ok(h.BASEY-e.standY>=p.dist[0]-1e-6&&h.BASEY-e.standY<=p.dist[1]+1e-6,cfg.id+" station bounds");
+    /* station within its firing band, or clamped to the dome surface — a deeper
+       station is unreachable (the dome is the boundary), so the band's far edge
+       does not apply when the dome binds. */
+    const domeCap=h.domeY(e.x)-e.r;
+    assert.ok(h.BASEY-e.standY>=p.dist[0]-1e-6,cfg.id+" station too close");
+    assert.ok(h.BASEY-e.standY<=p.dist[1]+1e-6||Math.abs(e.standY-domeCap)<1e-6,cfg.id+" station bounds: standY "+e.standY+" band ["+(h.BASEY-p.dist[1])+","+(h.BASEY-p.dist[0])+"] dome "+domeCap);
     let sawCharge=false;
-    for(let i=0;i<900;i++){h.update(.05);if(e.attackState==="charge")sawCharge=true;}
+    /* 1800 steps = 90 s: the slowest caste (bulwark, 60 px/s) crosses the
+       field at 0.1875x in ~45 s, same 2x margin the old 900-step budget had
+       at 0.375x — the budget tracks the speed knob, not the behaviour. */
+    for(let i=0;i<1800;i++){h.update(.05);if(e.attackState==="charge")sawCharge=true;}
     assert.ok(sawCharge,cfg.id+" never showed a windup");
     assert.ok(h.B.enemyShotsFired>0,cfg.id+" never fired");
     assert.ok(h.B.enemyShotHits>0&&h.B.enemyShotDamage>0,cfg.id+" cannot threaten the fortress");
