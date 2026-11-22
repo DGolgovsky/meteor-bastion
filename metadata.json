@@ -1,0 +1,5 @@
+{
+  "name": "Meteor Bastion",
+  "description": "HTML5 Canvas 2D tower-defense roguelite featuring a movable Guardian, 11 auto-targeting turrets, 270 battle cards, and 12 campaign stages.",
+  "requestFramePermissions": []
+}
