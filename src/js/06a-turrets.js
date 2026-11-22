@@ -140,7 +140,7 @@ var TURRET_DRAW={
   }
   turretFace(g,[-3.4,y+2,0,y-2.4,3.4,y+2,0,y+4],"#dfc4ff");
   if(t.charging>0){
-   var charge=1-Math.min(1,t.charging/t.chargeUsed);
+   var charge=1-Math.min(1,t.charging/Math.max(0.01,t.chargeUsed||t.chargeTime||0.3));
    ballLightning(g,0,y,(.32+.68*charge)*TESLA_ORB_RADIUS/UNIT_SCALE,time,t.x);
   }else turretOval(g,0,y,1.6,1.5,"#fff2ff");
  },

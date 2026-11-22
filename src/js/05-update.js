@@ -179,7 +179,7 @@ function update(dt){
    if(e.burnT>0){
      var burnHit=Math.min(e.hp,e.burnDps*Math.min(dt,e.burnT));
      e.hp-=burnHit;if(e.burnSource)e.burnSource.totalDmg+=burnHit;
-     if(Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});
+     if(B.parts.length<360&&Math.random()<dt*6)B.parts.push({x:e.x,y:e.y,vx:0,vy:-40,life:0.3,t:0,color:"#ff8a3c",r:2});
      if(e.hp<=0){e.lastSrc=e.burnSource;e.lastKind="burn";killEnemy(e);B.enemies.splice(i,1);continue;}
      e.burnT=Math.max(0,e.burnT-dt);
      if(e.burnT===0){e.burnDps=0;e.burnSource=null;}
@@ -261,7 +261,7 @@ function update(dt){
    if(dr.launchT>0){
      /* launch phase: the wasp flies outward from the turret; the target is reassigned if it died */
      dr.launchT-=dt;dr.x+=dr.vx*dt;dr.y+=dr.vy*dt;
-     if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:WEAPON_COLOR.hive,r:1.5});
+     if(B.parts.length<360&&Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:WEAPON_COLOR.hive,r:1.5});
      continue;
    }
    if(dr.tgt){
@@ -271,7 +271,7 @@ function update(dt){
      /* flutter: a perpendicular weave so wasps do not fly straight like projectiles (owner order 2026-11-12) */
      var wob=Math.sin(B.t*9+(dr.phase||0))*45*dt;
      dr.x+=-Math.sin(a)*wob;dr.y+=Math.cos(a)*wob;}
-    if(Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:WEAPON_COLOR.hive,r:1.5});
+    if(B.parts.length<360&&Math.random()<dt*15)B.parts.push({x:dr.x,y:dr.y+3,vx:0,vy:12,life:0.22,t:0,color:WEAPON_COLOR.hive,r:1.5});
     /* the wasp strikes while UNDER the enemy: touching its bottom edge */
     if(dr.hitT<=0&&dr.y>=dr.tgt.y&&Math.hypot(dr.tgt.x-dr.x,dr.tgt.y-dr.y)<dr.tgt.r+4){
       if(waspSting(dr)){waspDies(dr);B.drones.splice(j,1);continue;}
@@ -332,7 +332,7 @@ function update(dt){
        if(fd.kind==="slow"&&fd.src.fieldReplication&&Math.hypot(pr.x-fd.x,pr.y-fd.y)<=fd.r){
          pr.replicated=true;
          if(B.projs.length<FX_CAP.projs){var sl=Math.hypot(pr.vx,pr.vy)||1;
-           B.projs.push({x:pr.x-pr.vy/sl*7,y:pr.y+pr.vx/sl*7,vx:pr.vx,vy:pr.vy,src:pr.src,dmg:pr.dmg,pierce:pr.pierce,hitSet:pr.hitSet.slice(),life:pr.life,tgt:null,rail:true,replicated:true,ricochet:pr.ricochet||0});}
+           B.projs.push({x:pr.x-pr.vy/sl*7,y:pr.y+pr.vx/sl*7,vx:pr.vx,vy:pr.vy,src:pr.src,dmg:pr.dmg,pierce:pr.pierce,pierced:pr.pierced||0,hitSet:pr.hitSet.slice(),life:pr.life,tgt:null,rail:true,replicated:true,ricochet:pr.ricochet||0});}
          break;}}
    }
    /* trail history for rendering only (x,y,t triplets), pruned by AGE; consumes no RNG */
@@ -372,7 +372,10 @@ function update(dt){
      pr.hitSet.push(en);
      /* Path Strike: a missile deals impact damage to enemies on its path and flies on to its target */
      if(pr.src.pathStrike&&pr.src.cfg.effect==="rocket"&&!pr.kind&&!pr.mini&&aliveE(pr.tgt)&&en!==pr.tgt){
-       dealDamage(pr.src,en,pr.dmg*0.55*(pr.src.impactMul||1),{kind:"rocket",burn:!!pr.src.rocketBurn});continue;
+       dealDamage(pr.src,en,pr.dmg*0.55*(pr.src.impactMul||1),{kind:"rocket",burn:!!pr.src.rocketBurn});
+       if(pr.src.shockMine&&Math.random()<0.2)addMine(pr.src,en.x,en.y);
+       if(pr.src.impactCleave)ripLaser(pr.src,en.x,en.y,Math.atan2(pr.vy,pr.vx),pr.src.cfg.damage*0.6);
+       continue;
      }
      applyHit(pr,en);SFX.hit();
      if(pr.pierce>0)pr.pierce--;

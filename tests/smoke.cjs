@@ -2675,4 +2675,195 @@ test("campaign simulation budgets scale with stage length and honor an explicit 
   assert.throws(()=>runSuite({stage:12,runs:1,policy:"smart",maxSeconds:.1}),/campaign did not terminate/);
 });
 
+test("Disruption Field Expansion, Field Expansion+, Fortress Support and Super Mode scale field radius beyond 80", () => {
+  const {game:h}=harness(),[d]=mechBattle(h,["disruption"]);
+  assert.equal(h.addDisruptionField(d,200,300).r,80);
+  h.applyCardDef(h.cardById("disruption","fieldExpansion"),d);
+  assert.ok(Math.abs(h.addDisruptionField(d,200,300).r-104)<1e-6,"Field Expansion +30% must grow radius from 80 to 104");
+  h.applyCardDef(h.cardById("disruption","fieldExpansionPlus"),d);
+  assert.ok(Math.abs(h.addDisruptionField(d,200,300).r-150.8)<1e-6,"Field Expansion+ +45% must grow radius to 150.8");
+  const [d2]=mechBattle(h,["disruption"]);
+  h.SUPERS.disruption.apply(d2);
+  assert.ok(d2.splash>=96,"Stasis Field Super Mode must widen splash past 80");
+  const [d3]=mechBattle(h,["disruption"]);
+  d3.fortressSupport=true;d3.cd=0;h.B.enemies=[still(h,200,540)];
+  h.unitFire(d3,.05);
+  const fort=h.B.fields.find(f=>f.fortress);
+  assert.ok(fort&&fort.r>=110,"Fortress Support field must be wider than a standard radius-80 field");
+});
+
+test("Card upgrades, Super Modes and combos are monotonic and never downgrade stronger stats", () => {
+  const {game:h}=harness();
+  const [fw]=mechBattle(h,["firewheel"]);
+  h.SUPERS.firewheel.apply(fw);
+  h.applyCardDef(h.cardById("firewheel","firewheelIgnition"),fw);
+  assert.equal(fw.wheelIgnite,1,"Firewheel Ignition must not downgrade Inferno 100% burn chance");
+
+  const [hv]=mechBattle(h,["hive"]);
+  h.applyCardDef(h.cardById("hive","echoUpgradeIII"),hv);
+  h.applyCardDef(h.cardById("hive","swarmEcho"),hv);
+  h.applyCardDef(h.cardById("hive","echoUpgradeII"),hv);
+  assert.equal(hv.hiveEcho,3,"Lower Echo cards must not downgrade Echo Upgrade III");
+
+  const [bm]=mechBattle(h,["beam"]);
+  h.applyCardDef(h.cardById("beam","extremeFocus"),bm);
+  h.applyCardDef(h.cardById("beam","damageIncrease"),bm);
+  assert.equal(bm.beamFocusCap,4,"Damage Increase must not downgrade Extreme Focus cap");
+
+  const [rg]=mechBattle(h,["railgun"]);
+  h.SUPERS.railgun.apply(rg);
+  h.B.pendingDrafts=1;
+  h.applyCard({kind:"combo",modId:"surgePierce",u:rg});
+  assert.equal(rg.pierce,99,"Surge Rail combo must not cap Piercing Volley 99 pierce down to 15");
+
+  const [ts]=mechBattle(h,["tesla"]);
+  ts.multiCount=8;h.SUPERS.tesla.apply(ts);
+  assert.equal(ts.multiCount,8,"Overvoltage must not reduce multiCount below current value");
+
+  const [ab]=mechBattle(h,["aeroblast"]);
+  ab.knock=20;h.SUPERS.aeroblast.apply(ab);
+  assert.equal(ab.knock,60,"Hurricane must triple upgraded knockback instead of capping to 36");
+});
+
+test("Firewheel Hold the Ground does not spam firetrails while stationary", () => {
+  const {game:h}=harness(),[fw]=mechBattle(h,["firewheel"]);
+  fw.fireTrail=true;fw.holdGround=true;
+  const w={x:200,y:300,vx:0,vy:0,src:fw,life:10,speed:200,r:20,bounces:0,last:new Map(),hits:0,age:0,miniT:99,pulseT:99,trailT:0,lastDmgT:0,held:true,holding:true};
+  h.B.wheels=[w];
+  for(let i=0;i<10;i++)h.stepWheel(w,.1);
+  assert.equal(h.B.fields.filter(f=>f.kind==="firetrail").length,0,"stationary holding disc must not emit firetrails");
+});
+
+test("Gravity Field Reflection corner bounce flips both vx and vy in one bounce", () => {
+  const {game:h}=harness(),[gv]=mechBattle(h,["gravity"]);
+  gv.fieldReflect=true;
+  const f=h.spawnGravityField(gv,17,h.VIS_TOP+11,-Math.PI*0.75,{range:500});
+  h.stepField(f,.1);
+  assert.equal(f.bounces,1);
+  assert.ok(f.vx>0&&f.vy>0,"corner impact must reflect both velocity axes");
+});
+
+test("Hive Dense Swarm+ and Mother Swarm launch beyond the old 12-wasp cap", () => {
+  const {game:h}=harness(),[hv]=mechBattle(h,["hive"]);
+  hv.hiveCount=14;h.B.enemies=[still(h,200,400)];
+  h.fireHive(hv,h.B.enemies[0]);
+  assert.equal(h.B.drones.length,14,"Dense Swarm+ must launch all 14 wasps");
+  h.B.drones=[];hv.hiveDouble=true;
+  h.fireHive(hv,h.B.enemies[0]);
+  assert.equal(h.B.drones.length,20,"Mother Swarm must launch up to 20 doubled wasps");
+});
+
+test("Beam Extra Beam inherits beam debuffs and Bee Wave works without Damage Increase", () => {
+  const {game:h}=harness(),[bm]=mechBattle(h,["beam"]);
+  bm.beamSplit=true;bm.beamVulnerable=true;bm.beamSlow=true;bm.beeWave=true;bm.cd=0;
+  const e1=still(h,180,420),e2=still(h,240,420);
+  h.B.enemies=[e1,e2];
+  for(let i=0;i<25;i++)h.update(.1);
+  assert.ok(e2.vulnerableT>0&&e2.slowFactor<1,"Extra Beam must apply Vulnerable and Slow from beamOpts");
+  assert.ok(bm.beamRamp>=0.3,"Bee Wave must build charge even without Damage Increase");
+});
+
+test("Teslacoil haste speeds up charging and Charge Destruction boosts bounce damage", () => {
+  const {game:h}=harness(),[ts]=mechBattle(h,["tesla"]);
+  ts.chargeTime=1.0;ts.haste=2.0;ts.chargeDestruction=true;ts.cd=0;
+  const e1=still(h,200,400),e2=still(h,260,400);
+  h.B.enemies=[e1,e2];
+  h.unitFire(ts,.01);
+  assert.equal(h.B.projs.length,0);
+  h.unitFire(ts,.51);
+  assert.equal(h.B.projs.length,1,"2x haste must finish a 1.0s charge in ~0.5s");
+  assert.equal(h.B.projs[0].chargeT,1.0,"full chargeTime credit must be preserved for charge scaling");
+  const hpBefore=e2.hp;
+  h.teslaHit(h.B.projs[0],e1);
+  const dmgWithCD=hpBefore-e2.hp;
+  const {game:h2}=harness(),[ts2]=mechBattle(h2,["tesla"]);
+  ts2.chargeDestruction=false;
+  const a1=still(h2,200,400),a2=still(h2,260,400);
+  h2.B.enemies=[a1,a2];
+  h2.teslaHit({src:ts2,dmg:ts2.cfg.damage,chargeT:1.0},a1);
+  const dmgWithoutCD=1e6-a2.hp;
+  assert.ok(dmgWithCD>dmgWithoutCD*1.4,"Charge Destruction must boost AoE and bounce damage");
+});
+
+test("Sky Guard Close-range Explosion burns with Ignition and Path Strike triggers Impact Cleave", () => {
+  const {game:h}=harness(),[sg]=mechBattle(h,["skyguard"]);
+  sg.rocketBurn=true;sg.closeBlast=true;sg.pathStrike=true;sg.impactCleave=true;
+  const e1=still(h,200,450),e2=still(h,200,360);
+  h.B.enemies=[e1,e2];
+  h.B.projs=[{x:200,y:470,vx:0,vy:-400,src:sg,dmg:sg.cfg.damage,pierce:0,hitSet:[],life:2,tgt:e2}];
+  h.update(.08);
+  assert.ok(e1.burnT>0,"Path Strike must apply Ignition burn");
+  assert.ok(h.B.beams.some(b=>b.ripping),"Path Strike impact must trigger Impact Cleave ripping laser");
+  const far=still(h,200,320);h.B.enemies=[e2,far];
+  h.rocketHit({src:sg,dmg:sg.cfg.damage,vx:0,vy:-400},e2);
+  assert.ok(far.burnT>0,"Close-range Explosion must apply Ignition burn");
+});
+
+test("Splitter children inherit contactMul and initialize firing stations at spawn", () => {
+  const {game:h}=harness();enemyDefenseScene(h);
+  h.B.stage.contactMul=2.0;
+  h.spawnEnemy("splitter",{x:210,y:240});
+  const sp=h.B.enemies[0];
+  h.killEnemy(sp);
+  const minis=h.B.enemies.filter(e=>e.cfg.id==="mini");
+  assert.equal(minis.length,2);
+  const miniCfg=h.ENEMIES.find(e=>e.id==="mini");
+  const expectedDmg=miniCfg.dmg*0.8*2.0*h.BALANCE.enemyDmgMul;
+  minis.forEach(m=>{
+    assert.ok(Math.abs(m.dmg-expectedDmg)<1e-6,"mini must inherit stage contactMul");
+    assert.ok(Number.isFinite(m.standY)&&m.attackState==="approach","mini must initialize firing station");
+  });
+});
+
+test("Pull effects and portals clamp enemies within arena bounds and preserve longer status durations", () => {
+  const {game:h}=harness();enemyDefenseScene(h);
+  const e=still(h,15,h.VIS_TOP+2);
+  h.moveEnemyPull(e,-100,-100);
+  assert.ok(e.x>=e.r&&e.y>=h.VIS_TOP,"pull must not push enemy off-screen or behind HUD");
+  h.moveEnemyPull(e,0,1000);
+  assert.ok(e.y<=h.BASEY-20,"pull must not drag enemy below deck");
+  e.vulnerableT=10;e.burnT=10;
+  h.dealDamage(h.B.soldier,e,1,{vulnerable:true});
+  h.igniteE(h.B.soldier,e,1);
+  assert.equal(e.vulnerableT,10,"shorter vulnerable refresh must not shorten existing vulnerableT");
+  assert.equal(e.burnT,10,"igniteE must not shorten existing burnT");
+});
+
+test("Save sanitization, patrol clock-skew guard, pause guards, and duplicate combo/module guards", () => {
+  const {game:h,store,element}=harness();
+  h.META.lastPatrol=Date.now()+3600000;
+  assert.equal(h.patrolAccrued(),0,"future lastPatrol must never return negative coins");
+  store.set(h.SAVE_KEY,JSON.stringify({v:1,levels:{soldier:0,laser:-5,beam:5.9,skyguard:999},normalCleared:{"1.5":true,"2":true}}));
+  h.META=h.freshMeta();h.loadSave();
+  assert.equal(h.META.levels.soldier,1,"zero level must be rejected");
+  assert.equal(h.META.levels.laser,1,"negative level must be rejected");
+  assert.equal(h.META.levels.beam,5,"valid level loads and floors cleanly");
+  assert.equal(h.META.levels.skyguard,45,"level caps at 45");
+  assert.equal(h.META.normalCleared["1.5"],undefined,"fractional stage keys must be rejected");
+  assert.equal(h.META.normalCleared[2],true);
+
+  const [rg]=mechBattle(h,["railgun"]);
+  const d0=rg.dmgMul;
+  h.B.pendingDrafts=2;
+  h.applyCard({kind:"combo",modId:"surgePierce",u:rg});
+  const d1=rg.dmgMul;
+  h.applyCard({kind:"combo",modId:"surgePierce",u:rg});
+  assert.equal(rg.dmgMul,d1,"duplicate combo application must be ignored");
+  assert.ok(d1>d0);
+
+  const b0=h.B.allDmgMul;
+  h.applyCard({kind:"module",modId:"boost"});
+  const b1=h.B.allDmgMul;
+  h.applyCard({kind:"module",modId:"boost"});
+  assert.equal(h.B.allDmgMul,b1,"duplicate non-patch module application must be ignored");
+  assert.ok(b1>b0);
+
+  h.B.waveState="draft";element("ov-pause").classList.remove("on");
+  element("btn-buildinfo").listeners.click.forEach(fn=>fn.call(element("btn-buildinfo")));
+  assert.ok(!element("ov-pause").classList.contains("on"),"Build button must not open Pause during draft");
+  h.B.waveState="fighting";h.endBattle(false);
+  element("btn-buildinfo").listeners.click.forEach(fn=>fn.call(element("btn-buildinfo")));
+  assert.ok(!element("ov-pause").classList.contains("on"),"Build button must not open Pause over results");
+});
+
 console.log("\n" + tests.length + " smoke tests passed.");

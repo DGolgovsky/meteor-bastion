@@ -16,6 +16,12 @@ function nearestList(x,y,n,maxD,exclude){
 }
 function unitOf(id){if(!B)return null;if(id==="soldier")return B.soldier;return B.turrets.filter(function(u){return u.cfg.id===id;})[0]||null;}
 function clampFieldY(y){return Math.max(VIS_TOP+8,Math.min(BASEY-40,y));}
+function moveEnemyPull(e,dx,dy){
+ var r=e.r||10,prevY=e.y;
+ e.x=Math.max(r,Math.min(W-r,e.x+dx));
+ var maxY=isMeteorEnemy(e)?BASEY-20:Math.min(BASEY-60,domeY(e.x)-r);
+ e.y=Math.min(maxY,Math.max(Math.min(prevY,VIS_TOP),prevY+dy));
+}
 function explodeAt(src,x,y,r,dmg,opts,color){
  var hits=enemiesIn(x,y,r);
  hits.forEach(function(e){dealDamage(src,e,dmg,opts||{});});
@@ -90,7 +96,7 @@ function ripLaser(src,x,y,ang,dmg){
   var px=e.x-x,py=e.y-y,pr=px*dx+py*dy;
   if(pr>0&&pr<len&&Math.abs(px*dy-py*dx)<=e.r+9)hits.push(e);
  });
- B.beams.push({x1:x,y1:y,x2:x+dx*len,y2:y+dy*len,color:WEAPON_COLOR.laser,ripping:true,w:3.5,t:0,life:0.16});
+ if(B.beams.length<220)B.beams.push({x1:x,y1:y,x2:x+dx*len,y2:y+dy*len,color:WEAPON_COLOR.laser,ripping:true,w:3.5,t:0,life:0.16});
  hits.forEach(function(e){dealDamage(src,e,dmg,{kind:"rip",dtype:"energy"});});
  return hits;
 }
@@ -116,7 +122,7 @@ function chainLightning(src,e0,jumps,dmg,opts){
  }
  return hit.slice(1);
 }
-function boltFx(x,y2,color,w){B.beams.push({x1:x,y1:VIS_TOP,x2:x,y2:y2,color:color||"#c4b5fd",w:w||2,t:0,life:0.16,bolt:true});}
+function boltFx(x,y2,color,w){if(B.beams.length>=220)return;B.beams.push({x1:x,y1:VIS_TOP,x2:x,y2:y2,color:color||"#c4b5fd",w:w||2,t:0,life:0.16,bolt:true});}
 /* small lightning strike: a narrow vertical bolt at x */
 function smallStrike(src,x,dmg){
  var hits=B.enemies.filter(function(e){return onField(e)&&Math.abs(e.x-x)<=9+e.r*0.5;});
@@ -234,7 +240,7 @@ function updateEffects(dt){
   var po=B.portals[i];po.life-=dt;
   B.enemies.forEach(function(e){
    if(!onField(e)||e.kind==="boss"||po.used.indexOf(e)>=0||Math.hypot(e.x-po.x,e.y-po.y)>po.r+e.r*0.5)return;
-   po.used.push(e);e.x=po.ex;e.y=Math.min(e.y,po.ey);ringFx(po.ex,po.ey,WEAPON_COLOR.gravity,80);
+   po.used.push(e);e.x=Math.max(e.r||10,Math.min(W-(e.r||10),po.ex));e.y=Math.min(e.y,po.ey);ringFx(e.x,e.y,WEAPON_COLOR.gravity,80);
   });
   if(po.life<=0)B.portals.splice(i,1);
  }
@@ -338,9 +344,9 @@ function stepWheel(w,dt){
  if(!w.mini){
   if(s.vortexWheel)B.enemies.forEach(function(e){
    if(!onField(e)||e.kind==="boss")return;var dx=w.x-e.x,dy=w.y-e.y,d=Math.hypot(dx,dy);
-   if(d>r*3.5||d<r)return;e.x+=dx/d*45*dt;e.y+=dy/d*45*dt*0.5;
+   if(d>r*3.5||d<r)return;moveEnemyPull(e,dx/d*45*dt,dy/d*45*dt*0.5);
   });
-  if(s.fireTrail){w.trailT-=dt;if(w.trailT<=0){w.trailT=0.25;addFireField(s,w.x,w.y,r,2+(s.trailDurBonus||0),0.23*(s.trailDmgMul||1));}}
+  if(s.fireTrail&&!w.holding){w.trailT-=dt;if(w.trailT<=0){w.trailT=0.25;addFireField(s,w.x,w.y,r,2+(s.trailDurBonus||0),0.23*(s.trailDmgMul||1));}}
   if(s.miniDrones){w.miniT-=dt;if(w.miniT<=0){w.miniT=3;addMiniWheel(s,w.x,w.y);addMiniWheel(s,w.x,w.y);}}
   if(s.blazingPulse){w.pulseT-=dt;if(w.pulseT<=0){w.pulseT=1.5;addPulse(s,w.x,w.y,70,s.cfg.damage*0.6);}}
  }
@@ -380,7 +386,9 @@ function stepField(f,dt){
   var hitWall=f.x<16||f.x>W-16||f.y<VIS_TOP+10||(f.y>BASEY-35&&f.vy>0);
   if(hitWall){
    if(s.fieldReflect&&f.bounces<3){
-    if(f.x<16||f.x>W-16)f.vx*=-1;else f.vy*=-1;f.bounces++;
+    if(f.x<16||f.x>W-16)f.vx*=-1;
+    if(f.y<VIS_TOP+10||(f.y>BASEY-35&&f.vy>0))f.vy*=-1;
+    f.bounces++;
     f.x=Math.max(16,Math.min(W-16,f.x));f.y=Math.max(VIS_TOP+10,Math.min(BASEY-35,f.y));
    }else{f.x=Math.max(16,Math.min(W-16,f.x));f.y=Math.max(VIS_TOP+10,Math.min(BASEY-35,f.y));endGravityField(f);}
   }
@@ -434,7 +442,7 @@ function stepField(f,dt){
    var pow=s.slowPow||0.35;
    if(s.stasisField&&e.kind!=="boss"){e.stasisSlow=Math.min(0.9,Math.max(e.stasisSlow||0,pow)+0.1);pow=e.stasisSlow;}
    if(e.kind!=="boss"){e.slowFactor=Math.min(e.slowFactor,1-pow*(e.champion?0.55:1));e.slowT=Math.max(e.slowT,0.65);}
-   if(s.fieldExpose){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=3;}
+   if(s.fieldExpose){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=Math.max(e.vulnerableT||0,3);}
    var sup=s.fieldSuppression?1+Math.min(2,(1-e.slowFactor)*3):1;
    dealDamage(s,e,s.cfg.damage*0.6*(f.dmgScale||1)*sup,{kind:"field",dtype:"force"});
    if(!aliveE(e))return;
@@ -442,7 +450,7 @@ function stepField(f,dt){
    if(s.electricField&&Math.random()<0.3)applyParalyze(e,0.8);
    if(s.randomTeleport&&Math.random()<0.05)teleportBack(e,false,s);
    else if(s.rewindTeleport&&Math.random()<0.025)teleportBack(e,true,s);
-   if(s.convergingField&&e.kind!=="boss"&&aliveE(e)){e.x+=(f.x-e.x)*0.25;e.y+=(f.y-e.y)*0.25;}
+   if(s.convergingField&&e.kind!=="boss"&&aliveE(e))moveEnemyPull(e,(f.x-e.x)*0.25,(f.y-e.y)*0.25);
   }
   else if(f.kind==="gravity"){
    /* the field now flies (reference) and spends less time on each enemy: 0.65x -> 2.2x per tick keeps HEAD-level DPS */

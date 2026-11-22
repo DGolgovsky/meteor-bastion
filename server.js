@@ -12,10 +12,21 @@ const { outPath } = buildIndexHtml();
 
 const app = express();
 app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
 
 app.get(['/', '/index.html'], (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  res.type('html').send(fs.readFileSync(outPath, 'utf8'));
+  try {
+    if (!fs.existsSync(outPath)) buildIndexHtml();
+    res.setHeader('Cache-Control', 'no-store');
+    res.type('html').send(fs.readFileSync(outPath, 'utf8'));
+  } catch (err) {
+    console.error('Failed to serve index.html:', err);
+    res.status(500).type('text/plain').send('Internal Server Error');
+  }
 });
 
 app.get('/health', (_req, res) => {

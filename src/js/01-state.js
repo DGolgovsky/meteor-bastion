@@ -19,10 +19,10 @@ function loadSave(){try{var raw=localStorage.getItem(SAVE_KEY);if(!raw)return;va
  if(typeof d.music==="boolean")META.music=d.music; if(typeof d.sfx==="boolean")META.sfx=d.sfx;
  if(typeof d.elite==="boolean")META.elite=d.elite; if(typeof d.lastPatrol==="number"&&isFinite(d.lastPatrol)&&d.lastPatrol>0)META.lastPatrol=d.lastPatrol;
  if(typeof d.lastEnergyAt==="number"&&isFinite(d.lastEnergyAt)&&d.lastEnergyAt>0)META.lastEnergyAt=d.lastEnergyAt;
- if(d.eliteCleared&&typeof d.eliteCleared==="object")for(var ck in d.eliteCleared){if(+ck>=1&&+ck<=STAGES.length&&d.eliteCleared[ck]===true)META.eliteCleared[ck]=true;}
- if(d.normalCleared&&typeof d.normalCleared==="object")for(var nk in d.normalCleared){if(+nk>=1&&+nk<=STAGES.length&&d.normalCleared[nk]===true)META.normalCleared[nk]=true;}
+ if(d.eliteCleared&&typeof d.eliteCleared==="object")for(var ck in d.eliteCleared){if(Object.prototype.hasOwnProperty.call(d.eliteCleared,ck)&&Number.isInteger(+ck)&&+ck>=1&&+ck<=STAGES.length&&d.eliteCleared[ck]===true)META.eliteCleared[+ck]=true;}
+ if(d.normalCleared&&typeof d.normalCleared==="object")for(var nk in d.normalCleared){if(Object.prototype.hasOwnProperty.call(d.normalCleared,nk)&&Number.isInteger(+nk)&&+nk>=1&&+nk<=STAGES.length&&d.normalCleared[nk]===true)META.normalCleared[+nk]=true;}
  META.energy=Math.max(0,Math.min(30,META.energy));META.unlocked=Math.max(1,Math.min(STAGES.length,META.unlocked));META.selStage=Math.max(1,Math.min(META.unlocked,META.selStage));
- if(d.levels)allUnitsCfg().forEach(function(t){var v=d.levels[t.id];if(typeof v==="number"&&v>=1)META.levels[t.id]=Math.min(45,Math.floor(v));});
+ if(d.levels)allUnitsCfg().forEach(function(t){var v=d.levels[t.id];if(Number.isFinite(v)&&v>=1)META.levels[t.id]=Math.min(45,Math.floor(v));});
  if(d.mats)allUnitsCfg().forEach(function(t){var v=d.mats[t.id];if(Number.isFinite(v)&&v>=0)META.mats[t.id]=Math.floor(v);});
 }catch(e){}}
 loadSave();
@@ -66,8 +66,8 @@ function $(id){return document.getElementById(id);}
 
 /* ==================== AUDIO ==================== */
 var AC=null;
-function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==="suspended")AC.resume();return AC;}
-function beep(f,dur,type,vol,slide){if(!META.sfx)return;var c=ac();if(!c)return;var o=c.createOscillator(),g=c.createGain();o.type=type||"square";o.frequency.value=f;if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),c.currentTime+dur);g.gain.setValueAtTime(vol||0.05,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+dur);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+dur);}
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(AC&&AC.state==="suspended"){try{AC.resume();}catch(e){}}return AC;}
+function beep(f,dur,type,vol,slide){if(!META.sfx)return;var c=ac();if(!c)return;try{var o=c.createOscillator(),g=c.createGain();o.type=type||"square";o.frequency.value=f;if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),c.currentTime+dur);g.gain.setValueAtTime(vol||0.05,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+dur);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+dur);}catch(e){}}
 var SFX={
  shoot:function(){beep(720,0.06,"square",0.016);},
  laser:function(){beep(1180,0.09,"sawtooth",0.012);},
@@ -80,7 +80,7 @@ var SFX={
  lose:function(){[400,320,240,160].forEach(function(f,i){setTimeout(function(){beep(f,0.25,"sawtooth",0.05);},i*160);});}
 };
 var musicTimer=null;
-function startMusic(){stopMusic();if(!META.music)return;var notes=[110,110,130.8,98];var i=0;musicTimer=setInterval(function(){if(!META.music)return;var c=ac();if(!c)return;var o=c.createOscillator(),g=c.createGain();o.type="triangle";o.frequency.value=notes[i%notes.length];g.gain.setValueAtTime(0.032,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.42);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+0.45);i++;},460);}
+function startMusic(){stopMusic();if(!META.music)return;var notes=[110,110,130.8,98];var i=0;musicTimer=setInterval(function(){if(!META.music)return;var c=ac();if(!c)return;try{var o=c.createOscillator(),g=c.createGain();o.type="triangle";o.frequency.value=notes[i%notes.length];g.gain.setValueAtTime(0.032,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.42);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+0.45);}catch(e){}i++;},460);}
 function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null;}}
 
 /* ==================== NAV / META UI ==================== */
@@ -104,7 +104,7 @@ var INTEL=[
  "Intel: insects stop above the fortress and charge ranged attacks. Shoot down their ammunition or interrupt the shooter with control effects.",
  "Intel: each stage has its own hive castes. Needle Wasps fire from afar; Shell Beetles approach close. Only meteors hit the deck."
 ];
-function patrolAccrued(){var h=(Date.now()-META.lastPatrol)/3600000;return Math.floor(Math.min(8,h)*25*(1+META.unlocked*0.5));}
+function patrolAccrued(){var h=Math.max(0,(Date.now()-META.lastPatrol)/3600000);return Math.floor(Math.min(8,h)*25*(1+META.unlocked*0.5));}
 function renderHome(){
  refillEnergy();
  $("home-cur").innerHTML=curHTML();
@@ -195,9 +195,9 @@ function syncToggles(){
 ["classic","arctic","ember"].forEach(function(id){$("livery-"+id).addEventListener("click",function(){setLivery(id);});});
 $("tgl-music").addEventListener("click",function(){META.music=!META.music;persist();syncToggles();if(META.music)startMusic();else stopMusic();});
 $("tgl-sfx").addEventListener("click",function(){META.sfx=!META.sfx;persist();syncToggles();});
-var resetArm=false;
+var resetArm=false,resetTimer=null;
 $("btn-reset").addEventListener("click",function(){
- if(!resetArm){resetArm=true;$("btn-reset").textContent="Really reset?";setTimeout(function(){resetArm=false;$("btn-reset").textContent="Reset";},3000);return;}
- META=freshMeta();persist();resetArm=false;$("btn-reset").textContent="Reset";syncToggles();show("home");
+ if(!resetArm){resetArm=true;$("btn-reset").textContent="Really reset?";clearTimeout(resetTimer);resetTimer=setTimeout(function(){resetArm=false;resetTimer=null;$("btn-reset").textContent="Reset";},3000);return;}
+ clearTimeout(resetTimer);resetTimer=null;stopMusic();META=freshMeta();persist();resetArm=false;$("btn-reset").textContent="Reset";syncToggles();show("home");
 });
 

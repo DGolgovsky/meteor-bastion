@@ -105,7 +105,7 @@ function dealDamage(src,e,baseDmg,opts){
  if(crit&&B.t-(e.lastCritRing===undefined?-99:e.lastCritRing)>.2){e.lastCritRing=B.t;B.rings.push({x:e.x,y:e.y,r:5,vr:90,t:0,life:.15,color:"#ff9f2e"});if(B.rings.length>40)B.rings.shift();}
  var durMul=opts.durMul||1;
  e.lastSrc=src;e.lastKind=opts.kind||"";
- if(opts.vulnerable){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=3.8*durMul;}
+ if(opts.vulnerable){e.vulnerableStacks=Math.min(3,(e.vulnerableStacks||0)+1);e.vulnerableT=Math.max(e.vulnerableT||0,3.8*durMul);}
  if(opts.slow&&e.kind!=="boss"){
    var slow=(opts.slowPow||0.35)*(e.champion?0.55:1);
    e.slowFactor=Math.min(e.slowFactor||1,1-slow);e.slowT=Math.max(e.slowT||0,2.5*durMul);
@@ -154,14 +154,15 @@ function killEnemy(e){
    var hpMul=B.stage.hpMul*(1+(B.wave-1)*BALANCE.waveHpGrowth)*BALANCE.enemyHpMul*0.8;
    [-16,16].forEach(function(off){
      if(B.enemies.length>=MAX_ENEMIES)return;
-      B.enemies.push({cfg:mini,kind:mini.kind,x:Math.max(16,Math.min(W-16,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
-      speed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,baseSpeed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,dmg:mini.dmg*.8*BALANCE.enemyDmgMul,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
+     var child={cfg:mini,kind:mini.kind,x:Math.max(mini.r,Math.min(W-mini.r,e.x+off)),y:e.y,hp:mini.hp*hpMul,maxHp:mini.hp*hpMul,
+      speed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,baseSpeed:mini.speed*B.stage.spdMul*B.enemySpdMul*.85*1.15,dmg:mini.dmg*.8*(B.stage.contactMul||1)*BALANCE.enemyDmgMul,armor:mini.armor,xp:mini.xp,r:mini.r,color:mini.color,
        moveKind:"mini",visualScale:.85+Math.random()*.3,vx:0,vy:0,hoverCd:5,hoverT:0,hoverCount:0,driftDir:off<0?-1:1,driftT:2,speedPhase:Math.random()*6.28,
-      phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:0});
+      phase:Math.random()*6.28,flash:0,slowFactor:1,slowT:0,burnDps:0,burnT:0,dead:false,healT:0,auraT:2,hasteT:0,cloakT:0,chargeT:0,chargeMul:1.0,revealedT:0};
+     B.enemies.push(child);initEnemyStation(child);
    });
  }
 }
-function burst(x,y,n,color){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,s=40+Math.random()*130;B.parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.35+Math.random()*0.3,t:0,color:color,r:1.5+Math.random()*2.5});}}
+function burst(x,y,n,color){for(var i=0;i<n&&B.parts.length<360;i++){var a=Math.random()*Math.PI*2,s=40+Math.random()*130;B.parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.35+Math.random()*0.3,t:0,color:color,r:1.5+Math.random()*2.5});}}
 /* Merge three or more damage numbers on a target within 0.25s. */
 function addNum(x,y,txt,crit,rm,enemy){
  x=Math.max(20,Math.min(W-20,x));y=Math.max(VIS_TOP+12,Math.min(BASEY-20,y));
@@ -289,7 +290,7 @@ function fireLaser(t,dt){
    var px=e.x-ox,py=e.y-oy;if(px*dx+py*dy<=0)return;
    var perp=px*dy-py*dx;if(Math.abs(perp)>70||Math.abs(perp)<2)return;
    var st=(perp>0?1:-1)*Math.min(Math.abs(perp),55*dt);
-   e.x-=dy*st;e.y+=dx*st;
+   moveEnemyPull(e,-dy*st,dx*st);
   });
  }
  if(t.emberrail){
@@ -388,19 +389,19 @@ function fireFocusedBeam(t,dt){
   var opts=beamOpts(t);
   dealDamage(t,target,t.cfg.damage*1.45*(t.beamPower||1)*ramp,opts);
   t.beamVisT=0.3;t.beamVisX=target.x;t.beamVisY=target.y;t.beamVisRamp=ramp;
-  if(cap)t.beamRamp+=0.09;
+  if(cap||t.beeWave)t.beamRamp+=0.09;
   if(t.targetExplosion)explodeAt(t,target.x,target.y,35,t.cfg.damage*0.4,{kind:"beamx"},WEAPON_COLOR.beam);
   if(t.disruptiveBeam&&B.t-(t.disrBeamT===undefined?-9:t.disrBeamT)>1){t.disrBeamT=B.t;var dsrc=unitOf("disruption");addDisruptionField(dsrc||t,target.x,target.y,{r:26,life:1.5,dmgScale:dsrc?1:0.12,small:true});}
   if(t.bhSpotlight&&B.t-(t.bhT===undefined?-9:t.bhT)>1.5){t.bhT=B.t;addBlackHole(t,target.x,target.y,40,70,2,t.cfg.damage*0.15);}
   if(t.beamLightning&&Math.random()<0.3)chainLightning(t,target,3,t.cfg.damage*0.4);
   if(t.matrixResonance&&B.t-(t.mrT===undefined?-9:t.mrT)>1){t.mrT=B.t;addMatrix(t,target.x,target.y,70,1.6,{expanding:true,dmg:t.cfg.damage*0.2});}
-  if(t.beeWave&&ramp>1.3&&Math.random()<0.4&&B.t-(t.bwT===undefined?-9:t.bwT)>0.5){t.bwT=B.t;addPulse(t,target.x,target.y,60,t.cfg.damage*0.4);}
+  if(t.beeWave&&(ramp>1.3||t.beamRamp>=0.3)&&Math.random()<0.4&&B.t-(t.bwT===undefined?-9:t.bwT)>0.5){t.bwT=B.t;addPulse(t,target.x,target.y,60,t.cfg.damage*0.4);}
   if(t.beamSplit){
    var extra=B.enemies.filter(function(e){return e!==target&&inRange(t,e);});
    var alt=extra.length?extra[0]:target;
    var muzzle=turretMuzzle(t);
    beamFx(muzzle.x,muzzle.y,alt.x,alt.y,t.cfg.color,2.5);
-   dealDamage(t,alt,t.cfg.damage*0.75,{kind:"beam"});
+   dealDamage(t,alt,t.cfg.damage*0.75,opts);
   }
   /* Beam Refraction: refracted beams jump from the target to the nearest other enemies */
   var nref=t.beamRefractions||(t.refract?2:0);
@@ -409,8 +410,8 @@ function fireFocusedBeam(t,dt){
     .sort(function(a,b){return Math.hypot(a.x-target.x,a.y-target.y)-Math.hypot(b.x-target.x,b.y-target.y);}).slice(0,nref);
    other.forEach(function(e){
     beamFx(target.x,target.y,e.x,e.y,WEAPON_COLOR.beam,2);
-    dealDamage(t,e,t.cfg.damage*0.55,{kind:"beam",vulnerable:!!t.beamVulnerable});
-    if(t.refractPull&&e.kind!=="boss"&&aliveE(e)){e.x+=(target.x-e.x)*0.25;e.y+=(target.y-e.y)*0.25;}
+    dealDamage(t,e,t.cfg.damage*0.55,opts);
+    if(t.refractPull&&e.kind!=="boss"&&aliveE(e))moveEnemyPull(e,(target.x-e.x)*0.25,(target.y-e.y)*0.25);
     if(t.refractExplosion)explodeAt(t,e.x,e.y,30,t.cfg.damage*0.3,{kind:"beamx"},WEAPON_COLOR.beam);
    });
   }
@@ -421,7 +422,7 @@ function thunderStrike(t,x,mul){
  var hw=14*(t.strikeWidthBase||1)*(t.strikeWidthMul||1);
  var hits=B.enemies.filter(function(e){return inRange(t,e)&&Math.abs(e.x-x)<=hw+e.r*0.5;});
  var low=hits.reduce(function(m,e){return Math.max(m,e.y);},VIS_TOP+160);
- B.beams.push({x1:x,y1:VIS_TOP,x2:x,y2:low,color:t.cfg.color,w:Math.max(3,hw*0.35),t:0,life:0.18,bolt:true,emitter:turretMuzzle(t)});
+ if(B.beams.length<220)B.beams.push({x1:x,y1:VIS_TOP,x2:x,y2:low,color:t.cfg.color,w:Math.max(3,hw*0.35),t:0,life:0.18,bolt:true,emitter:turretMuzzle(t)});
  ringFx(x,low,t.cfg.color,90);
  var dmg=t.cfg.damage*mul,pd=1.0*(t.paraDurMul||1);
  hits.forEach(function(e){
@@ -504,7 +505,7 @@ function fireGravity(t,target){
 function waspBoost(tier){return tier>=3?2:tier===2?1.5:1;}
 function fireHive(t,target){
  t.recoil=2;t.volleys=(t.volleys||0)+1;
- var hcount=Math.min(12,t.hiveCount*(t.hiveDouble?2:1))+(t.stored||0);t.stored=0;
+ var hcount=Math.min(t.hiveDouble?20:14,t.hiveCount*(t.hiveDouble?2:1))+(t.stored||0);t.stored=0;
  var tiers=[];for(var h=0;h<hcount;h++)tiers.push(1);
  if(t.volleys%2===0){
   if(t.mutation3&&Math.random()<0.5)tiers.push(3);else if(t.mutation2)tiers.push(2);
@@ -557,7 +558,7 @@ function aeroVolley(t,target){
 /* ---------- Teslacoil: charge phase, then the discharge projectile ---------- */
 function fireTesla(t,dt){
  if(t.charging>0){
-  t.charging-=dt;t.cd-=dt; /* the cooldown runs during the charge, so the charge does not lower the fire rate */
+  t.charging-=dt*(t.haste||1);t.cd-=dt; /* haste speeds up charging as well as cooldown */
   if(t.chargeTarget&&inRange(t,t.chargeTarget))aimUnit(t,t.chargeTarget,true);
   var muzzle=turretMuzzle(t);
   if(t.coopBeam){t.coopT=(t.coopT||0)-dt;if(t.coopT<=0){t.coopT=0.2;
@@ -629,7 +630,7 @@ function firePlain(t,target,extra){
     pierce:t.pierce+(t.execPierce||0),hitSet:[],life:2.6,tgt:target});
    if(cfg.id==="railgun"){p.rail=true;p.ricochet=t.ricochet||0;}
    if(extra)for(var key in extra)p[key]=extra[key];
-   if(k2<ports.length){
+   if(k2<ports.length&&B.parts.length<360){
     B.parts.push({x:muzzle.x,y:muzzle.y,vx:Math.cos(t.angle)*46,vy:Math.sin(t.angle)*46,life:.1,t:0,color:cfg.color,r:2.2});
    }
    if(cfg.id==="railgun"&&k2===0&&t.armorPulse)addPulse(t,muzzle.x,muzzle.y,70,cfg.damage*.5);
@@ -666,7 +667,7 @@ function unitFire(t,dt){
   addDisruptionField(t,W/2,BASEY-110,{r:Math.max(30,t.splash)*1.4,fortress:true});
 }
 /* ---------- hits ---------- */
-function igniteE(src,e,base){var dot=base*0.5*src.dmgMul*(src.burnMul||1);if(dot>e.burnDps){e.burnDps=dot;e.burnSource=src;}e.burnT=3;}
+function igniteE(src,e,base){var dot=base*0.5*src.dmgMul*(src.burnMul||1);if(dot>e.burnDps){e.burnDps=dot;e.burnSource=src;}e.burnT=Math.max(e.burnT||0,3);}
 function applyHit(p,e){
  var cfg=p.src.cfg;
  if(p.rail){railHit(p,e);return;}
@@ -748,7 +749,7 @@ function railHit(p,e){
 function teslaHit(p,e){
  /* direct discharge + area explosion, then a BOUNCE chain with decaying damage */
  var t=p.src,ct=p.chargeT||0;
- var dm=t.chargeDestruction?1+0.5*ct:1;
+ var dm=t.chargeDestruction?1+0.85*ct:1;
  var radius=Math.max(55,t.splash||60)*(t.teslaRadiusMul||1)*(t.chargeRadius?1+0.5*ct:1)*(t.expandedShock?1.5:1);
  dealDamage(t,e,p.dmg*0.8*dm,{kind:"tesla"});
  var inner=radius/1.5;
@@ -762,13 +763,13 @@ function teslaHit(p,e){
   var nx=nearestList(cur.x,cur.y,1,150,bounced)[0];
   if(!nx)break;
   arcFx(cur.x,cur.y,nx.x,nx.y,WEAPON_COLOR.tesla);
-  dealDamage(t,nx,p.dmg*bounceMul[Math.min(bi,bounceMul.length-1)],{kind:"tesla"});
+  dealDamage(t,nx,p.dmg*dm*bounceMul[Math.min(bi,bounceMul.length-1)],{kind:"tesla"});
   bounced.push(nx);cur=nx;
  }
  if(t.teslaMatrix)addMatrix(t,e.x,e.y,radius*1.2,2+(t.matrixDurBonus||0),{dmg:t.cfg.damage*0.65*(t.matrixDmgMul||1),slow:true,paralyze:!!t.teslaInterference,bolts:!!t.matrixBolt});
  if(t.chainSurge)shockFrom(t,e.x,e.y,5,p.dmg*0.35,[e]);
  if(t.highvolt)chainLightning(t,e,5,p.dmg*0.4);
- if(t.fission)nearestList(e.x,e.y,2,160,[e]).forEach(function(o){explodeAt(t,o.x,o.y,radius*0.6,p.dmg*0.4,{kind:"tesla"},WEAPON_COLOR.tesla);});
+ if(t.fission)nearestList(e.x,e.y,2,160,[e]).forEach(function(o){explodeAt(t,o.x,o.y,radius*0.6,p.dmg*0.4*dm,{kind:"tesla"},WEAPON_COLOR.tesla);});
  if(t.spinLaser)addSpinner(t,e.x,e.y,t.cfg.damage*0.4);
  if(t.stormFlare){var ws=unitOf("firewheel")||t;for(var m=0;m<3;m++)addMiniWheel(ws,e.x,e.y);}
  if(t.waspMirage)addEchoWasp(unitOf("hive")||t,e.x,e.y,0.5,1);
@@ -792,7 +793,7 @@ function rocketHit(p,e){
  explodeAt(t,e.x,e.y,r,p.dmg*0.7,{kind:"rocket",burn:!!t.rocketBurn},WEAPON_COLOR.skyguard);
  if(t.burnArea)addFireField(t,e.x,e.y,r*0.8,5,0.23);
  if(t.collapseHole)addBlackHole(t,e.x,e.y,45,70,3,t.cfg.damage*0.2);
- if(t.closeBlast)explodeAt(t,e.x,e.y-r*0.5,r*0.7,p.dmg*0.8,{kind:"rocket"},t.cfg.color);
+ if(t.closeBlast)explodeAt(t,e.x,e.y-r*0.5,r*0.7,p.dmg*0.8,{kind:"rocket",burn:!!t.rocketBurn},t.cfg.color);
  if(t.zapOnHit){
   var next=nearestList(e.x,e.y,1,100,[e])[0];
   if(next){arcFx(e.x,e.y,next.x,next.y,WEAPON_COLOR.thunder);dealDamage(t,next,p.dmg*.5,{kind:"shock",dtype:"electric"});}
@@ -803,7 +804,7 @@ function aeroHit(p,e){
  dealDamage(t,e,p.dmg,{knock:kn,kind:"aero"});
  if(t.secondaryExplosion&&B.t-(e.secExpT===undefined?-9:e.secExpT)>1){e.secExpT=B.t;addDelayed(t,e,t.cfg.damage*0.6,1,40);}
  var r=t.splash||40;
- if(p.main&&t.gravityBomb)enemiesIn(e.x,e.y,r*1.6,e).forEach(function(o){if(o.kind!=="boss"){o.x+=(e.x-o.x)*0.5;o.y+=(e.y-o.y)*0.5;}});
+ if(p.main&&t.gravityBomb)enemiesIn(e.x,e.y,r*1.6,e).forEach(function(o){if(o.kind!=="boss")moveEnemyPull(o,(e.x-o.x)*0.5,(e.y-o.y)*0.5);});
  var victims=enemiesIn(e.x,e.y,r,e);
  var mul=p.main&&t.chainExplosion?1+Math.min(2,0.2*(victims.length+1)):1;
  victims.forEach(function(o){dealDamage(t,o,p.dmg*0.5*mul,{knock:kn*0.6,kind:"aero"});});

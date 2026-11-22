@@ -662,7 +662,7 @@ function draw(){
      projTrail(p,0.13,6,col,"#ffffff");
      projOrb(p.x,p.y,2.8,col,"#ffffff");
    }else if(id==="disruption"){ /* pulsing impulse ring with a soft fill and a faint wake */
-     var dr=4+(2.6-p.life)/2.6*8,dg=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,dr);
+     var dr=Math.max(1,4+(2.6-p.life)/2.6*8),dg=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,dr);
      projTrail(p,0.14,3,col,false);
      dg.addColorStop(0,glowRgba(col,0));dg.addColorStop(1,glowRgba(col,0.3));
      ctx.globalAlpha=Math.max(.25,p.life/2.6);
@@ -741,8 +741,8 @@ function draw(){
 function mmss(s){s=Math.max(0,Math.floor(s));var m=Math.floor(s/60);return (m<10?"0":"")+m+":"+("0"+(s%60)).slice(-2);}
 function syncHud(){ /* all battle metrics are drawn directly on the canvas inside the field (draw) */ }
 $("btn-speed").addEventListener("click",function(){if(!B)return;B.speed=B.speed===1?2:1;this.textContent="×"+B.speed;this.classList.toggle("on",B.speed===2);SFX.pick();});
-$("btn-pause").addEventListener("click",function(){if(!B||B.over)return;B.paused=true;openPause("⏸ Pause");});
-$("btn-buildinfo").addEventListener("click",function(){if(!B)return;B.paused=true;openPause("🧰 Build");});
+$("btn-pause").addEventListener("click",function(){if(!B||B.over||B.waveState==="draft")return;B.paused=true;openPause("⏸ Pause");});
+$("btn-buildinfo").addEventListener("click",function(){if(!B||B.over||B.waveState==="draft")return;B.paused=true;openPause("🧰 Build");});
 function openPause(title){
  $("pause-title").textContent=title;
  var h='<table class="stats"><thead><tr><th>Unit</th><th>Lv.</th><th>DMG</th></tr></thead><tbody>';

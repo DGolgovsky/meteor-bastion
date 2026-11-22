@@ -98,6 +98,7 @@ function applyCard(c){
    if(!cardEligible(c.u,c.def))return;
    takeCard(c.u,c.def);
  }else if(c.kind==="combo"){
+   if(B.combos[c.modId])return;
    B.combos[c.modId]=1;
    if(c.modId==="spin"){c.u.beamSplit=true;c.u.dmgMul*=1.2;}
    if(c.modId==="det")c.u.zapOnHit=true;
@@ -105,11 +106,12 @@ function applyCard(c){
    if(c.modId==="disr")c.u.beamSlow=true;
    if(c.modId==="vortexWheel"){c.u.dmgMul*=1.25;c.u.wheelDurationBonus=(c.u.wheelDurationBonus||0)+2;}
    if(c.modId==="binaryStars"){c.u.gravityPull*=1.25;c.u.gravityRadius*=1.3;}
-   if(c.modId==="surgePierce"){c.u.pierce=Math.min(15,c.u.pierce+2);c.u.dmgMul*=1.25;}
+   if(c.modId==="surgePierce"){c.u.pierce=Math.max(c.u.pierce,Math.min(15,c.u.pierce+2));c.u.dmgMul*=1.25;}
    burst(c.u.x,c.u.y,16,"#a06bff");
    addPip(c.u);
    recordPick({unit:c.u.cfg.id,icon:"🔗",id:"combo:"+c.modId,name:COMBOS[c.modId][0],lvl:1,rare:true,desc:COMBOS[c.modId][1]});
  }else if(c.kind==="module"){
+   if(c.modId!=="patch"&&B.modulesUsed[c.modId])return;
    if(c.modId!=="patch")B.modulesUsed[c.modId]=1;
    if(c.modId==="boost")B.allDmgMul*=1.12;
    if(c.modId==="healm")B.baseHp=Math.min(B.baseMax,B.baseHp+250);
@@ -166,6 +168,7 @@ $("btn-res-cards").addEventListener("click",openCardsOverview);
 var lastRewards=null;
 function endBattle(win){
  if(B.over)return;B.over=true;stopMusic();
+ ["ov-levelup","ov-pause","ov-cards"].forEach(function(id){var el=$(id);if(el)el.classList.remove("on");});
  var time=Math.max(1,B.elapsed);
  var stats=allFighters().slice().sort(function(a,b){return b.totalDmg-a.totalDmg;}).map(function(t){return{t:t,dmg:t.totalDmg,dps:t.totalDmg/time};});
  var rw=B.elite?1.6:1; /* Elite: tougher enemies, more generous rewards */

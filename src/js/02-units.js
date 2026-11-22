@@ -84,7 +84,7 @@ function aimOrigin(t){
  return {x:t.x,y:t.y+UNIT_SCALE*TURRET_MOUNTS[t.cfg.id].y};
 }
 function mkUnit(cfg,x,slot,isSoldier){
- var lv=META.levels[cfg.id],secondary=metaSecondary(lv),steps=metaSteps(lv),area={rocket:32,charge:42,knockback:40,slow:34};
+ var lv=META.levels[cfg.id],secondary=metaSecondary(lv),steps=metaSteps(lv),area={rocket:32,charge:42,knockback:40,slow:80};
  var dm=metaDamage(lv)*(isSoldier?1:BALANCE.turretBasePower)*(isSoldier?1:1+0.03*META.chips.core);
  var u={cfg:cfg,x:x,y:LINE_Y,slot:(slot===undefined?-1:slot),isSoldier:!!isSoldier,runLv:1,pips:0,cards:{},cd:Math.random()*0.2,laserActive:0,angle:-Math.PI/2,recoil:0,handAlt:false,
   metaCd:metaCooldown(lv),durationMul:secondary,dmgMul:dm,baseDmgMul:dm,haste:1+0.02*META.chips.speed,extraProj:0,
@@ -133,6 +133,9 @@ function newBattle(stage){
 }
 function startBattle(){refillEnergy();
  if(META.energy<BATTLE_ENERGY_COST){renderHome();return;}
+ if(raf!==null){cancelAnimationFrame(raf);raf=null;}
+ ["ov-levelup","ov-pause","ov-result","ov-cards","ov-stage-info"].forEach(function(id){var el=$(id);if(el)el.classList.remove("on");});
+ var le=$("loop-error");if(le)le.style.display="none";
  META.energy-=BATTLE_ENERGY_COST;persist();
  var st=STAGES[META.selStage-1];
  var eff={n:st.n,name:(META.elite?"Elite":"Normal")+" Stage "+st.n,

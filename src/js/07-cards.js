@@ -26,14 +26,14 @@ function cardDropWeight(def){return CARD_DROP.tier[Math.max(0,Math.min(2,(def.lv
 var SUPERS={
  skyguard:{name:"Rocket Barrage",desc:"+2 rockets per volley and +40% fire rate.",apply:function(u){u.extraProj+=2;u.haste*=1.4;}},
  laser:{name:"Mirror Resonator",desc:"The beam gains reflection and refraction at once, +60% damage.",apply:function(u){u.beamSplit=true;u.reflect=Math.max(u.reflect||0,2);u.refract=true;u.dmgMul*=1.6;}},
- disruption:{name:"Stasis Field",desc:"Slow increased to 70%, pulses gain a slowing splash.",apply:function(u){u.slowPow=0.7;u.splash=Math.max(u.splash,50);}},
- aeroblast:{name:"Hurricane",desc:"Knockback is three times stronger, blasts gain a large splash.",apply:function(u){u.knock=36;u.splash=Math.max(u.splash,60);}},
+ disruption:{name:"Stasis Field",desc:"Slow increased to 70%, pulses gain a slowing splash.",apply:function(u){u.slowPow=Math.max(u.slowPow||0,0.7);u.splash=Math.max(u.splash,96);}},
+ aeroblast:{name:"Hurricane",desc:"Knockback is three times stronger, blasts gain a large splash.",apply:function(u){u.knock=Math.max(u.knock*3,36);u.splash=Math.max(u.splash,60);}},
  thunder:{name:"Thunderstorm",desc:"Every strike launches Chain Lightning with +3 targets, +50% damage.",apply:function(u){u.chainLightning=true;u.chainTargets=(u.chainTargets||5)+3;u.dmgMul*=1.5;}},
  beam:{name:"Annihilator",desc:"+150% damage and +20% crit chance.",apply:function(u){u.dmgMul*=2.5;u.critBonus+=0.2;}},
- firewheel:{name:"Inferno",desc:"Every disc hit ignites the enemy and burning is 3 times stronger.",apply:function(u){u.burnMul=3;u.wheelIgnite=1;}},
+ firewheel:{name:"Inferno",desc:"Every disc hit ignites the enemy and burning is 3 times stronger.",apply:function(u){u.burnMul=Math.max(u.burnMul||1,3);u.wheelIgnite=1;}},
  hive:{name:"Mother Swarm",desc:"Drones are released in pairs and deal double damage.",apply:function(u){u.hiveDouble=true;u.dmgMul*=1.35;}},
- railgun:{name:"Piercing Volley",desc:"The projectile pierces ALL enemies on its line, +80% damage.",apply:function(u){u.pierce=99;u.dmgMul*=1.8;}},
- tesla:{name:"Overvoltage",desc:"The discharge bounces across 6 targets, +60% damage.",apply:function(u){u.multiCount=6;u.dmgMul*=1.6;}},
+ railgun:{name:"Piercing Volley",desc:"The projectile pierces ALL enemies on its line, +80% damage.",apply:function(u){u.pierce=Math.max(u.pierce||0,99);u.dmgMul*=1.8;}},
+ tesla:{name:"Overvoltage",desc:"The discharge bounces across 6 targets, +60% damage.",apply:function(u){u.multiCount=Math.max(u.multiCount||0,6);u.dmgMul*=1.6;}},
  gravity:{name:"Black Singularity",desc:"Field radius +50%, pull +35%, +40% field damage.",apply:function(u){u.gravityRadius*=1.5;u.gravityPull*=1.35;u.gravityPower*=1.4;}},
  soldier:{name:"Legendary Marksman",desc:"+100% damage, +25% crit chance and +1 projectile per burst, across the whole field.",apply:function(u){u.dmgMul*=2;u.critBonus+=0.25;u.extraProj+=1;}}
 };
@@ -105,7 +105,7 @@ defCard("disruption",1,"Final Blast",1,1,"When the Disruption Field ends, it dea
 defCard("disruption",1,"Stasis Field",1,1,"Each time enemies take Disruption Field damage, their [Slow] grows by 10% (max 90%).",[fxFlag("stasisField")]);
 defCard("disruption",2,"Disruption Burst",1,0,"When [Disruption] reaches max stacks, it deals 1 powerful one-time hit.",[fxFlag("disrBurst")]);
 defCard("disruption",2,"Rewind Teleport",6,0,"Enemies hit by the Disruption Field have a 2.5% chance to teleport back to their starting point.",[fxFlag("rewindTeleport")]);
-defCard("disruption",2,"Overcharged Disruption",22,0,"[Disruption] DMG +100%, max stacks become 5.",[{k:"disrPower",set:2},{k:"disrMax",set:5}]);
+defCard("disruption",2,"Overcharged Disruption",22,0,"[Disruption] DMG +100%, max stacks become 5.",[{k:"disrPower",set:2,maxOf:true},{k:"disrMax",set:5}]);
 defCard("disruption",2,"Small Laser",1,0,"A Sweeping Laser appears in the center of each Disruption Field.",[fxFlag("smallLaserField")]);
 defCard("disruption",2,"Electric Field",1,0,"Enemies hit by the Disruption Field have a 30% chance to get [Paralyze].",[fxFlag("electricField")]);
 defCard("disruption",2,"Interference Thunder Core",30,0,"Enemies dying in the Disruption Field have a 30% chance to create a small Thunderbolt.",[fxFlag("interferenceCore")]);
@@ -168,7 +168,7 @@ defCard("thunder",3,"Lightning Strike Burst",38,0,"A lightning strike has a 10% 
 /* ---- Beam (Energy) ---- */
 defCard("beam",1,"Beam Boost",1,0,"",[{k:"dmgMul",mul:1.5,l:"Beam DMG"}]);
 defCard("beam",1,"High-Frequency Beam",1,0,"",[{k:"haste",mul:1.3,l:"Beam cooldown speed"}]);
-defCard("beam",1,"Damage Increase",1,0,"Beam DMG on the same target keeps growing (max 200%).",[{k:"beamFocusCap",set:2}]);
+defCard("beam",1,"Damage Increase",1,0,"Beam DMG on the same target keeps growing (max 200%).",[{k:"beamFocusCap",set:2,maxOf:true}]);
 defCard("beam",1,"Efficient Beam",1,0,"",[{k:"beamDurationMul",add:0.4,pct:1,base:1,l:"Beam duration"}]);
 defCard("beam",1,"Beam Refraction",2,0,"On hit, the beam creates Refracted Beams.",[{k:"beamRefractions",add:2,l:"Refractions"}]);
 defCard("beam",1,"Beam Boost+",26,0,"",[{k:"dmgMul",mul:2,l:"Beam DMG"}]);
@@ -183,7 +183,7 @@ defCard("beam",2,"Disruptive Beam",22,0,"Targets hit by the beam create a small 
 defCard("beam",2,"Black Hole Spotlight",38,0,"A black hole appears at the ends of all beams.",[fxFlag("bhSpotlight")]);
 defCard("beam",2,"Slaughtering Beam",1,1,"Beam duration +10% for every enemy killed by the beam (max 100%).",[fxFlag("slaughterBeam")]);
 defCard("beam",2,"Extra Beam",1,1,"Fires an additional Secondary Beam.",[fxFlag("beamSplit")]);
-defCard("beam",3,"Extreme Focus",1,0,"The damage-growth cap rises to 400%.",[{k:"beamFocusCap",set:4}]);
+defCard("beam",3,"Extreme Focus",1,0,"The damage-growth cap rises to 400%.",[{k:"beamFocusCap",set:4,maxOf:true}]);
 defCard("beam",3,"Refraction Explosion",10,0,"Every Refracted Beam hit causes an explosion.",[fxFlag("refractExplosion")]);
 defCard("beam",3,"Beam Lightning",1,0,"Every beam hit has a 30% chance to launch 1 Chain Lightning.",[fxFlag("beamLightning")]);
 defCard("beam",3,"Matrix Resonance",14,0,"On hit, the beam releases an expanding Electric Matrix.",[fxFlag("matrixResonance")]);
@@ -262,7 +262,7 @@ defCard("hive",1,"Swarm Assault",1,0,"",[{k:"dmgMul",mul:1.5,l:"Wasp DMG"}]);
 defCard("hive",1,"Rapid Barrage",1,0,"",[{k:"hiveAttacks",add:2,l:"Wasp attack count"}]);
 defCard("hive",1,"Dense Swarm",1,0,"",[{k:"hiveCount",add:2,cap:12,l:"Wasps"},{k:"dmgMul",mul:0.85,l:"DMG"}]);
 defCard("hive",1,"Contact Pulse",1,0,"On its first hit, a wasp releases 1 Pulse Wave.",[fxFlag("contactPulse")]);
-defCard("hive",1,"Swarm Echo",2,0,"On a kill, a wasp spawns 1 Echo Wasp I (max 1).",[{k:"hiveEcho",set:1}]);
+defCard("hive",1,"Swarm Echo",2,0,"On a kill, a wasp spawns 1 Echo Wasp I (max 1).",[{k:"hiveEcho",set:1,maxOf:true}]);
 defCard("hive",1,"Swarm Assault+",26,0,"",[{k:"dmgMul",mul:2,l:"Wasp DMG"}]);
 defCard("hive",1,"Rapid Barrage+",34,0,"",[{k:"hiveAttacks",add:2,l:"Wasp attack count"},{k:"dmgMul",mul:1.3,l:"DMG"}]);
 defCard("hive",1,"Dense Swarm+",42,0,"",[{k:"hiveCount",add:2,cap:14,l:"Wasps"}]);
@@ -270,14 +270,14 @@ defCard("hive",1,"Wasp Evolution II",1,1,"A Wasp I evolves into Wasp II after 3 
 defCard("hive",1,"Hive Mutation II",1,1,"After every 2 volleys, the Hive releases a Wasp II.",[fxFlag("mutation2")]);
 defCard("hive",2,"Amplified Pulse",1,0,"Pulse Waves apply [Slow] on hit.",[{k:"pulseRMul",mul:1.3,base:1,l:"Pulse Wave DMG radius"},fxFlag("pulseSlow")]);
 defCard("hive",2,"Final Resonance",1,0,"At the end of its life, a wasp releases 1 Pulse Wave.",[fxFlag("finalResonance")]);
-defCard("hive",2,"Echo Upgrade II",6,0,"Echo wasps evolve into Echo Wasp II.",[{k:"hiveEcho",set:2}]);
+defCard("hive",2,"Echo Upgrade II",6,0,"Echo wasps evolve into Echo Wasp II.",[{k:"hiveEcho",set:2,maxOf:true}]);
 defCard("hive",2,"Electro-Wasps",1,0,"Each wasp attack has a 50% chance to release a high-voltage shock at the nearest enemies.",[fxFlag("electroWasps")]);
 defCard("hive",2,"Aero Split",22,0,"A wasp hit has a 60% chance to split into 3 small Railgun shells.",[fxFlag("aeroSplit")]);
 defCard("hive",2,"Bee-Bomb Incineration Domain",30,0,"A destroyed wasp self-detonates and leaves a burning area.",[fxFlag("beeBomb")]);
 defCard("hive",2,"Wasp Evolution III",1,1,"A Wasp II evolves into Wasp III after 3 attacks.",[fxFlag("waspEvolve3")]);
 defCard("hive",2,"Hive Mutation III",1,1,"After every 2 volleys, the Hive has a 50% chance to release a Wasp III.",[fxFlag("mutation3")]);
 defCard("hive",2,"Wasp Retrieval",14,1,"Destroyed wasps have a 50% chance to return to the Hive (up to 5 stored).",[fxFlag("retrieval")]);
-defCard("hive",3,"Echo Upgrade III",10,0,"Echo wasps evolve into Echo Wasp III.",[{k:"hiveEcho",set:3}]);
+defCard("hive",3,"Echo Upgrade III",10,0,"Echo wasps evolve into Echo Wasp III.",[{k:"hiveEcho",set:3,maxOf:true}]);
 defCard("hive",3,"Volley Wasp",1,0,"",[{k:"waspBullets",add:1,l:"Wasp bullets"}]);
 defCard("hive",3,"Swarm Fury",1,0,"After each attack, wasp DMG +30%.",[fxFlag("swarmFury")]);
 defCard("hive",3,"Wasp Immobilize",38,0,"A wasp attack has a 20% chance to apply [Immobilize].",[fxFlag("waspImmobilize")]);
@@ -294,7 +294,7 @@ defCard("firewheel",1,"Smart Acceleration",1,1,"Firewheel Drone DMG +60% and spe
 defCard("firewheel",1,"Hold the Ground",1,1,"When its time runs out, the Firewheel Drone stays for 10 s more.",[fxFlag("holdGround")]);
 defCard("firewheel",2,"Killing Array",1,0,"For every 2 enemies killed directly by the Firewheel Drone, 2 mini Firewheel drones are summoned.",[fxFlag("killingArray")]);
 defCard("firewheel",2,"Blazing Trail",6,0,"",[{k:"trailDmgMul",mul:1.6,base:1,l:"Fire trail DMG"}]);
-defCard("firewheel",2,"Firewheel Ignition",1,0,"The Firewheel Drone has a 20% chance to apply [Burn].",[{k:"wheelIgnite",set:0.2}]);
+defCard("firewheel",2,"Firewheel Ignition",1,0,"The Firewheel Drone has a 20% chance to apply [Burn].",[{k:"wheelIgnite",set:0.2,maxOf:true}]);
 defCard("firewheel",2,"Vortex Firewheel",18,0,"The Firewheel Drone pulls nearby enemies in.",[fxFlag("vortexWheel")]);
 defCard("firewheel",2,"Killing Charge",1,1,"For every 2 enemies killed directly by the Firewheel Drone, its cooldown -0.5 s (max 5 s).",[fxFlag("killingCharge")]);
 defCard("firewheel",2,"Combo Boost",1,1,"Every 20 Firewheel Drone hits, its DMG +20% (max +200%).",[fxFlag("comboBoost")]);
@@ -312,7 +312,7 @@ defCard("soldier",1,"Bullet Explosion",1,0,"A bullet has a 10% chance to explode
 defCard("soldier",1,"Charge Activation",1,0,"The Guard gains Charge Points by firing bullets and enters Charged State when the bar is full.",[fxFlag("chargeActive")]);
 defCard("soldier",1,"Volley Shot+",23,0,"",[{k:"extraProj",add:1,l:"Bullets"}]);
 defCard("soldier",1,"Rapid Fire",26,0,"",[{k:"haste",mul:1.2,l:"Fire rate"}]);
-defCard("soldier",1,"Shotgun Evolution",1,1,"Each shot scatters 2 additional sub-bullets in a real spread.",[{k:"shotgunSpread",set:2}]);
+defCard("soldier",1,"Shotgun Evolution",1,1,"Each shot scatters 2 additional sub-bullets in a real spread.",[{k:"shotgunSpread",set:2,maxOf:true}]);
 defCard("soldier",1,"Splitting Bullet",1,1,"Bullets split into 1 sub-bullet; 2 sub-bullets in Charged State.",[fxFlag("splitBullet")]);
 defCard("soldier",1,"Impact Bullet",1,1,"Bullets gain a weak knockback; knockback +200% in Charged State.",[{k:"dmgMul",mul:2,l:"Bullet DMG"},fxFlag("impactBullet")]);
 defCard("soldier",2,"Explosion Expansion",1,0,"",[{k:"bulletExplR",mul:1.5,base:1,l:"Explosion range"}]);
@@ -349,7 +349,7 @@ function applyCardDef(def,u){
   var v=u[op.k];
   if(op.mul!==undefined)v=(v===undefined?(op.base||1):v)*op.mul;
   else if(op.add!==undefined)v=(v===undefined||v===false?(op.base||0):v)+op.add;
-  else v=op.set;
+  else v=op.maxOf&&typeof v==="number"?Math.max(v,op.set):op.set;
   if(op.cap!==undefined&&typeof v==="number")v=Math.min(op.cap,v);
   u[op.k]=v;
  });
